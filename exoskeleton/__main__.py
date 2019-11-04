@@ -209,33 +209,7 @@ class Exoskeleton:
         else:
             raise ValueError('Unknown database type.')
 
-    def num_items_in_queue(self) -> int:
-        u"""Number of items left in the queue. """
-        # How many are left in the queue?
-        self.cur.execute("SELECT COUNT(*) FROM queue " +
-                         "WHERE causesPermanentError IS NULL;")
-        return self.cur.fetchone()[0]
 
-    def absolute_run_time(self) -> int:
-        u"""Return seconds since init. """
-        return time.monotonic() - self.BOT_START
-
-    def get_process_time(self) -> int:
-        u"""Return execution time since init"""
-        return time.process_time() - self.PROCESS_TIME_START
-
-    def estimate_remaining_time(self) -> int:
-        u"""estimate remaining seconds to finish crawl."""
-        time_so_far = self.absolute_run_time()
-        num_remaining = self.num_items_in_queue()
-
-        if self.cnt['processed'] > 0:
-            time_each = time_so_far / self.cnt['processed']
-            return num_remaining * time_each
-        else:
-            logging.warning('Cannot estimate remaining time ' +
-                            'as there are no data so far.')
-            return -1
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ACTIONS
@@ -379,13 +353,41 @@ class Exoskeleton:
         u"""Waits for a random time between actions
         (within the interval preset at initialization).
         This is done to avoid to accidentially overload
-        the queried host. Some host actualy enforce
+        the queried host. Some host actually enforce
         limits through IP blocking."""
         query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX)
         logging.debug("%s seconds delay until next action",
                       query_delay)
         time.sleep(query_delay)
         return
+
+    def num_items_in_queue(self) -> int:
+        u"""Number of items left in the queue. """
+        # How many are left in the queue?
+        self.cur.execute("SELECT COUNT(*) FROM queue " +
+                         "WHERE causesPermanentError IS NULL;")
+        return self.cur.fetchone()[0]
+
+    def absolute_run_time(self) -> int:
+        u"""Return seconds since init. """
+        return time.monotonic() - self.BOT_START
+
+    def get_process_time(self) -> int:
+        u"""Return execution time since init"""
+        return time.process_time() - self.PROCESS_TIME_START
+
+    def estimate_remaining_time(self) -> int:
+        u"""estimate remaining seconds to finish crawl."""
+        time_so_far = self.absolute_run_time()
+        num_remaining = self.num_items_in_queue()
+
+        if self.cnt['processed'] > 0:
+            time_each = time_so_far / self.cnt['processed']
+            return num_remaining * time_each
+        else:
+            logging.warning('Cannot estimate remaining time ' +
+                            'as there are no data so far.')
+            return -1
 
     def add_file_download(self,
                           url: str):
@@ -414,14 +416,21 @@ class Exoskeleton:
                              'LIMIT 1;')
             next_in_queue = self.cur.fetchone()
             if next_in_queue is None:
+                # empty queue: either full stop or wait for new tasks
                 if self.QUEUE_STOP_IF_EMPTY:
                     logging.info('Queue empty. Bot stops as configured to do.')
-                    # TO DO: send mail
+                    subject = self.PROJECT + ": queue empty / bot stopped"
+                    content = ("The queue is empty. The bot " + self.PROJECT +
+                               " stopped as configured.")
+                    communication.send_mail(self.MAIL_ADMIN,
+                                            self.MAIL_SENDER,
+                                            subject, content)
                     break
                 else:
                     time.sleep(self.QUEUE_WAIT)
                     continue
             else:
+                # got a task from the queue
                 queueId = next_in_queue[0]
                 action = next_in_queue[1]
                 url = next_in_queue[2]
@@ -438,21 +447,27 @@ class Exoskeleton:
                 if self.MILESTONE:
                     self.check_milestone()
 
+                # wait some interval to avoid overloading the server
+                self.random_wait()
+
     def check_milestone(self):
         processed = self.cnt['processed']
         if type(self.MILESTONE) is int:
             if processed % self.MILESTONE == 0:
-                logging.info(f"Milestone reached: {processed} processed")
+                logging.info("Milestone reached: %s processed",
+                             str(processed))
 
             if self.MAIL_SEND:
-                subject = (f"{self.PROJECT}: Milestone reached " +
-                           f"({self.cnt['processed']} processed)")
-                content = (f"{self.cnt['processed']} processed.\n" +
-                           f"??? item remaining in the queue.\n" +
-                           f"estimated time to complete queue: ???\n")
+                subject = (self.PROJECT + ": Milestone reached: " +
+                           str(self.cnt['processed']) + " processed")
+                content = (str(self.cnt['processed']) + " processed.\n" +
+                           str(self.num_items_in_queue()) + " items remaining " +
+                           "in the queue.\n" +
+                           "Estimated time to complete queue: " +
+                           str(self.estimate_remaining_time()) + "seconds.\n")
                 communication.send_mail(self.MAIL_ADMIN,
                                         self.MAIL_SENDER,
-                                         subject, content)
+                                        subject, content)
 
                 return True
             else:
