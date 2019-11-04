@@ -15,7 +15,7 @@ To analyze the content of a page I recommend the [Beautiful Soup](https://www.cr
 
 *Please take note that exoskeleton’s development status is "beta version".* This means it may still contain some bugs and some commands could change with one of the next releases.
 
-1. Exoskeleton requires a database backend. Create a separate database for your project and create the necessary tables. You find scripts to create them on the GitHub project page within the folder named [Database-Scripts](https://github.com/RuedigerVoigt/exoskeleton/Database-Scripts)
+1. Exoskeleton requires a database backend. Create a separate database for your project and create the necessary tables. You find scripts to create them on the GitHub project page within the folder named [Database-Scripts](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts)
 2. Create a database user with read / write / update rights for this database. The crawler will use it to access and manage the queue. That account needs no permissions on other database and therefore should not have them.
 3. Install exoskeleton using `pip` or `pip3`. For example: `pip install exoskeleton`. You may consider using a [virtualenv](https://virtualenv.pypa.io/en/latest/userguide/ "Documentation").
 4. Exoskeleton sets reasonable defaults, but you have to set at least some parameters. See the code examples below.
@@ -105,7 +105,7 @@ Now tell your bot to work through the queue:
 queueManager.process_queue()
 ```
 
-:exclamation:***After Exoskeleton worked through the queue, it will enter a wait state.***:exclamation:
+***After Exoskeleton worked through the queue, it will enter a wait state.***
 
 The idea behind this behavior is, that multiple scripts can feed the queue. There might be the situation that the queue is empty, but new tasks will be entered some seconds later. So standard behavior for exoskeleton is to check the queue regulary.
 
@@ -123,4 +123,15 @@ queueManager = exoskeleton.Exoskeleton(
 
 Now exoskelton will stop once the queue is empty.
 
+#### Sending Progress Reports by Email
 
+Exoskelton can send email when it reaches a milestone or finishes the job.
+
+
+Note, that *it usually does not work to send email from a system with a dynamic ip-address* as most mail servers will classify them as spam. 
+Even if you send from a machine with static IP many things might go wrong.
+For example there might be a (https://en.wikipedia.org/wiki/Sender_Policy_Framework)[SPF setting] for the sending domain.
+
+For this reason the parameter `mail_send_start` defaults to True.
+Once a sender and a receiver are defined, the bot tries to send an email.
+Once you have a working setup, you can switch that off by setting the Parameter to `False`.
