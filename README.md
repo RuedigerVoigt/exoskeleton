@@ -130,7 +130,7 @@ Exoskelton can send email when it reaches a milestone or finishes the job.
 
 Note, that *it usually does not work to send email from a system with a dynamic ip-address* as most mail servers will classify them as spam. 
 Even if you send from a machine with static IP many things might go wrong.
-For example there might be a (https://en.wikipedia.org/wiki/Sender_Policy_Framework)[SPF setting] for the sending domain.
+For example there might be a [SPF setting](https://en.wikipedia.org/wiki/Sender_Policy_Framework) for the sending domain.
 
 For this reason the parameter `mail_send_start` defaults to True.
 Once a sender and a receiver are defined, the bot tries to send an email.
