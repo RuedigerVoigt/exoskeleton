@@ -16,7 +16,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/RuedigerVoigt/exoskeleton",
     packages=setuptools.find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.5",
     install_requires=["requests", "pymysql"],
     classifiers=[
         "Programming Language :: Python :: 3",
