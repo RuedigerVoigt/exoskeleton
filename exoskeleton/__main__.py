@@ -263,18 +263,20 @@ class Exoskeleton:
                 self.cnt['processed'] += 1
             else:
                 # TO DO handle non permanent errors
-                self.cur.execute('UPDATE queue ' +
-                                 'SET causesPermanentError = 1 ' +
-                                 'WHERE id = %s;',
-                                 queueId)
+                self.mark_permanent_error(queueId)
+
 
         except TimeoutError:
             logging.error('Reached timeout trying to download the file.',
                           exc_info=True)
-            raise
+            self.add_crawl_delay_to_item(queueId)
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
             raise
+        except requests.exceptions.MissingSchema:
+            logging.error('Missing Schema Exception. Does your URL contain the ' +
+                        'protocol i.e. http:// or https:// ?', exc_info=True)
+            self.mark_permanent_error(queueId)
         except Exception:
             logging.error('Unknown exception while trying ' +
                           'to download a file.', exc_info=True)
@@ -308,9 +310,9 @@ class Exoskeleton:
                 self.cnt['processed'] += 1
 
         except TimeoutError:
-            logging.error('Reached timeout trying to download the page.',
+            logging.error('Reached timeout trying to download page content.',
                           exc_info=True)
-            raise
+            add_crawl_delay_to_item(queueId)
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
             raise
@@ -401,6 +403,26 @@ class Exoskeleton:
         self.cur.execute('INSERT INTO queue (action, url) VALUES (2, %s);',
                          url)
 
+    def add_crawl_delay_to_item(self,
+                                queueId: int):
+        u"""In case of timeout add a delay until the same URL is queried again """
+        logging.debug('Adding crawl delay to queue item %s', queueId)
+        if self.DB_TYPE == 'mariadb':
+            # ADDTIME() adds seconds to the timestamp
+            self.cur.execute('UPDATE queue ' +
+                             'SET delayUntil = ADDTIME(NOW(), 30) ' +
+                             'WHERE id = %s', queueId)
+
+    def mark_permanent_error(self,
+                             queueId: int):
+        u""" Mark item in queue that causes permant error.
+
+        Has to be marked as otherwise exoskelton will try to
+        download it over and over again."""
+        self.cur.execute('UPDATE queue ' +
+                         'SET causesPermanentError = 1 ' +
+                         'WHERE id = %s;', queueId)
+
     def process_queue(self):
         u"""Process the queue"""
         while True:
@@ -422,11 +444,14 @@ class Exoskeleton:
                     subject = self.PROJECT + ": queue empty / bot stopped"
                     content = ("The queue is empty. The bot " + self.PROJECT +
                                " stopped as configured.")
-                    communication.send_mail(self.MAIL_ADMIN,
-                                            self.MAIL_SENDER,
-                                            subject, content)
+                    if self.MAIL_SEND:
+                        communication.send_mail(self.MAIL_ADMIN,
+                                                self.MAIL_SENDER,
+                                                subject, content)
                     break
                 else:
+                    logging.debug("Queue empty. Waiting %s seconds until next check",
+                                  self.QUEUE_WAIT)
                     time.sleep(self.QUEUE_WAIT)
                     continue
             else:
