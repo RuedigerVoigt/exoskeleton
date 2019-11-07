@@ -4,4 +4,4 @@
 from exoskeleton.__main__ import Exoskeleton
 
 name = "exoskeleton"
-__version__ = "0.5.0"
+__version__ = "0.5.1"
