@@ -51,7 +51,7 @@ class Exoskeleton:
                  queue_wait_seconds_until_lookup: int = 60):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton in version 0.5.0 (beta)')
+        logging.info('You are using exoskeleton in version 0.5.1 (beta)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()

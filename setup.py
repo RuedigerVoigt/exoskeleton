@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="exoskeleton",
-    version="0.5.0",
+    version="0.5.1",
     author="Rüdiger Voigt",
     author_email="projects@ruediger-voigt.eu",
     description="A library to create a bot / spider / crawler.",
@@ -20,6 +20,7 @@ setuptools.setup(
     install_requires=["requests", "pymysql"],
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: Apache Software License",
