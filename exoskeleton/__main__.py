@@ -48,7 +48,8 @@ class Exoskeleton:
                  hash_algo: str = 'sha1',
                  queue_max_retry: int = 3,
                  queue_stop_on_empty: bool = False,
-                 queue_wait_seconds_until_lookup: int = 60):
+                 queue_wait_seconds_until_lookup: int = 60,
+                 filename_prefix: str = ''):
         u"""Sets defaults"""
 
         logging.info('You are using exoskeleton in version 0.5.2 (beta)')
@@ -125,6 +126,8 @@ class Exoskeleton:
         self.QUEUE_MAX_RETRY = queue_max_retry
         self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
         self.QUEUE_WAIT = queue_wait_seconds_until_lookup
+
+        self.FILE_PREFIX = filename_prefix.strip()
 
         self.BOT_START = time.monotonic()
         self.PROCESS_TIME_START = time.process_time()
@@ -223,9 +226,9 @@ class Exoskeleton:
 
         url = url.strip()
         name, ext = os.path.splitext(url)
-        filename = str(queueId) + ext
+        new_filename = self.FILE_PREFIX + str(queueId) + ext
         # TO Do: more generic pathhandling
-        target_path = self.TARGET_DIR + '/' + filename
+        target_path = self.TARGET_DIR + '/' + new_filename
 
         try:
             logging.debug('starting download of queue id %s', queueId)
@@ -251,7 +254,7 @@ class Exoskeleton:
                                      'VALUES (%s, %s, %s, %s, %s, %s); ',
                                      (url,
                                       self.TARGET_DIR,
-                                      filename,
+                                      new_filename,
                                       utils.get_file_size(target_path),
                                       self.HASH_METHOD,
                                       hash_value,
@@ -312,7 +315,7 @@ class Exoskeleton:
         except TimeoutError:
             logging.error('Reached timeout trying to download page content.',
                           exc_info=True)
-            add_crawl_delay_to_item(queueId)
+            self.add_crawl_delay_to_item(queueId)
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
             raise
