@@ -8,7 +8,8 @@ import re
 
 def check_email_format(mailaddress: str,
                        purpose: str = None) -> str:
-    u"""very basic check if the email address has a valid format"""
+    u"""Very basic check if the email address has a valid format
+    and returns it as is except if it is obviously false."""
 
     if mailaddress is None or mailaddress == '':
         logging.warning('No mail address supplied. ' +
@@ -16,13 +17,13 @@ def check_email_format(mailaddress: str,
         return None
     else:
         mailaddress = mailaddress.strip()
-        # MATCH KANN AUCH WHITESPACE ENTHALTEN. ZU SIMPEL!
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", mailaddress):
-            logging.error('The supplied mailaddress has an unknown ' +
-                          'format. Might not be able to send emails.')
-            return None
+        if not re.match(r"^[^\s@]+@[^\s\W@]+\.[a-zA-Z]+", mailaddress):
+            logging.error('The supplied mailaddress %s has an unknown ' +
+                          'format.',
+                          mailaddress)
+            raise ValueError
         else:
-            logging.debug('%s has a valid format', mailaddress)
+            logging.debug('%s seems to have a valid format', mailaddress)
             return mailaddress
 
 
@@ -81,3 +82,41 @@ def check_hash_algo(hash_method: str):
     else:
         raise ValueError('The chosen hash method is NOT available ' +
                          'on this system!')
+
+def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
+    u"""returns True if bucket name is well-formed for AWS S3 buckets
+
+    Applying the rules set here:
+    https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html
+    """
+
+    # Lengthy code which could be written as a single regular expression.
+    # However written in this way to provide useful error messages.
+    if len(bucket_name) < 3:
+        logging.error('Any AWS bucket name has to be at least 3 ' +
+                      'characters long.')
+        return False
+    elif len(bucket_name) > 63:
+        logging.error('The provided bucket name for AWS exceeds the ' +
+                      'maximum length of 63 characters.')
+        return False
+    elif not re.match(r"^[a-z0-9\-\.]*$", bucket_name):
+        logging.error('The AWS bucket name contains invalid characters.')
+        return False
+    elif re.match(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", bucket_name):
+        # Check if the bucket name resembles an IPv4 address.
+        # No need to check IPv6 as the colon is not an allowed character.
+        logging.error('An AWS must not resemble an IP address.')
+        return False
+    elif re.match(r"([a-z0-9][a-z0-9\-]*[a-z0-9]\.)*[a-z0-9][a-z0-9\-]*[a-z0-9]", bucket_name):
+        # must start with a lowercase letter or number
+        # Bucket names must be a series of one or more labels.
+        # Adjacent labels are separated by a single period (.).
+        # Each label must start and end with a lowercase letter or a number.
+        # => Adopted the answer provided by Zak (zero or more labels followed by
+        # a dot) found here:
+        # https://stackoverflow.com/questions/50480924
+        return True
+    else:
+        logging.error('Invalid AWS bucket name.')
+        return False
