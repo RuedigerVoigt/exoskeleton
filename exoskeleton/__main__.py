@@ -52,7 +52,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton in version 0.5.2 (beta)')
+        logging.info('You are using exoskeleton in version 0.6.0 (beta)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -69,6 +69,8 @@ class Exoskeleton:
         self.DB_NAME = database_name.strip()
         self.DB_USERNAME = database_user.strip()
         self.DB_PASSPHRASE = database_passphrase.strip()
+        if self.DB_PASSPHRASE == '':
+            logging.warning('No database passphrase provided.')
 
         self.WAIT_MIN = 5
         if type(min_wait) in (int, float):
@@ -156,8 +158,7 @@ class Exoskeleton:
                 self.DB_HOSTNAME and
                 self.DB_PORT and
                 self.DB_NAME and
-                self.DB_USERNAME and
-                self.DB_PASSPHRASE):
+                self.DB_USERNAME):
 
             # give specific error messages:
             missing_params = []
@@ -171,8 +172,6 @@ class Exoskeleton:
                 missing_params.append('database name')
             if not self.DB_USERNAME:
                 missing_params.append('username')
-            if not self.DB_PASSPHRASE:
-                missing_params.append('passphrase')
             # ... stop before connection try:
             raise ValueError('The following parameters were not supplied, ' +
                              'but are needed to connect to the database: ' +
@@ -241,32 +240,39 @@ class Exoskeleton:
                 with open(target_path, 'wb') as f:
                     for block in r.iter_content(1024):
                         f.write(block)
-                        logging.debug('file written')
+                    logging.debug('file written')
                     hash_value = None
                     if self.HASH_METHOD:
                         hash_value = utils.get_file_hash(target_path,
                                                          self.HASH_METHOD)
 
                     # Log the download and remove the item from Queue
-                    self.cur.execute('INSERT INTO files ' +
-                                     '(url, storageFolder, fileName, ' +
+                    self.cur.execute('INSERT INTO fileMaster (url) VALUES (%s);', url)
+
+                    self.cur.execute('INSERT INTO fileVersions ' +
+                                     '(fileID, storageTypeID, pathOrBucket, fileName, ' +
                                      'size, hashMethod, hashValue) ' +
-                                     'VALUES (%s, %s, %s, %s, %s, %s); ',
-                                     (url,
-                                      self.TARGET_DIR,
+                                     'VALUES (LAST_INSERT_ID() , 2, %s, %s, %s, %s, %s); ',
+                                     (self.TARGET_DIR,
                                       new_filename,
                                       utils.get_file_size(target_path),
                                       self.HASH_METHOD,
-                                      hash_value,
-                                      ))
+                                      hash_value)
+                                      )
+                    # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
+                    # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+
                     self.cur.execute('DELETE FROM queue WHERE id = %s; ',
                                      queueId)
 
                 logging.debug('download successful')
                 self.cnt['processed'] += 1
+            elif r.status_code in (402, 403, 404, 405, 410, 451):
+                self.mark_error(queueId, r.status_code)
+            elif r.status_code == 429:
+                logging.error('The bot hit a rate limit! It queries too fast => increase min_wait.')
             else:
-                # TO DO handle non permanent errors
-                self.mark_permanent_error(queueId)
+                logging.error('Unhandeled return code %s', r.status_code)
 
 
         except TimeoutError:
@@ -279,7 +285,7 @@ class Exoskeleton:
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
                         'protocol i.e. http:// or https:// ?', exc_info=True)
-            self.mark_permanent_error(queueId)
+            self.mark_error(queueId, 1)
         except Exception:
             logging.error('Unknown exception while trying ' +
                           'to download a file.', exc_info=True)
@@ -304,10 +310,14 @@ class Exoskeleton:
                 detectedEncoding = str(r.encoding)
                 logging.debug('detected encoding: ' + detectedEncoding)
 
-                self.cur.execute('INSERT INTO content ' +
-                                 '(url, pageContent) ' +
-                                 'VALUES (%s, %s); ',
-                                 (url, r.text))
+                self.cur.execute('INSERT INTO fileMaster (url) VALUES (%s);', url)
+                self.cur.execute('INSERT INTO fileVersions ' +
+                                    '(fileID, storageTypeID) ' +
+                                    'VALUES (LAST_INSERT_ID() , 1); ')
+                self.cur.execute('INSERT INTO fileContent ' +
+                                 '(versionID, pageContent) ' +
+                                 'VALUES (LAST_INSERT_ID(), %s); ',
+                                 r.text)
                 self.cur.execute('DELETE FROM queue WHERE id = %s;', queueId)
 
                 self.cnt['processed'] += 1
@@ -331,9 +341,9 @@ class Exoskeleton:
     def check_table_existence(self) -> bool:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
-        expected_tables = ['content', 'eventLog', 'files',
-                           'permanentErrors', 'queue',
-                           'statisticsHosts']
+        expected_tables = ['actions', 'queue', 'errorType', 'eventLog',
+                           'fileMaster', 'storageTypes', 'fileVersions',
+                           'fileContent']
         tables_count = 0
         if self.DB_TYPE == 'mariadb':
             self.cur.execute('SHOW TABLES;')
@@ -344,7 +354,7 @@ class Exoskeleton:
                     logging.debug('Found table %s', t)
                 else:
                     logging.error('Table %s not found.', t)
-        if tables_count == 6:
+        if tables_count == 8:
             logging.info("Found all expected tables.")
             return True
         else:
@@ -370,7 +380,7 @@ class Exoskeleton:
         u"""Number of items left in the queue. """
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
-                         "WHERE causesPermanentError IS NULL;")
+                         "WHERE causesError IS NULL;")
         return self.cur.fetchone()[0]
 
     def absolute_run_time(self) -> int:
@@ -402,29 +412,37 @@ class Exoskeleton:
 
     def add_save_page_code(self,
                            url: str):
-        u""" add an URL to the queue to save it's code into the database"""
+        u""" add an URL to the queue to save it's HTML code into the database."""
         self.cur.execute('INSERT INTO queue (action, url) VALUES (2, %s);',
                          url)
 
     def add_crawl_delay_to_item(self,
-                                queueId: int):
-        u"""In case of timeout add a delay until the same URL is queried again """
+                                queueId: int,
+                                delay_seconds: int = None):
+        u"""In case of timeout or temporary error add a delay until
+        the same URL is queried again. """
         logging.debug('Adding crawl delay to queue item %s', queueId)
+        waittime = 30
+        if delay_seconds:
+            waittime = delay_seconds
         if self.DB_TYPE == 'mariadb':
-            # ADDTIME() adds seconds to the timestamp
             self.cur.execute('UPDATE queue ' +
-                             'SET delayUntil = ADDTIME(NOW(), 30) ' +
-                             'WHERE id = %s', queueId)
+                             'SET delayUntil = ADDTIME(NOW(), %s) ' +
+                             'WHERE id = %s', (waittime, queueId))
 
-    def mark_permanent_error(self,
-                             queueId: int):
+    def mark_error(self,
+                   queueId: int,
+                   error: int):
         u""" Mark item in queue that causes permant error.
 
         Has to be marked as otherwise exoskelton will try to
         download it over and over again."""
+
         self.cur.execute('UPDATE queue ' +
-                         'SET causesPermanentError = 1 ' +
-                         'WHERE id = %s;', queueId)
+                         'SET causesError = %s ' +
+                         'WHERE id = %s;', (error, queueId))
+        if error in (429, 500, 503):
+            self.add_crawl_delay_to_item(queueId, 600)
 
     def process_queue(self):
         u"""Process the queue"""
@@ -435,7 +453,7 @@ class Exoskeleton:
                              '  ,action' +
                              '  ,url ' +
                              'FROM queue ' +
-                             'WHERE causesPermanentError IS NULL AND ' +
+                             'WHERE causesError IS NULL AND ' +
                              '(delayUntil IS NULL OR delayUntil < NOW()) ' +
                              'ORDER BY addedToQueue ASC ' +
                              'LIMIT 1;')
@@ -489,8 +507,8 @@ class Exoskeleton:
                 subject = (self.PROJECT + ": Milestone reached: " +
                            str(self.cnt['processed']) + " processed")
                 content = (str(self.cnt['processed']) + " processed.\n" +
-                           str(self.num_items_in_queue()) + " items remaining " +
-                           "in the queue.\n" +
+                           str(self.num_items_in_queue()) + " items " +
+                           "remaining in the queue.\n" +
                            "Estimated time to complete queue: " +
                            str(self.estimate_remaining_time()) + "seconds.\n")
                 communication.send_mail(self.MAIL_ADMIN,
