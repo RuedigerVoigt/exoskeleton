@@ -79,12 +79,14 @@ DEBUG:root:started timer
 DEBUG:root:Trying to connect to database.
 INFO:root:Made database connection.
 DEBUG:root:Checking if the database table structure is complete.
-DEBUG:root:Found table content
-DEBUG:root:Found table eventLog
-DEBUG:root:Found table files
-DEBUG:root:Found table permanentErrors
+DEBUG:root:Found table actions
 DEBUG:root:Found table queue
-DEBUG:root:Found table statisticsHosts
+DEBUG:root:Found table errorType
+DEBUG:root:Found table eventLog
+DEBUG:root:Found table fileMaster
+DEBUG:root:Found table storageTypes
+DEBUG:root:Found table fileVersions
+DEBUG:root:Found table fileContent
 INFO:root:Found all expected tables.
 0
 WARNING:root:Cannot estimate remaining time as there are no data so far.
