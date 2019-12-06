@@ -140,4 +140,4 @@ Once you have a working setup, you can switch that off by setting the Parameter 
 
 ### Further Documentation
 
-* [Database Structure](Database-Scripts/README.md)
+* [Database Structure](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts)
