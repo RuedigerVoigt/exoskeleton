@@ -1,5 +1,9 @@
 # Changelog / History
 
+## upcoming
+
+* Separate functions to retrieve a page's content and to store it in the database. Allows for direct access to the request-object and makes it possible to get content without storing it at all.
+
 ## version 0.6.0 beta (2019-11-26)
 
 * *Breaking Change*: Changed database structure in order to manage multiple versions of a file in different locations (local / Cloud / ...).

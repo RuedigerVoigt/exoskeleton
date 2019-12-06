@@ -292,10 +292,10 @@ class Exoskeleton:
             raise
         return
 
-    def store_page_content(self,
-                           url: str,
-                           queueId: int) -> str:
-        u"""Retrieve a page and return it as text. """
+
+    def get_page_request_object(self,
+                              url: str):
+        u"""Retrieves a page and returns it as a request object. """
 
         logging.debug('retriving %s', url)
 
@@ -305,10 +305,23 @@ class Exoskeleton:
                              headers={"User-agent": str(self.USER_AGENT)},
                              timeout=self.CONNECTION_TIMEOUT
                              )
+            return r
+        except Exception:
+            raise
 
-            if r.status_code == 200:
-                detectedEncoding = str(r.encoding)
-                logging.debug('detected encoding: ' + detectedEncoding)
+
+
+    def store_page_content(self,
+                           url: str,
+                           queueId: int):
+        u"""Retrieve a page and store it to the database. """
+
+        try:
+            page = self.get_page_request_object(url)
+
+            if page.status_code == 200:
+                detectedEncoding = str(page.encoding)
+                logging.debug('detected encoding: %s', detectedEncoding)
 
                 self.cur.execute('INSERT INTO fileMaster (url) VALUES (%s);', url)
                 self.cur.execute('INSERT INTO fileVersions ' +
@@ -317,7 +330,7 @@ class Exoskeleton:
                 self.cur.execute('INSERT INTO fileContent ' +
                                  '(versionID, pageContent) ' +
                                  'VALUES (LAST_INSERT_ID(), %s); ',
-                                 r.text)
+                                 page.text)
                 self.cur.execute('DELETE FROM queue WHERE id = %s;', queueId)
 
                 self.cnt['processed'] += 1
@@ -333,6 +346,8 @@ class Exoskeleton:
             logging.error('Unknown exception while trying ' +
                           'to download the page.', exc_info=True)
             raise
+
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
