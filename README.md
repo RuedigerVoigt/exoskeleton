@@ -4,9 +4,10 @@ For my dissertation I download hundreds of thousands of documents and feed them 
 
 That creates a need for a crawler / scraper that avoids too high loads on the connection, but runs permanently and fault tolerant to ultimately download all files.
 
-Exoskeleton is a python framework that aims for that goal. It has three main functionalities:
+Exoskeleton is a python framework that aims for that goal. It has four main functionalities:
 * Managing a download queue within a SQL database.
 * Working through that queue by downloading files to disk and page source code into a database table.
+* Avoid processing the same URL more than once.
 * Sending progress reports to the admin.
 
 To analyze the content of a page I recommend the [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/ "beautiful soup project homepage") package.
