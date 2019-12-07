@@ -13,10 +13,11 @@
 --
 -- BEWARE: This should be run in an empty database as otherwise
 -- this script might alter existing tables!
+--
 -- ----------------------------------------------------------
 
--- DON NOT FORGET:
--- USE nameOfTheDatabase;
+-- DO NOT FORGET TO CHANGE:
+USE nameOfYourDatabase;
 
 -- ----------------------------------------------------------
 -- QUEUE
@@ -28,12 +29,14 @@ CREATE TABLE IF NOT EXISTS queue (
     id INT NOT NULL AUTO_INCREMENT
     ,action INT
     ,url TEXT NOT NULL
+    ,urlHash CHAR(64) NOT NULL
     ,addedToQueue TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,causesError INT NULL
     ,retries INT NULL
     ,delayUntil TIMESTAMP NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`action`)
+    ,UNIQUE(`urlHash`)
     ,INDEX(`addedToQueue`)
     ,INDEX(`delayUntil`)
 ) ENGINE=InnoDB;
@@ -100,10 +103,12 @@ CREATE TABLE IF NOT EXISTS fileMaster (
     id INT NOT NULL AUTO_INCREMENT
     ,initialDownloadDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,url TEXT NOT NULL
+    ,urlHash CHAR(64) NOT NULL
     ,numVersions_t INT DEFAULT 0
     -- increment / decrement of version count via trigger in fileVersions
     -- Default has to be 0 not NULL as increment otherwise does not work
     ,PRIMARY KEY(`id`)
+    ,UNIQUE(urlHash)
     ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------
@@ -235,6 +240,7 @@ SELECT m.id AS masterFileID
     ,c.versionID
     ,v.versionTimestamp
     ,m.url
+    ,m.urlHash
     ,c.pageContent
 FROM fileContent AS c
 LEFT JOIN fileVersions AS v
