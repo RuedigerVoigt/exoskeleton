@@ -220,6 +220,7 @@ class Exoskeleton:
     def get_file(self,
                  queueId: int,
                  url: str,
+                 urlHash: str,
                  timeout: int = None):
         u"""Download a file and save it at a specified path."""
 
@@ -247,7 +248,9 @@ class Exoskeleton:
                                                          self.HASH_METHOD)
 
                     # Log the download and remove the item from Queue
-                    self.cur.execute('INSERT INTO fileMaster (url) VALUES (%s);', url)
+                    self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
+                                     'VALUES (%s, %s);',
+                                     (url, urlHash))
 
                     self.cur.execute('INSERT INTO fileVersions ' +
                                      '(fileID, storageTypeID, pathOrBucket, fileName, ' +
@@ -270,7 +273,8 @@ class Exoskeleton:
             elif r.status_code in (402, 403, 404, 405, 410, 451):
                 self.mark_error(queueId, r.status_code)
             elif r.status_code == 429:
-                logging.error('The bot hit a rate limit! It queries too fast => increase min_wait.')
+                logging.error('The bot hit a rate limit! It queries too ' +
+                              'fast => increase min_wait.')
             else:
                 logging.error('Unhandeled return code %s', r.status_code)
 
@@ -284,7 +288,7 @@ class Exoskeleton:
             raise
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
-                        'protocol i.e. http:// or https:// ?', exc_info=True)
+                          'protocol i.e. http:// or https:// ?', exc_info=True)
             self.mark_error(queueId, 1)
         except Exception:
             logging.error('Unknown exception while trying ' +
@@ -313,6 +317,7 @@ class Exoskeleton:
 
     def store_page_content(self,
                            url: str,
+                           urlHash: str,
                            queueId: int):
         u"""Retrieve a page and store it to the database. """
 
@@ -323,7 +328,8 @@ class Exoskeleton:
                 detectedEncoding = str(page.encoding)
                 logging.debug('detected encoding: %s', detectedEncoding)
 
-                self.cur.execute('INSERT INTO fileMaster (url) VALUES (%s);', url)
+                self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
+                                 'VALUES (%s, %s);', (url, urlHash))
                 self.cur.execute('INSERT INTO fileVersions ' +
                                     '(fileID, storageTypeID) ' +
                                     'VALUES (LAST_INSERT_ID() , 1); ')
@@ -422,14 +428,37 @@ class Exoskeleton:
     def add_file_download(self,
                           url: str):
         u"""add a file download URL to the queue """
-        self.cur.execute('INSERT INTO queue (action, url) VALUES (1, %s);',
-                         url)
+        self.add_to_queue(url, 1)
 
     def add_save_page_code(self,
                            url: str):
         u""" add an URL to the queue to save it's HTML code into the database."""
-        self.cur.execute('INSERT INTO queue (action, url) VALUES (2, %s);',
-                         url)
+        self.add_to_queue(url, 2)
+
+    def add_to_queue(self,
+                     url: str,
+                     action: int):
+        u""" More general function to add items to queue. Called by
+        add_file_download and add_save_page_code."""
+        if action not in (1, 2):
+            logging.error('Invalid value for action to take!')
+            return
+        else:
+            # file download
+            self.cur.execute('SElECT id FROM fileMaster WHERE urlHash = SHA2(%s,256);', url)
+            id_in_file_master = self.cur.fetchone()
+            if id_in_file_master is not None:
+                logging.info('The file has already been processed. Skipping it.')
+
+        try:
+            self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
+                            'VALUES (%s, %s, SHA2(%s,256));',
+                            (action, url, url))
+        except pymysql.IntegrityError:
+            # No further check here as an duplicate url / urlHash is
+            # the only thing that can cause that error here.
+            logging.info('URL already in queue. Not adding it again.')
+
 
     def add_crawl_delay_to_item(self,
                                 queueId: int,
@@ -467,6 +496,7 @@ class Exoskeleton:
                              '  id' +
                              '  ,action' +
                              '  ,url ' +
+                             '  ,urlHash ' +
                              'FROM queue ' +
                              'WHERE causesError IS NULL AND ' +
                              '(delayUntil IS NULL OR delayUntil < NOW()) ' +
@@ -495,13 +525,14 @@ class Exoskeleton:
                 queueId = next_in_queue[0]
                 action = next_in_queue[1]
                 url = next_in_queue[2]
+                urlHash = next_in_queue[3]
 
                 if action == 1:
                     # download file to disk
-                    self.get_file(queueId, url)
+                    self.get_file(queueId, url, urlHash)
                 elif action == 2:
                     # save page code into database
-                    self.store_page_content(url, queueId)
+                    self.store_page_content(url, urlHash, queueId)
                 else:
                     logging.error('Unknown action id!')
 
