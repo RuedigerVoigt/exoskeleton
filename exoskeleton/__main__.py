@@ -3,13 +3,11 @@
 
 # python standard libraries:
 from collections import Counter
-import hashlib
+import errno
 import logging
 import os
 import queue
 import random
-import re
-import smtplib
 import sys
 import tempfile
 import time
@@ -298,7 +296,7 @@ class Exoskeleton:
 
 
     def get_page_request_object(self,
-                              url: str):
+                                url: str):
         u"""Retrieves a page and returns it as a request object. """
 
         logging.debug('retriving %s', url)
@@ -331,8 +329,8 @@ class Exoskeleton:
                 self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
                                  'VALUES (%s, %s);', (url, urlHash))
                 self.cur.execute('INSERT INTO fileVersions ' +
-                                    '(fileID, storageTypeID) ' +
-                                    'VALUES (LAST_INSERT_ID() , 1); ')
+                                 '(fileID, storageTypeID) ' +
+                                 'VALUES (LAST_INSERT_ID() , 1); ')
                 self.cur.execute('INSERT INTO fileContent ' +
                                  '(versionID, pageContent) ' +
                                  'VALUES (LAST_INSERT_ID(), %s); ',
@@ -452,8 +450,8 @@ class Exoskeleton:
 
         try:
             self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
-                            'VALUES (%s, %s, SHA2(%s,256));',
-                            (action, url, url))
+                             'VALUES (%s, %s, SHA2(%s,256));',
+                             (action, url, url))
         except pymysql.IntegrityError:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.

@@ -4,7 +4,6 @@
 import hashlib
 import logging
 import os
-import re
 
 
 def get_file_size(file_path: str) -> int:

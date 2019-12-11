@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# python standard libraries:
-from collections import Counter
 import smtplib
 from email.message import EmailMessage
 import logging
