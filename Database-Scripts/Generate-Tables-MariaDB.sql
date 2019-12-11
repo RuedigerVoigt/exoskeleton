@@ -17,7 +17,8 @@
 -- ----------------------------------------------------------
 
 -- DO NOT FORGET TO CHANGE:
-USE nameOfYourDatabase;
+CREATE DATABASE `nameOfYourDatabase` DEFAULT CHARACTER SET utf8mb4;
+USE `nameOfYourDatabase`;
 
 -- ----------------------------------------------------------
 -- QUEUE
@@ -228,6 +229,20 @@ CREATE TABLE IF NOT EXISTS eventLog (
     ,PRIMARY KEY(`id`)
 ) ENGINE=InnoDB;
 
+-- ----------------------------------------------------------
+-- STATISTICS
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS statisticsHosts (
+    fqdnHash CHAR(32) NOT NULL
+    ,fqdn VARCHAR(255) NOT NULL
+    ,firstSeen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
+    ,lastSeen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP()
+    ,successful INT UNSIGNED NOT NULL DEFAULT 0
+    ,problems INT UNSIGNED NOT NULL DEFAULT 0
+    ,PRIMARY KEY(`fqdnHash`)
+    ,INDEX(`firstSeen`)
+) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------
 -- VIEWS

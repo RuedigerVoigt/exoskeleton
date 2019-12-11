@@ -11,6 +11,7 @@ import random
 import sys
 import tempfile
 import time
+from urllib.parse import urlparse
 
 
 # 3rd party libraries:
@@ -215,143 +216,146 @@ class Exoskeleton:
 # ACTIONS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def get_file(self,
-                 queueId: int,
-                 url: str,
-                 urlHash: str,
-                 timeout: int = None):
-        u"""Download a file and save it at a specified path."""
+
+    def get_object(self,
+                   queueId: int,
+                   actionType: str,
+                   url: str,
+                   urlHash: str):
+        u""" Generic function to either download a file or store a page's content """
+        if actionType not in ('file','content'):
+            raise ValueError('Invalid action')
 
         url = url.strip()
-        name, ext = os.path.splitext(url)
-        new_filename = self.FILE_PREFIX + str(queueId) + ext
-        # TO Do: more generic pathhandling
-        target_path = self.TARGET_DIR + '/' + new_filename
 
-        try:
+        if actionType == 'file':
+            name, ext = os.path.splitext(url)
+            new_filename = self.FILE_PREFIX + str(queueId) + ext
+
+            # TO Do: more generic pathhandling
+            target_path = self.TARGET_DIR + '/' + new_filename
+
             logging.debug('starting download of queue id %s', queueId)
 
-            r = requests.get(url,
-                             headers={"User-agent": str(self.USER_AGENT)},
-                             timeout=self.CONNECTION_TIMEOUT,
-                             stream=True)
-            if r.status_code == 200:
-                with open(target_path, 'wb') as f:
-                    for block in r.iter_content(1024):
-                        f.write(block)
-                    logging.debug('file written')
-                    hash_value = None
-                    if self.HASH_METHOD:
-                        hash_value = utils.get_file_hash(target_path,
-                                                         self.HASH_METHOD)
+        elif actionType == 'content':
+            logging.debug('retrieving content of queue id %s', queueId)
 
-                    # Log the download and remove the item from Queue
+        try:
+            if actionType == 'file':
+                r = requests.get(url,
+                                 headers={"User-agent": str(self.USER_AGENT)},
+                                 timeout=self.CONNECTION_TIMEOUT,
+                                 stream=True)
+
+                if r.status_code == 200:
+                    with open(target_path, 'wb') as f:
+                        for block in r.iter_content(1024):
+                            f.write(block)
+                        logging.debug('file written')
+                        hash_value = None
+                        if self.HASH_METHOD:
+                            hash_value = utils.get_file_hash(target_path,
+                                                            self.HASH_METHOD)
+
+                        # Log the download and remove the item from Queue
+                        self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
+                                        'VALUES (%s, %s);',
+                                        (url, urlHash))
+
+                        self.cur.execute('INSERT INTO fileVersions ' +
+                                        '(fileID, storageTypeID, pathOrBucket, fileName, ' +
+                                        'size, hashMethod, hashValue) ' +
+                                        'VALUES (LAST_INSERT_ID() , 2, %s, %s, %s, %s, %s); ',
+                                        (self.TARGET_DIR,
+                                        new_filename,
+                                        utils.get_file_size(target_path),
+                                        self.HASH_METHOD,
+                                        hash_value)
+                                        )
+                        # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
+                        # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+
+                        self.cur.execute('DELETE FROM queue WHERE id = %s; ',
+                                        queueId)
+
+                        self.cnt['processed'] += 1
+                        self.update_host_statistics(url, True)
+
+                    logging.debug('download successful')
+
+            elif actionType == 'content':
+                r = requests.get(url,
+                                headers={"User-agent": str(self.USER_AGENT)},
+                                timeout=self.CONNECTION_TIMEOUT,
+                                stream=False
+                                )
+                if r.status_code == 200:
+                    detectedEncoding = str(r.encoding)
+                    logging.debug('detected encoding: %s', detectedEncoding)
+
                     self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                     'VALUES (%s, %s);',
-                                     (url, urlHash))
-
+                                    'VALUES (%s, %s);', (url, urlHash))
                     self.cur.execute('INSERT INTO fileVersions ' +
-                                     '(fileID, storageTypeID, pathOrBucket, fileName, ' +
-                                     'size, hashMethod, hashValue) ' +
-                                     'VALUES (LAST_INSERT_ID() , 2, %s, %s, %s, %s, %s); ',
-                                     (self.TARGET_DIR,
-                                      new_filename,
-                                      utils.get_file_size(target_path),
-                                      self.HASH_METHOD,
-                                      hash_value)
-                                      )
-                    # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
-                    # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+                                    '(fileID, storageTypeID) ' +
+                                    'VALUES (LAST_INSERT_ID() , 1); ')
+                    self.cur.execute('INSERT INTO fileContent ' +
+                                    '(versionID, pageContent) ' +
+                                    'VALUES (LAST_INSERT_ID(), %s); ',
+                                    r.text)
+                    self.cur.execute('DELETE FROM queue WHERE id = %s;', queueId)
 
-                    self.cur.execute('DELETE FROM queue WHERE id = %s; ',
-                                     queueId)
+                    self.cnt['processed'] += 1
+                    self.update_host_statistics(url, True)
 
-                logging.debug('download successful')
-                self.cnt['processed'] += 1
-            elif r.status_code in (402, 403, 404, 405, 410, 451):
+            if r.status_code in (402, 403, 404, 405, 410, 451):
                 self.mark_error(queueId, r.status_code)
+                self.update_host_statistics(url, False)
             elif r.status_code == 429:
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
-            else:
+                self.add_crawl_delay_to_item(queueId)
+                self.update_host_statistics(url, False)
+            elif r.status_code not in (200, 402, 403, 404, 405, 410, 429, 451):
                 logging.error('Unhandeled return code %s', r.status_code)
-
+                self.update_host_statistics(url, False)
 
         except TimeoutError:
-            logging.error('Reached timeout trying to download the file.',
+            logging.error('Reached timeout.',
                           exc_info=True)
             self.add_crawl_delay_to_item(queueId)
+            self.update_host_statistics(url, False)
+
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
+            self.update_host_statistics(url, False)
             raise
+
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
-                          'protocol i.e. http:// or https:// ?', exc_info=True)
+                          'protocol i.e. http:// or https:// ? See queueID = %s', queueId, exc_info=True)
             self.mark_error(queueId, 1)
+
         except Exception:
             logging.error('Unknown exception while trying ' +
                           'to download a file.', exc_info=True)
-            raise
-        return
-
-
-    def get_page_request_object(self,
-                                url: str):
-        u"""Retrieves a page and returns it as a request object. """
-
-        logging.debug('retriving %s', url)
-
-        try:
-
-            r = requests.get(url,
-                             headers={"User-agent": str(self.USER_AGENT)},
-                             timeout=self.CONNECTION_TIMEOUT
-                             )
-            return r
-        except Exception:
+            self.update_host_statistics(url, False)
             raise
 
+
+    def get_file(self,
+                 queueId: int,
+                 url: str,
+                 urlHash: str):
+        u"""Download a file and save it in the specified folder."""
+        self.get_object(queueId,'file',url,urlHash)
 
 
     def store_page_content(self,
                            url: str,
                            urlHash: str,
                            queueId: int):
-        u"""Retrieve a page and store it to the database. """
-
-        try:
-            page = self.get_page_request_object(url)
-
-            if page.status_code == 200:
-                detectedEncoding = str(page.encoding)
-                logging.debug('detected encoding: %s', detectedEncoding)
-
-                self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                 'VALUES (%s, %s);', (url, urlHash))
-                self.cur.execute('INSERT INTO fileVersions ' +
-                                 '(fileID, storageTypeID) ' +
-                                 'VALUES (LAST_INSERT_ID() , 1); ')
-                self.cur.execute('INSERT INTO fileContent ' +
-                                 '(versionID, pageContent) ' +
-                                 'VALUES (LAST_INSERT_ID(), %s); ',
-                                 page.text)
-                self.cur.execute('DELETE FROM queue WHERE id = %s;', queueId)
-
-                self.cnt['processed'] += 1
-
-        except TimeoutError:
-            logging.error('Reached timeout trying to download page content.',
-                          exc_info=True)
-            self.add_crawl_delay_to_item(queueId)
-        except ConnectionError:
-            logging.error('Connection Error', exc_info=True)
-            raise
-        except Exception:
-            logging.error('Unknown exception while trying ' +
-                          'to download the page.', exc_info=True)
-            raise
-
-
+        u"""Retrieve a page and store it's content to the database. """
+        self.get_object(queueId,'content',url,urlHash)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
@@ -539,6 +543,27 @@ class Exoskeleton:
 
                 # wait some interval to avoid overloading the server
                 self.random_wait()
+
+    def update_host_statistics(self,
+                               url: str,
+                               success: bool = True):
+        u""" Updates the host based statistics"""
+
+        fqdn = urlparse(url).hostname
+        if success:
+            successful, problems = 1, 0
+        else:
+            successful, problems = 0, 1
+
+        self.cur.execute('INSERT INTO statisticsHosts ' +
+                         '(fqdnHash, fqdn, successful, ' +
+                         'problems) ' +
+                         'VALUES (MD5(%s), %s, %s, %s) ' +
+                         'ON DUPLICATE KEY UPDATE ' +
+                         'successful = successful + %s, ' +
+                         'problems = problems + %s;',
+                         (fqdn, fqdn, successful, problems,
+                         successful, problems))
 
     def check_milestone(self):
         processed = self.cnt['processed']
