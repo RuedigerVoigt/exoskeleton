@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 0.6.1 of exoskeleton
+-- for version 0.6.2 of exoskeleton
 -- © 2019 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --

@@ -1,9 +1,14 @@
 # Changelog / History
 
+## version 0.6.2 beta (2019-12-11)
+
+* Add statistics on a per host basis.
+* Improve error handling.
+
+
 ## version 0.6.1 beta (2019-12-07)
 
 * Check if a file / URL has already been processed before adding it to the queue.
-* Separate functions to retrieve a page's content and to store it in the database. Allows for direct access to the request-object and makes it possible to get content without storing it at all.
 
 ## version 0.6.0 beta (2019-11-26)
 
