@@ -364,9 +364,9 @@ class Exoskeleton:
     def check_table_existence(self) -> bool:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
-        expected_tables = ['actions', 'queue', 'errorType', 'eventLog',
-                           'fileMaster', 'storageTypes', 'fileVersions',
-                           'fileContent']
+        expected_tables = ['actions', 'errorType', 'eventLog',
+                           'fileContent', 'fileMaster', 'fileVersions',
+                           'queue', 'statisticsHosts', 'storageTypes']
         tables_count = 0
         if self.DB_TYPE == 'mariadb':
             self.cur.execute('SHOW TABLES;')
@@ -377,7 +377,7 @@ class Exoskeleton:
                     logging.debug('Found table %s', t)
                 else:
                     logging.error('Table %s not found.', t)
-        if tables_count == 8:
+        if tables_count == len(expected_tables):
             logging.info("Found all expected tables.")
             return True
         else:
