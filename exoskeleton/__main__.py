@@ -259,8 +259,12 @@ class Exoskeleton:
 
                         # Log the download and remove the item from Queue
                         self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                        'VALUES (%s, %s);',
+                                         'VALUES (%s, %s);',
                                         (url, urlHash))
+
+                        # THIS
+                        # fileID = self.cur.execute('SELECT LAST_INSERT_ID() FROM fileVersions;')
+                        # READS A WRONG ID.
 
                         self.cur.execute('INSERT INTO fileVersions ' +
                                         '(fileID, storageTypeID, pathOrBucket, fileName, ' +
@@ -332,12 +336,14 @@ class Exoskeleton:
 
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
-                          'protocol i.e. http:// or https:// ? See queueID = %s', queueId, exc_info=True)
+                          'protocol i.e. http:// or https:// ? See queueID = %s',
+                          queueId, exc_info=True)
             self.mark_error(queueId, 1)
 
         except Exception:
             logging.error('Unknown exception while trying ' +
-                          'to download a file.', exc_info=True)
+                          'to download a file.',
+                          exc_info=True)
             self.update_host_statistics(url, False)
             raise
 
@@ -366,6 +372,7 @@ class Exoskeleton:
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions', 'errorType', 'eventLog',
                            'fileContent', 'fileMaster', 'fileVersions',
+                           'labels', 'labelToMaster', 'labelToVersion',
                            'queue', 'statisticsHosts', 'storageTypes']
         tables_count = 0
         if self.DB_TYPE == 'mariadb':
@@ -428,18 +435,21 @@ class Exoskeleton:
             return -1
 
     def add_file_download(self,
-                          url: str):
+                          url: str,
+                          label: set = {}):
         u"""add a file download URL to the queue """
         self.add_to_queue(url, 1)
 
     def add_save_page_code(self,
-                           url: str):
+                           url: str,
+                           label: set = {}):
         u""" add an URL to the queue to save it's HTML code into the database."""
         self.add_to_queue(url, 2)
 
     def add_to_queue(self,
                      url: str,
-                     action: int):
+                     action: int,
+                     label: set = {}):
         u""" More general function to add items to queue. Called by
         add_file_download and add_save_page_code."""
         if action not in (1, 2):
@@ -451,6 +461,7 @@ class Exoskeleton:
             id_in_file_master = self.cur.fetchone()
             if id_in_file_master is not None:
                 logging.info('The file has already been processed. Skipping it.')
+                # TO DO: check if an Label has to be added
 
         try:
             self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
@@ -460,6 +471,7 @@ class Exoskeleton:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.
             logging.info('URL already in queue. Not adding it again.')
+            # TO DO: check if an Label has to be added
 
 
     def add_crawl_delay_to_item(self,

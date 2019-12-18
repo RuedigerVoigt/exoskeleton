@@ -244,6 +244,60 @@ CREATE TABLE IF NOT EXISTS statisticsHosts (
     ,INDEX(`firstSeen`)
 ) ENGINE=InnoDB;
 
+
+-- ----------------------------------------------------------
+-- LABELS
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS labels (
+    id INT NOT NULL AUTO_INCREMENT
+    ,shortName VARCHAR(63)
+    ,description TEXT
+    ,PRIMARY KEY(`id`)
+    ) ENGINE=InnoDB;
+
+
+CREATE TABLE IF NOT EXISTS labelToMaster (
+    id INT NOT NULL AUTO_INCREMENT
+    ,labelID INT
+    ,masterID INT
+    ,PRIMARY KEY(`id`)
+    ,INDEX(`labelID`)
+    ,INDEX(`masterID`)
+    ) ENGINE=InnoDB;
+
+ALTER TABLE `labelToMaster`
+ADD CONSTRAINT `label to id in labels`
+FOREIGN KEY (`labelID`)
+REFERENCES `labels`(`id`)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+
+
+
+CREATE TABLE IF NOT EXISTS labelToVersion (
+    id INT NOT NULL AUTO_INCREMENT
+    ,labelID INT
+    ,versionID INT
+    ,PRIMARY KEY(`id`)
+    ,INDEX(`labelID`)
+    ,INDEX(`versionID`)
+    ) ENGINE=InnoDB;
+
+ALTER TABLE `labelToVersion`
+ADD CONSTRAINT `label for the version to id in labels`
+FOREIGN KEY (`labelID`)
+REFERENCES `labels`(`id`)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+
+ALTER TABLE `labelToVersion`
+ADD CONSTRAINT `label to document version id`
+FOREIGN KEY (`versionID`)
+REFERENCES `fileVersions`(`id`)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+
 -- ----------------------------------------------------------
 -- VIEWS
 --
