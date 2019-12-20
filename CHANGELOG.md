@@ -1,5 +1,10 @@
 # Changelog / History
 
+## version 0.6.3 beta (2019-12-20)
+
+* Eliminate race condition
+* Prepare labels
+
 ## version 0.6.2 beta (2019-12-11)
 
 * Add statistics on a per host basis.
