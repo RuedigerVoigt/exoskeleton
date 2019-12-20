@@ -8,8 +8,6 @@ import logging
 import os
 import queue
 import random
-import sys
-import tempfile
 import time
 from urllib.parse import urlparse
 
@@ -51,7 +49,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton in version 0.6.2 (beta)')
+        logging.info('You are using exoskeleton in version 0.6.3 (beta)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -218,30 +216,30 @@ class Exoskeleton:
 
 
     def get_object(self,
-                   queueId: int,
-                   actionType: str,
+                   queue_id: int,
+                   action_type: str,
                    url: str,
-                   urlHash: str):
+                   url_hash: str):
         u""" Generic function to either download a file or store a page's content """
-        if actionType not in ('file','content'):
+        if action_type not in ('file', 'content'):
             raise ValueError('Invalid action')
 
         url = url.strip()
 
-        if actionType == 'file':
+        if action_type == 'file':
             name, ext = os.path.splitext(url)
-            new_filename = self.FILE_PREFIX + str(queueId) + ext
+            new_filename = self.FILE_PREFIX + str(queue_id) + ext
 
             # TO Do: more generic pathhandling
             target_path = self.TARGET_DIR + '/' + new_filename
 
-            logging.debug('starting download of queue id %s', queueId)
+            logging.debug('starting download of queue id %s', queue_id)
 
-        elif actionType == 'content':
-            logging.debug('retrieving content of queue id %s', queueId)
+        elif action_type == 'content':
+            logging.debug('retrieving content of queue id %s', queue_id)
 
         try:
-            if actionType == 'file':
+            if action_type == 'file':
                 r = requests.get(url,
                                  headers={"User-agent": str(self.USER_AGENT)},
                                  timeout=self.CONNECTION_TIMEOUT,
@@ -255,69 +253,78 @@ class Exoskeleton:
                         hash_value = None
                         if self.HASH_METHOD:
                             hash_value = utils.get_file_hash(target_path,
-                                                            self.HASH_METHOD)
+                                                             self.HASH_METHOD)
 
                         # Log the download and remove the item from Queue
                         self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
                                          'VALUES (%s, %s);',
-                                        (url, urlHash))
+                                         (url, url_hash))
 
-                        # THIS
-                        # fileID = self.cur.execute('SELECT LAST_INSERT_ID() FROM fileVersions;')
-                        # READS A WRONG ID.
-
-                        self.cur.execute('INSERT INTO fileVersions ' +
-                                        '(fileID, storageTypeID, pathOrBucket, fileName, ' +
-                                        'size, hashMethod, hashValue) ' +
-                                        'VALUES (LAST_INSERT_ID() , 2, %s, %s, %s, %s, %s); ',
-                                        (self.TARGET_DIR,
-                                        new_filename,
-                                        utils.get_file_size(target_path),
-                                        self.HASH_METHOD,
-                                        hash_value)
-                                        )
                         # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
                         # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+                        # HOWEVER, THIS
+                        # fileID = self.cur.execute('SELECT LAST_INSERT_ID() FROM fileVersions;')
+                        # REPEATEDLY READS A WRONG ID - at least with autocommit and pymysql.
+                        # The problem seems to go away if LAST_INSERT_ID() is used with another
+                        # INSERT statement, but a wrong id messes up the whole database.
+                        #
+                        # As there seems to be some kind of race condition, an extra roundtrip
+                        # to ensure getting the right id is more than justified:
+                        self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
+                                         url_hash)
+                        file_id = self.cur.fetchone()[0]
+
+                        self.cur.execute('INSERT INTO fileVersions ' +
+                                         '(fileID, storageTypeID, pathOrBucket, fileName, ' +
+                                         'size, hashMethod, hashValue) ' +
+                                         'VALUES (%s , 2, %s, %s, %s, %s, %s); ',
+                                         (file_id,
+                                          self.TARGET_DIR,
+                                          new_filename,
+                                          utils.get_file_size(target_path),
+                                          self.HASH_METHOD,
+                                          hash_value)
+                                        )
 
                         self.cur.execute('DELETE FROM queue WHERE id = %s; ',
-                                        queueId)
+                                         queue_id)
 
                         self.cnt['processed'] += 1
                         self.update_host_statistics(url, True)
 
                     logging.debug('download successful')
 
-            elif actionType == 'content':
+            elif action_type == 'content':
                 r = requests.get(url,
-                                headers={"User-agent": str(self.USER_AGENT)},
-                                timeout=self.CONNECTION_TIMEOUT,
-                                stream=False
+                                 headers={"User-agent": str(self.USER_AGENT)},
+                                 timeout=self.CONNECTION_TIMEOUT,
+                                 stream=False
                                 )
                 if r.status_code == 200:
-                    detectedEncoding = str(r.encoding)
-                    logging.debug('detected encoding: %s', detectedEncoding)
+                    detected_encoding = str(r.encoding)
+                    logging.debug('detected encoding: %s', detected_encoding)
 
                     self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                    'VALUES (%s, %s);', (url, urlHash))
+                                     'VALUES (%s, %s);', (url, url_hash))
                     self.cur.execute('INSERT INTO fileVersions ' +
-                                    '(fileID, storageTypeID) ' +
-                                    'VALUES (LAST_INSERT_ID() , 1); ')
+                                     '(fileID, storageTypeID) ' +
+                                     'VALUES (LAST_INSERT_ID() , 1); ')
                     self.cur.execute('INSERT INTO fileContent ' +
-                                    '(versionID, pageContent) ' +
-                                    'VALUES (LAST_INSERT_ID(), %s); ',
-                                    r.text)
-                    self.cur.execute('DELETE FROM queue WHERE id = %s;', queueId)
+                                     '(versionID, pageContent) ' +
+                                     'VALUES (LAST_INSERT_ID(), %s); ',
+                                     r.text)
+                    self.cur.execute('DELETE FROM queue WHERE id = %s;', queue_id)
 
                     self.cnt['processed'] += 1
                     self.update_host_statistics(url, True)
 
             if r.status_code in (402, 403, 404, 405, 410, 451):
-                self.mark_error(queueId, r.status_code)
+                self.mark_error(queue_id, r.status_code)
                 self.update_host_statistics(url, False)
             elif r.status_code == 429:
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
-                self.add_crawl_delay_to_item(queueId)
+                self.add_crawl_delay_to_item(queue_id)
                 self.update_host_statistics(url, False)
             elif r.status_code not in (200, 402, 403, 404, 405, 410, 429, 451):
                 logging.error('Unhandeled return code %s', r.status_code)
@@ -326,7 +333,7 @@ class Exoskeleton:
         except TimeoutError:
             logging.error('Reached timeout.',
                           exc_info=True)
-            self.add_crawl_delay_to_item(queueId)
+            self.add_crawl_delay_to_item(queue_id)
             self.update_host_statistics(url, False)
 
         except ConnectionError:
@@ -336,9 +343,9 @@ class Exoskeleton:
 
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
-                          'protocol i.e. http:// or https:// ? See queueID = %s',
-                          queueId, exc_info=True)
-            self.mark_error(queueId, 1)
+                          'protocol i.e. http:// or https:// ? See queue_id = %s',
+                          queue_id, exc_info=True)
+            self.mark_error(queue_id, 1)
 
         except Exception:
             logging.error('Unknown exception while trying ' +
@@ -349,19 +356,19 @@ class Exoskeleton:
 
 
     def get_file(self,
-                 queueId: int,
+                 queue_id: int,
                  url: str,
-                 urlHash: str):
+                 url_hash: str):
         u"""Download a file and save it in the specified folder."""
-        self.get_object(queueId,'file',url,urlHash)
+        self.get_object(queue_id, 'file', url, url_hash)
 
 
     def store_page_content(self,
                            url: str,
-                           urlHash: str,
-                           queueId: int):
+                           url_hash: str,
+                           queue_id: int):
         u"""Retrieve a page and store it's content to the database. """
-        self.get_object(queueId,'content',url,urlHash)
+        self.get_object(queue_id, 'content', url, url_hash)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
@@ -475,21 +482,21 @@ class Exoskeleton:
 
 
     def add_crawl_delay_to_item(self,
-                                queueId: int,
+                                queue_id: int,
                                 delay_seconds: int = None):
         u"""In case of timeout or temporary error add a delay until
         the same URL is queried again. """
-        logging.debug('Adding crawl delay to queue item %s', queueId)
+        logging.debug('Adding crawl delay to queue item %s', queue_id)
         waittime = 30
         if delay_seconds:
             waittime = delay_seconds
         if self.DB_TYPE == 'mariadb':
             self.cur.execute('UPDATE queue ' +
                              'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                             'WHERE id = %s', (waittime, queueId))
+                             'WHERE id = %s', (waittime, queue_id))
 
     def mark_error(self,
-                   queueId: int,
+                   queue_id: int,
                    error: int):
         u""" Mark item in queue that causes permant error.
 
@@ -498,9 +505,9 @@ class Exoskeleton:
 
         self.cur.execute('UPDATE queue ' +
                          'SET causesError = %s ' +
-                         'WHERE id = %s;', (error, queueId))
+                         'WHERE id = %s;', (error, queue_id))
         if error in (429, 500, 503):
-            self.add_crawl_delay_to_item(queueId, 600)
+            self.add_crawl_delay_to_item(queue_id, 600)
 
     def process_queue(self):
         u"""Process the queue"""
@@ -536,17 +543,17 @@ class Exoskeleton:
                     continue
             else:
                 # got a task from the queue
-                queueId = next_in_queue[0]
+                queue_id = next_in_queue[0]
                 action = next_in_queue[1]
                 url = next_in_queue[2]
-                urlHash = next_in_queue[3]
+                url_hash = next_in_queue[3]
 
                 if action == 1:
                     # download file to disk
-                    self.get_file(queueId, url, urlHash)
+                    self.get_file(queue_id, url, url_hash)
                 elif action == 2:
                     # save page code into database
-                    self.store_page_content(url, urlHash, queueId)
+                    self.store_page_content(url, url_hash, queue_id)
                 else:
                     logging.error('Unknown action id!')
 
@@ -575,7 +582,7 @@ class Exoskeleton:
                          'successful = successful + %s, ' +
                          'problems = problems + %s;',
                          (fqdn, fqdn, successful, problems,
-                         successful, problems))
+                          successful, problems))
 
     def check_milestone(self):
         processed = self.cnt['processed']
