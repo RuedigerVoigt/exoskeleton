@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS fileVersions (
     ,fileID INT NOT NULL
     ,storageTypeID INT NOT NULL
     ,fileName VARCHAR(255) NULL
+    ,mimeType VARCHAR(127) NULL
     ,pathOrBucket VARCHAR(2048) NULL
     ,versionTimestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,size INT NULL
@@ -310,6 +311,7 @@ SELECT m.id AS masterFileID
     ,v.versionTimestamp
     ,m.url
     ,m.urlHash
+    ,v.mimeType
     ,c.pageContent
 FROM fileContent AS c
 LEFT JOIN fileVersions AS v

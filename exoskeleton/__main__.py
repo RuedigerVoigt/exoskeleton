@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Exoskeleton Crawler Framework
+~~~~~~~~~~~~~~~~~~~~~
+
+"""
+
 # python standard libraries:
 from collections import Counter
 import errno
@@ -246,6 +252,9 @@ class Exoskeleton:
                                  stream=True)
 
                 if r.status_code == 200:
+                    mime_type = ''
+                    if r.headers.get('content-type') is not None:
+                        mime_type = (r.headers.get('content-type')).split(';')[0]
                     with open(target_path, 'wb') as f:
                         for block in r.iter_content(1024):
                             f.write(block)
@@ -276,11 +285,12 @@ class Exoskeleton:
 
                         self.cur.execute('INSERT INTO fileVersions ' +
                                          '(fileID, storageTypeID, pathOrBucket, fileName, ' +
-                                         'size, hashMethod, hashValue) ' +
-                                         'VALUES (%s , 2, %s, %s, %s, %s, %s); ',
+                                         'mimeType, size, hashMethod, hashValue) ' +
+                                         'VALUES (%s , 2, %s, %s, %s, %s, %s, %s); ',
                                          (file_id,
                                           self.TARGET_DIR,
                                           new_filename,
+                                          mime_type,
                                           utils.get_file_size(target_path),
                                           self.HASH_METHOD,
                                           hash_value)
@@ -301,19 +311,25 @@ class Exoskeleton:
                                  stream=False
                                 )
                 if r.status_code == 200:
+                    mime_type = ''
+                    if r.headers.get('content-type') is not None:
+                        mime_type = (r.headers.get('content-type')).split(';')[0]
                     detected_encoding = str(r.encoding)
                     logging.debug('detected encoding: %s', detected_encoding)
 
                     self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
                                      'VALUES (%s, %s);', (url, url_hash))
                     self.cur.execute('INSERT INTO fileVersions ' +
-                                     '(fileID, storageTypeID) ' +
-                                     'VALUES (LAST_INSERT_ID() , 1); ')
+                                     '(fileID, storageTypeID, mimeType) ' +
+                                     'VALUES (LAST_INSERT_ID() , 1, %s); ',
+                                     mime_type)
+
                     self.cur.execute('INSERT INTO fileContent ' +
                                      '(versionID, pageContent) ' +
                                      'VALUES (LAST_INSERT_ID(), %s); ',
                                      r.text)
-                    self.cur.execute('DELETE FROM queue WHERE id = %s;', queue_id)
+                    self.cur.execute('DELETE FROM queue WHERE id = %s;',
+                                     queue_id)
 
                     self.cnt['processed'] += 1
                     self.update_host_statistics(url, True)

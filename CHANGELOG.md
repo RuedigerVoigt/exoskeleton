@@ -1,5 +1,10 @@
 # Changelog / History
 
+
+## upcoming version
+
+* store MIME type / Media type
+
 ## version 0.6.3 beta (2019-12-20)
 
 * Eliminate race condition
