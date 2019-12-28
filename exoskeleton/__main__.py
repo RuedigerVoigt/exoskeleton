@@ -475,21 +475,23 @@ class Exoskeleton:
                      label: set = {}):
         u""" More general function to add items to queue. Called by
         add_file_download and add_save_page_code."""
+
         if action not in (1, 2):
             logging.error('Invalid value for action to take!')
             return
-        else:
-            # file download
-            self.cur.execute('SElECT id FROM fileMaster WHERE urlHash = SHA2(%s,256);', url)
-            id_in_file_master = self.cur.fetchone()
-            if id_in_file_master is not None:
-                logging.info('The file has already been processed. Skipping it.')
-                # TO DO: check if an Label has to be added
+
+        # check if the file already has been processed
+        self.cur.execute('SElECT id FROM fileMaster WHERE urlHash = SHA2(%s,256);', url)
+        id_in_file_master = self.cur.fetchone()
+        if id_in_file_master is not None:
+            logging.info('The file has already been processed. Skipping it.')
+            # TO DO: check if an Label has to be added
+            return
 
         try:
             self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
-                             'VALUES (%s, %s, SHA2(%s,256));',
-                             (action, url, url))
+                                'VALUES (%s, %s, SHA2(%s,256));',
+                                (action, url, url))
         except pymysql.IntegrityError:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.
