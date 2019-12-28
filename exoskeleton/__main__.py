@@ -250,11 +250,19 @@ class Exoskeleton:
                                  headers={"User-agent": str(self.USER_AGENT)},
                                  timeout=self.CONNECTION_TIMEOUT,
                                  stream=True)
+            elif action_type == 'content':
+                r = requests.get(url,
+                                 headers={"User-agent": str(self.USER_AGENT)},
+                                 timeout=self.CONNECTION_TIMEOUT,
+                                 stream=False
+                                )
 
-                if r.status_code == 200:
-                    mime_type = ''
-                    if r.headers.get('content-type') is not None:
-                        mime_type = (r.headers.get('content-type')).split(';')[0]
+            if r.status_code == 200:
+                mime_type = ''
+                if r.headers.get('content-type') is not None:
+                    mime_type = (r.headers.get('content-type')).split(';')[0]
+
+                if action_type == 'file':
                     with open(target_path, 'wb') as f:
                         for block in r.iter_content(1024):
                             f.write(block)
@@ -263,76 +271,62 @@ class Exoskeleton:
                         if self.HASH_METHOD:
                             hash_value = utils.get_file_hash(target_path,
                                                              self.HASH_METHOD)
+                elif action_type == 'content':
 
-                        # Log the download and remove the item from Queue
-                        self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                         'VALUES (%s, %s);',
-                                         (url, url_hash))
-
-                        # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
-                        # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
-                        # HOWEVER, THIS
-                        # fileID = self.cur.execute('SELECT LAST_INSERT_ID() FROM fileVersions;')
-                        # REPEATEDLY READS A WRONG ID - at least with autocommit and pymysql.
-                        # The problem seems to go away if LAST_INSERT_ID() is used with another
-                        # INSERT statement, but a wrong id messes up the whole database.
-                        #
-                        # As there seems to be some kind of race condition, an extra roundtrip
-                        # to ensure getting the right id is more than justified:
-                        self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
-                                         url_hash)
-                        file_id = self.cur.fetchone()[0]
-
-                        self.cur.execute('INSERT INTO fileVersions ' +
-                                         '(fileID, storageTypeID, pathOrBucket, fileName, ' +
-                                         'mimeType, size, hashMethod, hashValue) ' +
-                                         'VALUES (%s , 2, %s, %s, %s, %s, %s, %s); ',
-                                         (file_id,
-                                          self.TARGET_DIR,
-                                          new_filename,
-                                          mime_type,
-                                          utils.get_file_size(target_path),
-                                          self.HASH_METHOD,
-                                          hash_value)
-                                        )
-
-                        self.cur.execute('DELETE FROM queue WHERE id = %s; ',
-                                         queue_id)
-
-                        self.cnt['processed'] += 1
-                        self.update_host_statistics(url, True)
-
-                    logging.debug('download successful')
-
-            elif action_type == 'content':
-                r = requests.get(url,
-                                 headers={"User-agent": str(self.USER_AGENT)},
-                                 timeout=self.CONNECTION_TIMEOUT,
-                                 stream=False
-                                )
-                if r.status_code == 200:
-                    mime_type = ''
-                    if r.headers.get('content-type') is not None:
-                        mime_type = (r.headers.get('content-type')).split(';')[0]
                     detected_encoding = str(r.encoding)
                     logging.debug('detected encoding: %s', detected_encoding)
 
-                    self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                     'VALUES (%s, %s);', (url, url_hash))
+                # both: Log the download and remove the item from Queue
+                self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
+                                    'VALUES (%s, %s);',
+                                    (url, url_hash))
+
+                # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
+                # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+                # However, it seems unreliable.
+                #
+                # As of December 2019 "INSERT ... RETURNING" is a feature in the
+                # current ALPHA version of MariaDB.
+                # Until that version is in use, an extra roundtrip is justified:
+                self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
+                                    url_hash)
+                file_id = self.cur.fetchone()[0]
+
+                if action_type == 'file':
+
+                    self.cur.execute('INSERT INTO fileVersions ' +
+                                     '(fileID, storageTypeID, pathOrBucket, fileName, ' +
+                                     'mimeType, size, hashMethod, hashValue) ' +
+                                     'VALUES (%s , 2, %s, %s, %s, %s, %s, %s); ',
+                                     (file_id,
+                                     self.TARGET_DIR,
+                                     new_filename,
+                                     mime_type,
+                                     utils.get_file_size(target_path),
+                                     self.HASH_METHOD,
+                                     hash_value)
+                                    )
+
+                    logging.debug('download successful')
+
+                elif action_type == 'content':
+
                     self.cur.execute('INSERT INTO fileVersions ' +
                                      '(fileID, storageTypeID, mimeType) ' +
-                                     'VALUES (LAST_INSERT_ID() , 1, %s); ',
-                                     mime_type)
+                                     'VALUES (%s , 1, %s); ',
+                                     (file_id, mime_type))
 
                     self.cur.execute('INSERT INTO fileContent ' +
                                      '(versionID, pageContent) ' +
                                      'VALUES (LAST_INSERT_ID(), %s); ',
                                      r.text)
-                    self.cur.execute('DELETE FROM queue WHERE id = %s;',
-                                     queue_id)
 
-                    self.cnt['processed'] += 1
-                    self.update_host_statistics(url, True)
+                # for both actions again:
+                self.cur.execute('DELETE FROM queue WHERE id = %s;',
+                                 queue_id)
+
+                self.cnt['processed'] += 1
+                self.update_host_statistics(url, True)
 
             if r.status_code in (402, 403, 404, 405, 410, 451):
                 self.mark_error(queue_id, r.status_code)
@@ -407,11 +401,12 @@ class Exoskeleton:
                     logging.debug('Found table %s', t)
                 else:
                     logging.error('Table %s not found.', t)
-        if tables_count == len(expected_tables):
-            logging.info("Found all expected tables.")
-            return True
-        else:
+
+        if tables_count != len(expected_tables):
             return False
+        logging.info("Found all expected tables.")
+        return True
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # QUEUE MANAGEMENT
@@ -490,8 +485,8 @@ class Exoskeleton:
 
         try:
             self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
-                                'VALUES (%s, %s, SHA2(%s,256));',
-                                (action, url, url))
+                             'VALUES (%s, %s, SHA2(%s,256));',
+                             (action, url, url))
         except pymysql.IntegrityError:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.
