@@ -1,7 +1,7 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
 -- for version 0.6.3 of exoskeleton
--- © 2019 Rüdiger Voigt
+-- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
 -- This file generates the table structure needed for the
@@ -27,8 +27,8 @@ USE `nameOfYourDatabase`;
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS queue (
-    id INT NOT NULL AUTO_INCREMENT
-    ,action INT
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
+    ,action TINYINT UNSIGNED
     ,url TEXT NOT NULL
     ,urlHash CHAR(64) NOT NULL
     ,addedToQueue TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS queue (
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS actions (
-    id INT NOT NULL
-    ,description VARCHAR(256)
+    id TINYINT UNSIGNED NOT NULL
+    ,description VARCHAR(256) NOT NULL
     ,PRIMARY KEY(`id`)
 ) ENGINE=InnoDB;
 
@@ -101,7 +101,7 @@ ON UPDATE RESTRICT;
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS fileMaster (
-    id INT NOT NULL AUTO_INCREMENT
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,initialDownloadDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,url TEXT NOT NULL
     ,urlHash CHAR(64) NOT NULL
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS fileMaster (
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS storageTypes (
-    id INT NOT NULL
+    id INT UNSIGNED NOT NULL
     ,shortName VARCHAR(15)
     ,fullName VARCHAR(63)
     ,PRIMARY KEY(`id`)
@@ -132,14 +132,14 @@ INSERT INTO storageTypes (id, shortName, fullName) VALUES
 (6, 'Alibaba', 'Alibaba');
 
 CREATE TABLE IF NOT EXISTS fileVersions (
-    id INT NOT NULL AUTO_INCREMENT
-    ,fileID INT NOT NULL
-    ,storageTypeID INT NOT NULL
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
+    ,fileID INT UNSIGNED NOT NULL
+    ,storageTypeID INT UNSIGNED NOT NULL
     ,fileName VARCHAR(255) NULL
     ,mimeType VARCHAR(127) NULL
     ,pathOrBucket VARCHAR(2048) NULL
     ,versionTimestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    ,size INT NULL
+    ,size INT UNSIGNED NULL
     ,hashMethod VARCHAR(6) NULL
     ,hashValue VARCHAR(512) NULL
     ,comment VARCHAR(256) NULL
@@ -195,8 +195,8 @@ DELIMITER ;
 
 -- distinct table in Case somebody uses SELECT *
 CREATE TABLE IF NOT EXISTS fileContent (
-    id INT NOT NULL AUTO_INCREMENT
-    ,versionID INT NOT NULL
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
+    ,versionID INT UNSIGNED NOT NULL
     ,pageContent MEDIUMTEXT NOT NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`versionID`)
@@ -223,7 +223,7 @@ WHERE fileVersions.id = OLD.versionID;
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS eventLog (
-    id INT NOT NULL AUTO_INCREMENT
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,logDate TIMESTAMP NOT NULL
     ,severity VARCHAR(12)
     ,message VARCHAR(1024) NOT NULL
@@ -251,17 +251,18 @@ CREATE TABLE IF NOT EXISTS statisticsHosts (
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS labels (
-    id INT NOT NULL AUTO_INCREMENT
-    ,shortName VARCHAR(63)
-    ,description TEXT
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
+    ,shortName VARCHAR(63) NOT NULL
+    ,description TEXT DEFAULT NULL
     ,PRIMARY KEY(`id`)
+    ,UNIQUE(`shortName`)
     ) ENGINE=InnoDB;
 
 
 CREATE TABLE IF NOT EXISTS labelToMaster (
     id INT NOT NULL AUTO_INCREMENT
-    ,labelID INT
-    ,masterID INT
+    ,labelID INT UNSIGNED NOT NULL
+    ,masterID INT UNSIGNED NOT NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`labelID`)
     ,INDEX(`masterID`)
@@ -277,9 +278,9 @@ ON UPDATE RESTRICT;
 
 
 CREATE TABLE IF NOT EXISTS labelToVersion (
-    id INT NOT NULL AUTO_INCREMENT
-    ,labelID INT
-    ,versionID INT
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT
+    ,labelID INT UNSIGNED NOT NULL
+    ,versionID INT UNSIGNED
     ,PRIMARY KEY(`id`)
     ,INDEX(`labelID`)
     ,INDEX(`versionID`)
