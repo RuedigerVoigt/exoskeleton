@@ -80,8 +80,9 @@ def check_hash_algo(hash_method: str):
                              'the system, but NOT (yet) supported ' +
                              'by exoskelton!')
     else:
-        raise ValueError('The chosen hash method is NOT available ' +
-                         'on this system!')
+        raise ValueError('The hash method chosen  is NOT available ' +
+                         'on this system! Update FILE_HASH_METHOD in the ' +
+                         'settings table.')
 
 def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
     u"""returns True if bucket name is well-formed for AWS S3 buckets

@@ -23,8 +23,9 @@ import pymysql
 import requests
 
 import exoskeleton.checks as checks
-import exoskeleton.utils as utils
 import exoskeleton.communication as communication
+import exoskeleton.utils as utils
+
 
 
 class Exoskeleton:
@@ -34,7 +35,6 @@ class Exoskeleton:
                  bot_user_agent: str = 'BOT (http://www.example.com)',
                  min_wait: float = 5,
                  max_wait: float = 20,
-                 timeout: int = 60,
                  database_type: str = 'MariaDB',
                  database_name: str = None,
                  database_user: str = None,
@@ -48,7 +48,6 @@ class Exoskeleton:
                  mail_send_start: bool = True,
                  mail_send_finish: bool = True,
                  target_directory: str = None,
-                 hash_algo: str = 'sha1',
                  queue_max_retry: int = 3,
                  queue_stop_on_empty: bool = False,
                  queue_wait_seconds_until_lookup: int = 60,
@@ -126,7 +125,7 @@ class Exoskeleton:
                               "Create this directory or " +
                               "check permissions.")
 
-        self.HASH_METHOD = checks.check_hash_algo(hash_algo)
+
 
         self.QUEUE_MAX_RETRY = queue_max_retry
         self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
@@ -137,21 +136,6 @@ class Exoskeleton:
         self.BOT_START = time.monotonic()
         self.PROCESS_TIME_START = time.process_time()
         logging.debug('started timer')
-
-        # check if the timeout is valid and reasonable
-        self.CONNECTION_TIMEOUT = 60  # default
-        if timeout is None:
-            pass
-        elif type(timeout) in (float, int):
-            if timeout <= 0:
-                raise ValueError('Negative or zero value for timeout.')
-            else:
-                self.CONNECTION_TIMEOUT = timeout
-                if timeout > 120:
-                    logging.info('Very high value for timeout: ' +
-                                 '%s seconds', timeout)
-        else:
-            raise ValueError('Invalid format for timeout.')
 
         self.local_download_queue = queue.Queue()
 
@@ -214,6 +198,51 @@ class Exoskeleton:
         else:
             raise ValueError('Unknown database type.')
 
+        # Settings stored in the database
+        self.CONNECTION_TIMEOUT = self.get_connection_timeout()
+        self.HASH_METHOD = checks.check_hash_algo(self.get_setting_by_key('FILE_HASH_METHOD'))
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# SETTINGS
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+    def get_setting_by_key (self,
+                            key: str) -> str:
+        u""" Get setting from the database table. """
+        self.cur.execute('SELECT settingValue ' +
+                         'FROM settings ' +
+                         'WHERE settingKey = %s;', key)
+        return self.cur.fetchone()[0]
+
+    def get_connection_timeout(self) -> int:
+        u""" Connection timeout is set in the settings table. """
+
+        timeout = self.get_setting_by_key('CONNECTION_TIMEOUT')
+
+        if timeout is None:
+            logging.error('Setting CONNECTION_TIMEOUT is missing. '+
+                          'Fallback to 60 seconds.')
+            return 60
+
+        try:
+            timeout = float(timeout)
+
+            if timeout <= 0:
+                logging.error('Negative or zero value for timeout. ' +
+                              'Fallback to 60 seconds.')
+                return 60
+            else:
+                if timeout > 120:
+                    logging.info('Very high value for timeout: ' +
+                                    '%s seconds', timeout)
+            logging.debug('Connection timeout set to %s s.', timeout)
+            return timeout
+        except:
+            logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
+                          'Fallback to 60 seconds.')
+            return 60
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -278,8 +307,8 @@ class Exoskeleton:
 
                 # both: Log the download and remove the item from Queue
                 self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                    'VALUES (%s, %s);',
-                                    (url, url_hash))
+                                 'VALUES (%s, %s);',
+                                 (url, url_hash))
 
                 # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
                 # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
@@ -289,7 +318,7 @@ class Exoskeleton:
                 # current ALPHA version of MariaDB.
                 # Until that version is in use, an extra roundtrip is justified:
                 self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
-                                    url_hash)
+                                 url_hash)
                 file_id = self.cur.fetchone()[0]
 
                 if action_type == 'file':
@@ -299,12 +328,12 @@ class Exoskeleton:
                                      'mimeType, size, hashMethod, hashValue) ' +
                                      'VALUES (%s , 2, %s, %s, %s, %s, %s, %s); ',
                                      (file_id,
-                                     self.TARGET_DIR,
-                                     new_filename,
-                                     mime_type,
-                                     utils.get_file_size(target_path),
-                                     self.HASH_METHOD,
-                                     hash_value)
+                                      self.TARGET_DIR,
+                                      new_filename,
+                                      mime_type,
+                                      utils.get_file_size(target_path),
+                                      self.HASH_METHOD,
+                                      hash_value)
                                     )
 
                     logging.debug('download successful')
@@ -460,14 +489,14 @@ class Exoskeleton:
 
     def add_save_page_code(self,
                            url: str,
-                           label: set = {}):
+                           label: set = None):
         u""" add an URL to the queue to save it's HTML code into the database."""
         self.add_to_queue(url, 2)
 
     def add_to_queue(self,
                      url: str,
                      action: int,
-                     label: set = {}):
+                     label: set = None):
         u""" More general function to add items to queue. Called by
         add_file_download and add_save_page_code."""
 

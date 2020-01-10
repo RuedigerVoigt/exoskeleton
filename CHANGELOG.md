@@ -3,7 +3,8 @@
 
 ## upcoming version
 
-* store MIME type / Media type
+* Store MIME type / Media type
+* Some settings are now stored in the database instead of relying on defaults.
 
 ## version 0.6.3 beta (2019-12-20)
 

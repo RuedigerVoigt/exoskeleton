@@ -246,6 +246,24 @@ CREATE TABLE IF NOT EXISTS statisticsHosts (
 ) ENGINE=InnoDB;
 
 
+
+-- ----------------------------------------------------------
+-- SETTINGS
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS settings (
+    settingKey VARCHAR(31) NOT NULL
+    -- not just "key" as this is reserved word
+    ,settingValue VARCHAR(63) NOT NULL
+    ,PRIMARY KEY(`settingKey`)
+    ) ENGINE=InnoDB;
+
+INSERT IGNORE INTO settings
+(settingKey, settingValue)
+VALUES
+('CONNECTION_TIMEOUT', '60'),
+('FILE_HASH_METHOD', 'sha256');
+
 -- ----------------------------------------------------------
 -- LABELS
 -- ----------------------------------------------------------
