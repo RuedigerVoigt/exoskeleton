@@ -208,13 +208,19 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-    def get_setting_by_key (self,
-                            key: str) -> str:
+    def get_setting_by_key(self,
+                           key: str) -> str:
         u""" Get setting from the database table. """
         self.cur.execute('SELECT settingValue ' +
                          'FROM settings ' +
                          'WHERE settingKey = %s;', key)
-        return self.cur.fetchone()[0]
+        try:
+            setting = self.cur.fetchone()[0]
+        except TypeError:
+            logging.error('Setting not available')
+            return None
+
+        return setting
 
     def get_connection_timeout(self) -> int:
         u""" Connection timeout is set in the settings table. """
@@ -236,7 +242,7 @@ class Exoskeleton:
             else:
                 if timeout > 120:
                     logging.info('Very high value for timeout: ' +
-                                    '%s seconds', timeout)
+                                 '%s seconds', timeout)
             logging.debug('Connection timeout set to %s s.', timeout)
             return timeout
         except:
@@ -627,6 +633,8 @@ class Exoskeleton:
                           successful, problems))
 
     def check_milestone(self):
+        u""" Check if milestone is reached and
+        in case send mail if configured so."""
         processed = self.cnt['processed']
         if type(self.MILESTONE) is int:
             if processed % self.MILESTONE == 0:
