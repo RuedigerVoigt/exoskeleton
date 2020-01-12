@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+u""" Send messages to the admin """
+
 import smtplib
 from email.message import EmailMessage
 import logging
