@@ -255,14 +255,19 @@ CREATE TABLE IF NOT EXISTS settings (
     settingKey VARCHAR(31) NOT NULL
     -- not just "key" as this is reserved word
     ,settingValue VARCHAR(63) NOT NULL
+    ,description VARCHAR(255) NULL
     ,PRIMARY KEY(`settingKey`)
     ) ENGINE=InnoDB;
 
 INSERT IGNORE INTO settings
-(settingKey, settingValue)
+(settingKey, settingValue, description)
 VALUES
-('CONNECTION_TIMEOUT', '60'),
-('FILE_HASH_METHOD', 'sha256');
+('CONNECTION_TIMEOUT', '60','Seconds until a connection times out.'),
+('FILE_HASH_METHOD', 'sha256','Method used for file hash'),
+('MAIL_FINISH_MSG','True','True/False: send mail as soon the bot is done'),
+('MAIL_START_MSG','True','True/False: send mail as soon the bot starts'),
+('QUEUE_MAX_RETRY','3','BOT YET IMPLEMENTED: Int: Maximum number of retries if downloading a page/file failed.'),
+('QUEUE_REVISIT','60','Seconds: Time to wait after the queue is empty to check for new elements.');
 
 -- ----------------------------------------------------------
 -- LABELS
