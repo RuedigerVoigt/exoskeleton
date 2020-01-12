@@ -644,10 +644,10 @@ class Exoskeleton:
                           successful, problems))
 
     def check_milestone(self):
-        u""" Check if milestone is reached and
-        in case send mail if configured so."""
+        u""" Check if milestone is reached. In case,
+        send mail if configured so."""
         processed = self.cnt['processed']
-        if type(self.MILESTONE) is int:
+        if isinstance(self.MILESTONE, int):
             if processed % self.MILESTONE == 0:
                 logging.info("Milestone reached: %s processed",
                              str(processed))
@@ -664,9 +664,47 @@ class Exoskeleton:
                                         self.MAIL_SENDER,
                                         subject, content)
 
-                return True
-            else:
-                return False
+            return True
+
         elif type(self.MILESTONE) is list:
             logging.error("Feature not yet implemented")
             return False
+        else:
+            raise TypeError('Milestone has either be int or list')
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# LABELS
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def define_new_label(self,
+                         shortname: str,
+                         description: str = None):
+        u""" If the label is not already in use, define a new label
+        and a description. """
+        if len(shortname) > 31:
+            logging.error("Labelname exceeds max length of 31 " +
+                          "characters. Cannot add it")
+            return
+        try:
+            self.cur.execute('INSERT INTO labels (shortName, description) ' +
+                             'VALUES (%s, %s);',
+                             (shortname, description))
+            logging.debug('Added label to the database.')
+        except pymysql.err.IntegrityError:
+            logging.error('Could not add label as it already existed!')
+
+    def define_or_update_label(self,
+                               shortname: str,
+                               description: str = None):
+        u""" Insert a new label into the database or update it's
+        description in case it already exists. Use define_new_label
+        if an update has to be avoided. """
+        if len(shortname) > 31:
+            logging.error("Labelname exceeds max length of 31 " +
+                          "characters. Cannot add it")
+            return
+
+        self.cur.execute('INSERT INTO labels (shortName, description) ' +
+                         'VALUES (%s, %s) ' +
+                         'ON DUPLICATE KEY UPDATE description = %s;',
+                         (shortname, description, description))
