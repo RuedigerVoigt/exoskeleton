@@ -15,6 +15,7 @@ import os
 import queue
 import random
 import time
+from typing import Union
 from urllib.parse import urlparse
 
 
@@ -31,16 +32,16 @@ import exoskeleton.utils as utils
 class Exoskeleton:
 
     def __init__(self,
+                 database_name: str,
+                 database_user: str,
+                 database_passphrase: str,
+                 database_type: str = 'MariaDB',
+                 database_host: str = 'localhost',
+                 database_port: int = None,
                  project_name: str = 'Bot',
                  bot_user_agent: str = 'BOT (http://www.example.com)',
                  min_wait: float = 5,
                  max_wait: float = 20,
-                 database_type: str = 'MariaDB',
-                 database_name: str = None,
-                 database_user: str = None,
-                 database_passphrase: str = None,
-                 database_host: str = 'localhost',
-                 database_port: int = None,
                  mail_server: str = 'localhost',
                  mail_admin: str = None,
                  mail_sender: str = None,
@@ -56,7 +57,7 @@ class Exoskeleton:
         self.USER_AGENT = bot_user_agent.strip()
 
         self.DB_TYPE = database_type.strip().lower()
-        if self.DB_TYPE not in ('mariadb'):
+        if self.DB_TYPE != 'mariadb':
             logging.exception("At the moment exoskeleton " +
                               "only supports MariaDB. " +
                               "PostgreSQL support is planned.")
@@ -165,7 +166,7 @@ class Exoskeleton:
         if type(max_wait) in (int, float):
             self.WAIT_MAX = max_wait
 
-        self.cnt = Counter()
+        self.cnt = Counter() # type: Counter
 
         self.TARGET_DIR = os.getcwd()
 
@@ -198,7 +199,7 @@ class Exoskeleton:
         self.PROCESS_TIME_START = time.process_time()
         logging.debug('started timer')
 
-        self.local_download_queue = queue.Queue()
+        self.local_download_queue = queue.Queue() # type: queue.Queue
 
         self.MAX_PATH_LENGTH = 255
 
@@ -209,7 +210,7 @@ class Exoskeleton:
 
 
     def get_setting(self,
-                    key: str) -> str:
+                    key: str) -> Union[str, None]:
         u""" Get setting from the database table by using the key. """
         self.cur.execute('SELECT settingValue ' +
                          'FROM settings ' +
@@ -223,7 +224,7 @@ class Exoskeleton:
         return setting
 
     def get_numeric_setting(self,
-                            key: str) -> float:
+                            key: str) -> Union[int, float, None]:
         u""" Get setting, but return None if not numeric. """
         settingValue = self.get_setting(key)
         if type(settingValue) in (int, float):
@@ -232,10 +233,10 @@ class Exoskeleton:
             return None
 
 
-    def get_connection_timeout(self) -> int:
+    def get_connection_timeout(self) -> Union[float, int]:
         u""" Connection timeout is set in the settings table. """
 
-        timeout = self.get_setting('CONNECTION_TIMEOUT')
+        timeout = self.get_numeric_setting('CONNECTION_TIMEOUT')
 
         if timeout is None:
             logging.error('Setting CONNECTION_TIMEOUT is missing. '+
@@ -474,17 +475,17 @@ class Exoskeleton:
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
-        return self.cur.fetchone()[0]
+        return int(self.cur.fetchone()[0])
 
-    def absolute_run_time(self) -> int:
+    def absolute_run_time(self) -> float:
         u"""Return seconds since init. """
         return time.monotonic() - self.BOT_START
 
-    def get_process_time(self) -> int:
+    def get_process_time(self) -> float:
         u"""Return execution time since init"""
         return time.process_time() - self.PROCESS_TIME_START
 
-    def estimate_remaining_time(self) -> int:
+    def estimate_remaining_time(self) -> float:
         u"""estimate remaining seconds to finish crawl."""
         time_so_far = self.absolute_run_time()
         num_remaining = self.num_items_in_queue()
@@ -492,10 +493,10 @@ class Exoskeleton:
         if self.cnt['processed'] > 0:
             time_each = time_so_far / self.cnt['processed']
             return num_remaining * time_each
-        else:
-            logging.warning('Cannot estimate remaining time ' +
-                            'as there are no data so far.')
-            return -1
+
+        logging.warning('Cannot estimate remaining time ' +
+                        'as there are no data so far.')
+        return -1
 
     def add_file_download(self,
                           url: str,

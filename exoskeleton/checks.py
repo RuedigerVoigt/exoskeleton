@@ -6,9 +6,10 @@ u""" A range of function to check correctness of parameters """
 import hashlib
 import logging
 import re
+from typing import Union
 
 
-def check_email_format(mailaddress: str) -> str:
+def check_email_format(mailaddress: str) -> Union[str, None]:
     u"""Very basic check if the email address has a valid format
     and returns it as is except if it is obviously false."""
 
@@ -29,7 +30,7 @@ def check_email_format(mailaddress: str) -> str:
 
 
 def validate_port(port_number: int,
-                  database: str):
+                  database: str) -> int:
     u"""Checks if the port is within range.
     Returns standard port if none is set."""
 
@@ -54,7 +55,7 @@ def validate_port(port_number: int,
         raise ValueError('Port has to be an integer.')
 
 
-def check_hash_algo(hash_method: str):
+def check_hash_algo(hash_method: str) -> Union[str, None]:
     u"""Checks if the supplied hash algo is available and supported."""
 
     # Has a method been set?
