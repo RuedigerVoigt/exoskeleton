@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+u""" Utility functions to interact with files, ... """
+
 import hashlib
 import logging
 import os
@@ -36,10 +38,10 @@ def get_file_hash(file_path: str,
         raise ValueError('Hash method not supported by exoskeleton')
 
     try:
-        with open(file_path, 'rb') as f:
-            content = f.read()
+        with open(file_path, 'rb') as file:
+            content = file.read()
         h.update(content)
-        return(h.hexdigest())
+        return h.hexdigest()
     except FileNotFoundError:
         logging.error('File not found or path not readable. ' +
                       'Cannot calculate hash.', exc_info=True)
@@ -48,3 +50,23 @@ def get_file_hash(file_path: str,
         logging.error('Unknown exception while trying ' +
                       'to get file hash', exc_info=True)
         raise
+
+
+def convert_to_set(convert_this: list) -> set:
+    u""" Convert a string, a tuple, or a list into a set
+    (i.e. no duplicates, unordered)"""
+
+    if isinstance(convert_this, set):
+        # functions using this expect a set, so everything
+        # else just captures bad input by users
+        new_set = convert_this
+    elif isinstance(convert_this, str):
+        new_set = {convert_this}
+    elif isinstance(convert_this, list):
+        new_set = set(convert_this)
+    elif isinstance(convert_this, tuple):
+        new_set = set(convert_this)
+    else:
+        raise TypeError('The function calling this expects a set.')
+
+    return new_set

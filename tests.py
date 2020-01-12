@@ -6,6 +6,7 @@ import sys
 import unittest
 
 from exoskeleton import checks as checks
+from exoskeleton import utils as utils
 
 class BotTest(unittest.TestCase):
 
@@ -51,7 +52,18 @@ class BotTest(unittest.TestCase):
         # containing dots
         self.assertTrue(checks.validate_aws_s3_bucket_name('iekoht9choofe.eixeeseizoo0iuzos1ibee.pae7ph'))
 
-
+    def test_convert_to_set(self):
+        # single string with multiple characters
+        # (wrong would be making each character into an element)
+        self.assertEqual(utils.convert_to_set('abc'), {'abc'})
+        # list with duplicates to set
+        self.assertEqual(utils.convert_to_set(['a','a','b','c']), {'a','b','c'})
+        # tuple with duplicates
+        self.assertEqual(utils.convert_to_set(('a','a','b','c')), {'a','b','c'})
+        # set should return unchanged
+        self.assertEqual(utils.convert_to_set({'a','b','c'}), {'a','b','c'})
+        # unsupported data type integer
+        self.assertRaises(TypeError, utils.convert_to_set, 3)
 
 
 if __name__ == "__main__":
