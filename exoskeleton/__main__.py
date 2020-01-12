@@ -45,12 +45,8 @@ class Exoskeleton:
                  mail_admin: str = None,
                  mail_sender: str = None,
                  milestone_num: int = None,
-                 mail_send_start: bool = True,
-                 mail_send_finish: bool = True,
                  target_directory: str = None,
-                 queue_max_retry: int = 3,
                  queue_stop_on_empty: bool = False,
-                 queue_wait_seconds_until_lookup: int = 60,
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
@@ -73,73 +69,6 @@ class Exoskeleton:
         self.DB_PASSPHRASE = database_passphrase.strip()
         if self.DB_PASSPHRASE == '':
             logging.warning('No database passphrase provided.')
-
-        self.WAIT_MIN = 5
-        if type(min_wait) in (int, float):
-            self.WAIT_MIN = min_wait
-        self.WAIT_MAX = 20
-        if type(max_wait) in (int, float):
-            self.WAIT_MAX = max_wait
-
-        self.cnt = Counter()
-        self.MILESTONE = None
-        if type(milestone_num) is int:
-            self.MILESTONE = milestone_num
-        elif milestone_num is not None:
-            raise ValueError
-
-        self.MAIL_FINISH_MESSAGE = mail_send_finish
-        self.MAIL_ADMIN = checks.check_email_format(mail_admin)
-        self.MAIL_SENDER = checks.check_email_format(mail_sender)
-
-        self.MAIL_SEND = False
-        if self.MAIL_ADMIN and self.MAIL_SENDER:
-            # needing both to send mails
-            self.MAIL_SEND = True
-        elif self.MILESTONE:
-            logging.error('Cannot send mail when milestone is reached. ' +
-                          'Either sender or receiver for mails is missing.')
-        elif self.MAIL_FINISH_MESSAGE:
-            logging.error('Cannot send mail when bot is done. ' +
-                          'Either sender or receiver for mails is missing.')
-
-        self.TARGET_DIR = os.getcwd()
-
-        if target_directory is None or target_directory == '':
-            logging.warning('Target directory is not set. ' +
-                            'Using the current working directory ' +
-                            '%s to store files!',
-                            self.TARGET_DIR)
-        else:
-            # Assuming that if a directory was set, it has
-            # to be used. Therefore no fallback to the current
-            # working directory.
-            target_directory = target_directory.strip()
-            if os.path.isdir(target_directory):
-                self.TARGET_DIR = target_directory
-                logging.debug("Set target directory to %s",
-                              target_directory)
-            else:
-                raise OSError("Cannot find or access the user " +
-                              "supplied target directory! " +
-                              "Create this directory or " +
-                              "check permissions.")
-
-
-
-        self.QUEUE_MAX_RETRY = queue_max_retry
-        self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
-        self.QUEUE_WAIT = queue_wait_seconds_until_lookup
-
-        self.FILE_PREFIX = filename_prefix.strip()
-
-        self.BOT_START = time.monotonic()
-        self.PROCESS_TIME_START = time.process_time()
-        logging.debug('started timer')
-
-        self.local_download_queue = queue.Queue()
-
-        self.MAX_PATH_LENGTH = 255
 
         if not (self.DB_TYPE and
                 self.DB_HOSTNAME and
@@ -198,9 +127,80 @@ class Exoskeleton:
         else:
             raise ValueError('Unknown database type.')
 
-        # Settings stored in the database
         self.CONNECTION_TIMEOUT = self.get_connection_timeout()
-        self.HASH_METHOD = checks.check_hash_algo(self.get_setting_by_key('FILE_HASH_METHOD'))
+
+        self.HASH_METHOD = checks.check_hash_algo(self.get_setting('FILE_HASH_METHOD'))
+
+        self.MAIL_START_MSG = True if self.get_setting('MAIL_START_MSG') == 'True' else False
+        self.MAIL_FINISH_MSG = True if self.get_setting('MAIL_FINISH_MSG') == 'True' else False
+        self.MILESTONE = None
+        if type(milestone_num) is int:
+            self.MILESTONE = milestone_num
+        elif milestone_num is not None:
+            raise ValueError
+        self.MAIL_ADMIN = checks.check_email_format(mail_admin)
+        self.MAIL_SENDER = checks.check_email_format(mail_sender)
+        self.MAIL_SEND = False
+        if self.MAIL_ADMIN and self.MAIL_SENDER:
+            # needing both to send mails
+            self.MAIL_SEND = True
+        elif self.MILESTONE:
+            logging.error('Cannot send mail when milestone is reached. ' +
+                          'Either sender or receiver for mails is missing.')
+        elif self.MAIL_FINISH_MSG:
+            logging.error('Cannot send mail when bot is done. ' +
+                          'Either sender or receiver for mails is missing.')
+
+        self.QUEUE_MAX_RETRY = 3 # NOT YET IMPLEMENTET
+        if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
+            self.QUEUE_MAX_RETRY = self.get_numeric_setting('QUEUE_MAX_RETRY')
+        self.QUEUE_REVISIT = 60
+        if self.get_numeric_setting('QUEUE_REVISIT') is not None:
+            self.QUEUE_REVISIT = self.get_numeric_setting('QUEUE_REVISIT')
+
+        self.WAIT_MIN = 5
+        if type(min_wait) in (int, float):
+            self.WAIT_MIN = min_wait
+        self.WAIT_MAX = 20
+        if type(max_wait) in (int, float):
+            self.WAIT_MAX = max_wait
+
+        self.cnt = Counter()
+
+        self.TARGET_DIR = os.getcwd()
+
+        if target_directory is None or target_directory == '':
+            logging.warning('Target directory is not set. ' +
+                            'Using the current working directory ' +
+                            '%s to store files!',
+                            self.TARGET_DIR)
+        else:
+            # Assuming that if a directory was set, it has
+            # to be used. Therefore no fallback to the current
+            # working directory.
+            target_directory = target_directory.strip()
+            if os.path.isdir(target_directory):
+                self.TARGET_DIR = target_directory
+                logging.debug("Set target directory to %s",
+                              target_directory)
+            else:
+                raise OSError("Cannot find or access the user " +
+                              "supplied target directory! " +
+                              "Create this directory or " +
+                              "check permissions.")
+
+
+        self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
+
+        self.FILE_PREFIX = filename_prefix.strip()
+
+        self.BOT_START = time.monotonic()
+        self.PROCESS_TIME_START = time.process_time()
+        logging.debug('started timer')
+
+        self.local_download_queue = queue.Queue()
+
+        self.MAX_PATH_LENGTH = 255
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -208,9 +208,9 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-    def get_setting_by_key(self,
-                           key: str) -> str:
-        u""" Get setting from the database table. """
+    def get_setting(self,
+                    key: str) -> str:
+        u""" Get setting from the database table by using the key. """
         self.cur.execute('SELECT settingValue ' +
                          'FROM settings ' +
                          'WHERE settingKey = %s;', key)
@@ -222,10 +222,20 @@ class Exoskeleton:
 
         return setting
 
+    def get_numeric_setting(self,
+                            key: str) -> float:
+        u""" Get setting, but return None if not numeric. """
+        settingValue = self.get_setting(key)
+        if type(settingValue) in (int, float):
+            return settingValue
+        else:
+            return None
+
+
     def get_connection_timeout(self) -> int:
         u""" Connection timeout is set in the settings table. """
 
-        timeout = self.get_setting_by_key('CONNECTION_TIMEOUT')
+        timeout = self.get_setting('CONNECTION_TIMEOUT')
 
         if timeout is None:
             logging.error('Setting CONNECTION_TIMEOUT is missing. '+
@@ -586,8 +596,8 @@ class Exoskeleton:
                     break
                 else:
                     logging.debug("Queue empty. Waiting %s seconds until next check",
-                                  self.QUEUE_WAIT)
-                    time.sleep(self.QUEUE_WAIT)
+                                  self.QUEUE_REVISIT)
+                    time.sleep(self.QUEUE_REVISIT)
                     continue
             else:
                 # got a task from the queue
