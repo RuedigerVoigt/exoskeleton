@@ -1,10 +1,13 @@
 # Changelog / History
 
 
-## upcoming version
+## version 0.7.0 beta (2020-01-16)
 
+* Assign labels to pages in the queue / the filemaster
 * Store MIME type / Media type
-* Some settings are now stored in the database instead of relying on defaults.
+* Some settings cannot be set at init anymore, but are now stored in the database instead.
+* Small but breaking changes to the database schema
+* Change default file hash version from SHA1 to SHA256
 
 ## version 0.6.3 beta (2019-12-20)
 

@@ -7,7 +7,7 @@ Exoskeleton Crawler Framework
 
 """
 
-# python standard libraries:
+# python standard library:
 from collections import Counter
 import errno
 import logging
@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 import pymysql
 import requests
 
+# import other modules of this framework
 import exoskeleton.checks as checks
 import exoskeleton.communication as communication
 import exoskeleton.utils as utils
@@ -30,6 +31,11 @@ import exoskeleton.utils as utils
 
 
 class Exoskeleton:
+    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-public-methods
 
     def __init__(self,
                  database_name: str,
@@ -51,16 +57,15 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton in version 0.6.3 (beta)')
+        logging.info('You are using exoskeleton in version 0.7.0 (beta)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
 
         self.DB_TYPE = database_type.strip().lower()
         if self.DB_TYPE != 'mariadb':
-            logging.exception("At the moment exoskeleton " +
-                              "only supports MariaDB. " +
-                              "PostgreSQL support is planned.")
+            logging.exception("At the moment exoskeleton only supports " +
+                              "MariaDB. PostgreSQL support is planned.")
             raise ValueError
         self.DB_HOSTNAME = database_host.strip()
 
@@ -171,9 +176,9 @@ class Exoskeleton:
         self.TARGET_DIR = os.getcwd()
 
         if target_directory is None or target_directory == '':
-            logging.warning('Target directory is not set. ' +
-                            'Using the current working directory ' +
-                            '%s to store files!',
+            logging.warning("Target directory is not set. " +
+                            "Using the current working directory " +
+                            "%s to store files!",
                             self.TARGET_DIR)
         else:
             # Assuming that if a directory was set, it has
@@ -224,14 +229,18 @@ class Exoskeleton:
         return setting
 
     def get_numeric_setting(self,
-                            key: str) -> Union[int, float, None]:
-        u""" Get setting, but return None if not numeric. """
-        settingValue = self.get_setting(key)
-        if type(settingValue) in (int, float):
-            return settingValue
-        else:
-            return None
-
+                            key: str) -> float:
+        u""" Get numeric setting. Raise ValueError if field's content
+        cannot be coerced into float. """
+        try:
+            setting_value = float(self.get_setting(key))
+            if setting_value is not None:
+                return setting_value
+            else:
+                raise ValueError
+        except ValueError:
+            logging.error('Setting field %s contains non-numeric value.',
+                          key)
 
     def get_connection_timeout(self) -> Union[float, int]:
         u""" Connection timeout is set in the settings table. """
@@ -244,8 +253,6 @@ class Exoskeleton:
             return 60
 
         try:
-            timeout = float(timeout)
-
             if timeout <= 0:
                 logging.error('Negative or zero value for timeout. ' +
                               'Fallback to 60 seconds.')
@@ -256,7 +263,7 @@ class Exoskeleton:
                                  '%s seconds', timeout)
             logging.debug('Connection timeout set to %s s.', timeout)
             return timeout
-        except:
+        except TypeError:
             logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
                           'Fallback to 60 seconds.')
             return 60
@@ -273,6 +280,7 @@ class Exoskeleton:
                    url: str,
                    url_hash: str):
         u""" Generic function to either download a file or store a page's content """
+        # pylint: disable=too-many-branches
         if action_type not in ('file', 'content'):
             raise ValueError('Invalid action')
 
@@ -368,33 +376,34 @@ class Exoskeleton:
                                      r.text)
 
                 # for both actions again:
+                self.__transfer_labels_from_queue_to_master(queue_id, file_id)
                 self.cur.execute('DELETE FROM queue WHERE id = %s;',
                                  queue_id)
 
                 self.cnt['processed'] += 1
-                self.update_host_statistics(url, True)
+                self.__update_host_statistics(url, True)
 
             if r.status_code in (402, 403, 404, 405, 410, 451):
                 self.mark_error(queue_id, r.status_code)
-                self.update_host_statistics(url, False)
+                self.__update_host_statistics(url, False)
             elif r.status_code == 429:
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
                 self.add_crawl_delay_to_item(queue_id)
-                self.update_host_statistics(url, False)
+                self.__update_host_statistics(url, False)
             elif r.status_code not in (200, 402, 403, 404, 405, 410, 429, 451):
                 logging.error('Unhandeled return code %s', r.status_code)
-                self.update_host_statistics(url, False)
+                self.__update_host_statistics(url, False)
 
         except TimeoutError:
             logging.error('Reached timeout.',
                           exc_info=True)
             self.add_crawl_delay_to_item(queue_id)
-            self.update_host_statistics(url, False)
+            self.__update_host_statistics(url, False)
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.update_host_statistics(url, False)
+            self.__update_host_statistics(url, False)
             raise
 
         except requests.exceptions.MissingSchema:
@@ -407,7 +416,7 @@ class Exoskeleton:
             logging.error('Unknown exception while trying ' +
                           'to download a file.',
                           exc_info=True)
-            self.update_host_statistics(url, False)
+            self.__update_host_statistics(url, False)
             raise
 
 
@@ -435,18 +444,18 @@ class Exoskeleton:
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions', 'errorType', 'eventLog',
                            'fileContent', 'fileMaster', 'fileVersions',
-                           'labels', 'labelToMaster', 'labelToVersion',
-                           'queue', 'statisticsHosts', 'storageTypes']
+                           'labels', 'labelToMaster', 'labelToQueue', 'labelToVersion',
+                           'queue', 'settings', 'statisticsHosts', 'storageTypes']
         tables_count = 0
         if self.DB_TYPE == 'mariadb':
             self.cur.execute('SHOW TABLES;')
             tables_found = [item[0] for item in self.cur.fetchall()]
-            for t in expected_tables:
-                if t in tables_found:
+            for table in expected_tables:
+                if table in tables_found:
                     tables_count += 1
-                    logging.debug('Found table %s', t)
+                    logging.debug('Found table %s', table)
                 else:
-                    logging.error('Table %s not found.', t)
+                    logging.error('Table %s not found.', table)
 
         if tables_count != len(expected_tables):
             return False
@@ -500,20 +509,20 @@ class Exoskeleton:
 
     def add_file_download(self,
                           url: str,
-                          label: set = {}):
+                          labels: set = None):
         u"""add a file download URL to the queue """
-        self.add_to_queue(url, 1)
+        self.add_to_queue(url, 1, labels)
 
     def add_save_page_code(self,
                            url: str,
-                           label: set = None):
+                           labels: set = None):
         u""" add an URL to the queue to save it's HTML code into the database."""
-        self.add_to_queue(url, 2)
+        self.add_to_queue(url, 2, labels)
 
     def add_to_queue(self,
                      url: str,
                      action: int,
-                     label: set = None):
+                     labels: set = None):
         u""" More general function to add items to queue. Called by
         add_file_download and add_save_page_code."""
 
@@ -521,8 +530,13 @@ class Exoskeleton:
             logging.error('Invalid value for action to take!')
             return
 
+        # Excess whitespace might be common (copy and paste)
+        # and would change the hash:
+        url = url.strip()
+
         # check if the file already has been processed
-        self.cur.execute('SElECT id FROM fileMaster WHERE urlHash = SHA2(%s,256);', url)
+        self.cur.execute('SElECT id FROM fileMaster ' +
+                         'WHERE urlHash = SHA2(%s,256);', url)
         id_in_file_master = self.cur.fetchone()
         if id_in_file_master is not None:
             logging.info('The file has already been processed. Skipping it.')
@@ -530,9 +544,20 @@ class Exoskeleton:
             return
 
         try:
+            # add the new element to the queue
             self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
                              'VALUES (%s, %s, SHA2(%s,256));',
                              (action, url, url))
+            # get the id in the queue
+            self.cur.execute('SELECT id FROM queue ' +
+                             'WHERE urlHash = SHA2(%s,256) ' +
+                             'LIMIT 1;', url)
+            queue_id = self.cur.fetchone()[0]
+
+            # link labels to queue item
+            if labels:
+                self.assign_labels(queue_id, labels, 'queue')
+
         except pymysql.IntegrityError:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.
@@ -622,9 +647,9 @@ class Exoskeleton:
                 # wait some interval to avoid overloading the server
                 self.random_wait()
 
-    def update_host_statistics(self,
-                               url: str,
-                               success: bool = True):
+    def __update_host_statistics(self,
+                                 url: str,
+                                 success: bool = True):
         u""" Updates the host based statistics"""
 
         fqdn = urlparse(url).hostname
@@ -691,7 +716,7 @@ class Exoskeleton:
                              (shortname, description))
             logging.debug('Added label to the database.')
         except pymysql.err.IntegrityError:
-            logging.error('Could not add label as it already existed!')
+            logging.debug('Could not add label as it already existed!')
 
     def define_or_update_label(self,
                                shortname: str,
@@ -708,3 +733,81 @@ class Exoskeleton:
                          'VALUES (%s, %s) ' +
                          'ON DUPLICATE KEY UPDATE description = %s;',
                          (shortname, description, description))
+
+    def get_label_ids(self,
+                      label_set: set):
+        u""" Given a set of labels, this returns the corresponding ids
+        in the labels table. """
+        if label_set:
+
+            query = ("SELECT id " +
+                     "FROM labels " +
+                     "WHERE shortName " +
+                     "IN ({0});".format(', '.join(['%s'] * len(label_set))))
+            self.cur.execute(query, tuple(label_set))
+            label_id = self.cur.fetchall()
+
+            return None if label_id is None else label_id
+        logging.error('No labels provided to get_label_ids().')
+        return None
+
+    def assign_labels(self,
+                      object_id: int,
+                      labels: set,
+                      target: str):
+        u""" Assigns one or multiple labels either to an item
+        in the master, the queue or a version.
+        Removes duplicates and adds new labels to the label list
+        if necessary.."""
+
+        # Using a set to avoid duplicates. However, accept either
+        # a single string or a list type.
+
+        if labels:
+            label_set = utils.convert_to_set(labels)
+
+            for label in label_set:
+                # Make sure all labels are in the database table.
+                # -> If they already exist or malformed the command
+                # will be ignored by the dbms.
+                self.define_new_label(label)
+
+            # Get all label-ids
+            id_list = self.get_label_ids(label_set)
+
+            # Convert into a format to INSERT with executemany
+            insert_list = [(id[0], object_id) for id in id_list]
+
+            if target == 'queue':
+                self.cur.executemany('INSERT IGNORE INTO labelToQueue ' +
+                                     '(labelID, queueID) ' +
+                                     'VALUES (%s, %s);', insert_list)
+            elif target == 'master':
+                self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
+                                     '(labelID, masterID) ' +
+                                     'VALUES (%s, %s);', insert_list)
+            elif  target == 'version':
+                self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
+                                     '(labelID, versionID) ' +
+                                     'VALUES (%s, %s);', insert_list)
+            else:
+                raise ValueError('The target parameter has to be ' +
+                                 'either master, queue, or version.')
+
+    def __transfer_labels_from_queue_to_master(self,
+                                               queue_id: int,
+                                               master_id: int):
+        u""" Transfer labels from a queue object to the file master object. """
+
+        self.cur.execute('SELECT labelID FROM labelToQueue ' +
+                         'WHERE queueID = %s;',
+                         queue_id)
+        label_id = self.cur.fetchall()
+
+        if label_id is not None:
+            insert_list = [(label, master_id) for label in label_id]
+            self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
+                                 '(labelID, masterID) ' +
+                                 'VALUES (%s, %s);', insert_list)
+            self.cur.execute('DELETE FROM labelToQueue ' +
+                             'WHERE queueID = %s;', queue_id)

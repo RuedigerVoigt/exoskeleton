@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 0.6.3 of exoskeleton
+-- for version 0.7.0 of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -280,6 +280,24 @@ CREATE TABLE IF NOT EXISTS labels (
     ,PRIMARY KEY(`id`)
     ,UNIQUE(`shortName`)
     ) ENGINE=InnoDB;
+
+
+CREATE TABLE IF NOT EXISTS labelToQueue (
+    id INT NOT NULL AUTO_INCREMENT
+    ,labelID INT UNSIGNED NOT NULL
+    ,queueID INT UNSIGNED NOT NULL
+    ,PRIMARY KEY(`id`)
+    ,INDEX(`labelID`)
+    ,INDEX(`queueID`)
+    ) ENGINE=InnoDB;
+
+ALTER TABLE `labelToQueue`
+ADD CONSTRAINT `label to id in queue`
+FOREIGN KEY (`labelID`)
+REFERENCES `labels`(`id`)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+
 
 
 CREATE TABLE IF NOT EXISTS labelToMaster (
