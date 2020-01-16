@@ -739,7 +739,9 @@ class Exoskeleton:
         u""" Given a set of labels, this returns the corresponding ids
         in the labels table. """
         if label_set:
-
+            # The IN-Operator makes it necessary to construct the command
+            # every time, so input gets escaped. See the accepted answer here:
+            # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
             query = ("SELECT id " +
                      "FROM labels " +
                      "WHERE shortName " +
