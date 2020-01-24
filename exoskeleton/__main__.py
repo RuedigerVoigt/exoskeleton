@@ -46,8 +46,8 @@ class Exoskeleton:
                  database_port: int = None,
                  project_name: str = 'Bot',
                  bot_user_agent: str = 'BOT (http://www.example.com)',
-                 min_wait: float = 5,
-                 max_wait: float = 20,
+                 min_wait: float = 5.0,
+                 max_wait: float = 20.0,
                  mail_server: str = 'localhost',
                  mail_admin: str = None,
                  mail_sender: str = None,
@@ -159,15 +159,15 @@ class Exoskeleton:
 
         self.QUEUE_MAX_RETRY = 3 # NOT YET IMPLEMENTET
         if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
-            self.QUEUE_MAX_RETRY = self.get_numeric_setting('QUEUE_MAX_RETRY')
-        self.QUEUE_REVISIT = 60
+            self.QUEUE_MAX_RETRY = int(self.get_numeric_setting('QUEUE_MAX_RETRY'))
+        self.QUEUE_REVISIT = 60.0
         if self.get_numeric_setting('QUEUE_REVISIT') is not None:
             self.QUEUE_REVISIT = self.get_numeric_setting('QUEUE_REVISIT')
 
-        self.WAIT_MIN = 5
+        self.WAIT_MIN = 5.0
         if type(min_wait) in (int, float):
             self.WAIT_MIN = min_wait
-        self.WAIT_MAX = 20
+        self.WAIT_MAX = 20.0
         if type(max_wait) in (int, float):
             self.WAIT_MAX = max_wait
 
@@ -449,18 +449,26 @@ class Exoskeleton:
         tables_count = 0
         if self.DB_TYPE == 'mariadb':
             self.cur.execute('SHOW TABLES;')
-            tables_found = [item[0] for item in self.cur.fetchall()]
-            for table in expected_tables:
-                if table in tables_found:
-                    tables_count += 1
-                    logging.debug('Found table %s', table)
-                else:
-                    logging.error('Table %s not found.', table)
+            tables = self.cur.fetchall()
+            print(f"tables: {tables}")
+            if len(tables) == 0:
+                logging.error('The database exists, but no tables found! ' +
+                              'Run the SQL-Script found on GitHub to create ' +
+                              'the table structure!')
+                raise OSError('Database table structure missing. Run generator script!')
+            else:
+                tables_found = [item[0] for item in tables]
+                for table in expected_tables:
+                    if table in tables_found:
+                        tables_count += 1
+                        logging.debug('Found table %s', table)
+                    else:
+                        logging.error('Table %s not found.', table)
 
-        if tables_count != len(expected_tables):
-            return False
-        logging.info("Found all expected tables.")
-        return True
+            if tables_count != len(expected_tables):
+                return False
+            logging.info("Found all expected tables.")
+            return True
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
