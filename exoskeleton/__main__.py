@@ -221,15 +221,13 @@ class Exoskeleton:
                          'FROM settings ' +
                          'WHERE settingKey = %s;', key)
         try:
-            setting = self.cur.fetchone()[0]
+            return self.cur.fetchone()[0] # type: ignore
         except TypeError:
             logging.error('Setting not available')
             return None
 
-        return setting
-
     def get_numeric_setting(self,
-                            key: str) -> float:
+                            key: str) -> Union[float, None]:
         u""" Get numeric setting. Raise ValueError if field's content
         cannot be coerced into float. """
         try:
@@ -241,6 +239,7 @@ class Exoskeleton:
         except ValueError:
             logging.error('Setting field %s contains non-numeric value.',
                           key)
+            return None
 
     def get_connection_timeout(self) -> Union[float, int]:
         u""" Connection timeout is set in the settings table. """
@@ -314,7 +313,7 @@ class Exoskeleton:
             if r.status_code == 200:
                 mime_type = ''
                 if r.headers.get('content-type') is not None:
-                    mime_type = (r.headers.get('content-type')).split(';')[0]
+                    mime_type = (r.headers.get('content-type')).split(';')[0] # type: ignore
 
                 if action_type == 'file':
                     with open(target_path, 'wb') as f:
@@ -492,7 +491,7 @@ class Exoskeleton:
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
-        return int(self.cur.fetchone()[0])
+        return int(self.cur.fetchone()[0]) # type: ignore
 
     def absolute_run_time(self) -> float:
         u"""Return seconds since init. """
@@ -560,7 +559,7 @@ class Exoskeleton:
             self.cur.execute('SELECT id FROM queue ' +
                              'WHERE urlHash = SHA2(%s,256) ' +
                              'LIMIT 1;', url)
-            queue_id = self.cur.fetchone()[0]
+            queue_id = self.cur.fetchone()[0] # type: ignore
 
             # link labels to queue item
             if labels:
