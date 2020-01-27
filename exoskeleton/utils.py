@@ -24,11 +24,7 @@ def get_file_hash(file_path: str,
 
     hash_algo = method
 
-    if hash_algo == 'md5':
-        h = hashlib.md5()
-    elif hash_algo == 'sha1':
-        h = hashlib.sha1()
-    elif hash_algo == 'sha224':
+    if hash_algo == 'sha224':
         h = hashlib.sha256()
     elif hash_algo == 'sha256':
         h = hashlib.sha256()
