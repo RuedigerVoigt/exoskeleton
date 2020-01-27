@@ -1,5 +1,8 @@
 # Changelog / History
 
+## version 0.7.1 beta (2020-01-27)
+
+* If the user tries to add an URL which is already processed or in the queue, any new labels get associated with that item.
 
 ## version 0.7.0 beta (2020-01-16)
 

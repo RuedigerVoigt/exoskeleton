@@ -57,7 +57,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # create an object to setup the framework
 queueManager = exoskeleton.Exoskeleton(
-    database_host='ruediger-voigt.eu',
+    database_host='localhost',
     database_name='exoskeleton',
     database_user=credentials.user,
     database_passphrase=credentials.passphrase
