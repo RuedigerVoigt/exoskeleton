@@ -69,10 +69,8 @@ def check_hash_algo(hash_method: Union[str, None]) -> Union[str, None]:
     if hash_method in hashlib.algorithms_available:
         logging.debug('Chosen hashing method is available on the system.')
         if hash_method in ('md5', 'sha1'):
-            logging.info('Hash method set to %s', hash_method)
-            logging.info('%s is fast, but a weak hashing algorithm. ',
-                         hash_method)
-            return hash_method
+            raise ValueError('The supplied hash method %s is deprecated ' +
+                             ' and NOT supported by exoskelton!')
         elif hash_method in ('sha224', 'sha256', 'sha512'):
             logging.info('Hash method set to %s', hash_method)
             return hash_method
