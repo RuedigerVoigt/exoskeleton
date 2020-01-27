@@ -316,9 +316,9 @@ class Exoskeleton:
                     mime_type = (r.headers.get('content-type')).split(';')[0] # type: ignore
 
                 if action_type == 'file':
-                    with open(target_path, 'wb') as f:
+                    with open(target_path, 'wb') as file_handle:
                         for block in r.iter_content(1024):
-                            f.write(block)
+                            file_handle.write(block)
                         logging.debug('file written')
                         hash_value = None
                         if self.HASH_METHOD:
@@ -479,7 +479,7 @@ class Exoskeleton:
         This is done to avoid to accidentially overload
         the queried host. Some host actually enforce
         limits through IP blocking."""
-        query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX)
+        query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX) # nosec
         logging.debug("%s seconds delay until next action",
                       query_delay)
         time.sleep(query_delay)
