@@ -449,7 +449,6 @@ class Exoskeleton:
         if self.DB_TYPE == 'mariadb':
             self.cur.execute('SHOW TABLES;')
             tables = self.cur.fetchall()
-            print(f"tables: {tables}")
             if len(tables) == 0:
                 logging.error('The database exists, but no tables found! ' +
                               'Run the SQL-Script found on GitHub to create ' +
@@ -547,7 +546,8 @@ class Exoskeleton:
         id_in_file_master = self.cur.fetchone()
         if id_in_file_master is not None:
             logging.info('The file has already been processed. Skipping it.')
-            # TO DO: check if an Label has to be added
+            # Add possibly new labels to fileMaster
+            self.assign_labels(id_in_file_master, labels, 'master')
             return
 
         try:
@@ -569,7 +569,14 @@ class Exoskeleton:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.
             logging.info('URL already in queue. Not adding it again.')
-            # TO DO: check if an Label has to be added
+
+            # get the id in the queue
+            self.cur.execute('SELECT id FROM queue ' +
+                             'WHERE urlHash = SHA2(%s,256) ' +
+                             'LIMIT 1;', url)
+            queue_id = self.cur.fetchone()[0] # type: ignore
+            # add possibly new labels
+            self.assign_labels(queue_id, labels, 'queue')
 
 
     def add_crawl_delay_to_item(self,
@@ -784,8 +791,29 @@ class Exoskeleton:
             # Get all label-ids
             id_list = self.get_label_ids(label_set)
 
-            # Convert into a format to INSERT with executemany
-            insert_list = [(id[0], object_id) for id in id_list]
+            # Check if there are already labels assigned
+            if target == 'queue':
+                self.cur.execute('SELECT labelID FROM exo.labelToQueue ' +
+                                 'WHERE queueID = %s;', object_id)
+                ids_associated = self.cur.fetchall()
+
+                # ignore all labels already associated
+                id_list = tuple(set(id_list) - set(ids_associated))
+            elif target == 'master':
+                self.cur.execute('SELECT labelID FROM exo.labelToMaster ' +
+                                 'WHERE labelID = %s;', object_id)
+                ids_associated = self.cur.fetchall()
+
+                # ignore all labels already associated
+                id_list = tuple(set(id_list) - set(ids_associated))
+
+            if len(id_list) > 0:
+                # Case: there are new labels
+                # Convert into a format to INSERT with executemany
+                insert_list = [(id[0], object_id) for id in id_list]
+            else:
+                logging.debug('No labels to add.')
+                return
 
             if target == 'queue':
                 self.cur.executemany('INSERT IGNORE INTO labelToQueue ' +
@@ -802,6 +830,7 @@ class Exoskeleton:
             else:
                 raise ValueError('The target parameter has to be ' +
                                  'either master, queue, or version.')
+
 
     def __transfer_labels_from_queue_to_master(self,
                                                queue_id: int,
