@@ -114,6 +114,7 @@ class Exoskeleton:
                 logging.info('Made database connection.')
 
                 self.check_table_existence()
+                self.check_stored_procedures()
 
             except pymysql.InterfaceError:
                 logging.exception('Exception related to the database ' +
@@ -273,12 +274,12 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-    def get_object(self,
+    def __get_object(self,
                    queue_id: int,
                    action_type: str,
                    url: str,
                    url_hash: str):
-        u""" Generic function to either download a file or store a page's content """
+        u""" Generic function to either download a file or store a page's content. """
         # pylint: disable=too-many-branches
         if action_type not in ('file', 'content'):
             raise ValueError('Invalid action')
@@ -376,8 +377,7 @@ class Exoskeleton:
 
                 # for both actions again:
                 self.__transfer_labels_from_queue_to_master(queue_id, file_id)
-                self.cur.execute('DELETE FROM queue WHERE id = %s;',
-                                 queue_id)
+                self.delete_from_queue(queue_id)
 
                 self.cnt['processed'] += 1
                 self.__update_host_statistics(url, True)
@@ -424,7 +424,7 @@ class Exoskeleton:
                  url: str,
                  url_hash: str):
         u"""Download a file and save it in the specified folder."""
-        self.get_object(queue_id, 'file', url, url_hash)
+        self.__get_object(queue_id, 'file', url, url_hash)
 
 
     def store_page_content(self,
@@ -432,7 +432,7 @@ class Exoskeleton:
                            url_hash: str,
                            queue_id: int):
         u"""Retrieve a page and store it's content to the database. """
-        self.get_object(queue_id, 'content', url, url_hash)
+        self.__get_object(queue_id, 'content', url, url_hash)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
@@ -464,9 +464,37 @@ class Exoskeleton:
                         logging.error('Table %s not found.', table)
 
             if tables_count != len(expected_tables):
-                return False
+                raise RuntimeError('Database Schema Incomplete: Missing Tables!')
+
             logging.info("Found all expected tables.")
             return True
+
+    def check_stored_procedures(self) -> bool:
+        u"""Check if all expected stored procedures exist and if the user
+        is allowed to execute them. """
+        logging.debug('Checking if stored procedures exist.')
+        expected_procedures = ['delete_all_versions_SP', 'delete_from_queue_SP']
+
+        procedures_count = 0
+        self.cur.execute('SELECT SPECIFIC_NAME FROM INFORMATION_SCHEMA.ROUTINES ' +
+                         'WHERE ROUTINE_SCHEMA = %s;',
+                         self.DB_NAME)
+        procedures = self.cur.fetchall()
+        procedures_found = [item[0] for item in procedures]
+        for procedure in expected_procedures:
+            if procedure in procedures_found:
+                procedures_count += 1
+                logging.debug('Found stored procedure %s', procedure)
+            else:
+                logging.error('Stored Procedure %s is missing (create it ' +
+                              'with the database script) or the user lacks ' +
+                              'permissions to use it.', procedure)
+
+        if procedures_count != len(expected_procedures):
+            raise RuntimeError('Database Schema Incomplete: Missing Stored Procedures!')
+
+        logging.info("Found all expected stored procedures.")
+        return True
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -578,6 +606,11 @@ class Exoskeleton:
             # add possibly new labels
             self.assign_labels(queue_id, labels, 'queue')
 
+    def delete_from_queue(self,
+                          queue_id: int):
+        u"""Remove all label links from a queue item and then delete it from the queue."""
+        # callproc expects a tuple. Do not remove the comma.
+        self.cur.callproc('delete_from_queue_SP', (queue_id, ))
 
     def add_crawl_delay_to_item(self,
                                 queue_id: int,

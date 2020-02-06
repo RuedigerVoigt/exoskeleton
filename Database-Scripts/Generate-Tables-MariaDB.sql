@@ -360,3 +360,52 @@ LEFT JOIN fileVersions AS v
 ON c.versionID = v.id
 LEFT JOIN fileMaster as m
 on c.versionID = m.id;
+
+-- ----------------------------------------------------------
+-- STORED PROCEDURES
+-- ----------------------------------------------------------
+
+DELIMITER $$
+
+CREATE PROCEDURE delete_all_versions_SP (IN fileMasterID_p INT)
+MODIFIES SQL DATA
+BEGIN
+
+    START TRANSACTION;
+    -- remove all labels attached to versions:
+    DELETE FROM labelToVersion WHERE versionID IN (
+        SELECT id FROM fileVersions WHERE fileID = filemasterID_p
+        );
+    -- now as the CONSTRAINT does not interfere, remove all versions:
+    DELETE FROM fileVersions WHERE fileID = fileMasterID_p;
+
+    -- remove all labels attached to the fileMaster:
+    DELETE FROM labelToMaster WHERE masterID = fileMasterID_p;
+    -- now as there are no versions and the label CONSTRAINT
+    -- does not interfere, remove the entry in FileMaster:
+    DELETE FROM fileMaster WHERE id = fileMasterID_p;
+    COMMIT;
+
+END $$
+
+
+
+
+CREATE PROCEDURE delete_from_queue_SP (IN queueID_p INT)
+MODIFIES SQL DATA
+BEGIN
+
+    START TRANSACTION;
+    -- remove all labels attached to the queue item:
+    DELETE FROM labelToQueue WHERE queueID = queueID_p;
+    -- now as the constraint does not interfere, remove the queue-entry:
+    DELETE FROM queue WHERE id = queueID_p;
+    COMMIT;
+
+END $$
+
+
+
+
+
+DELIMITER ;
