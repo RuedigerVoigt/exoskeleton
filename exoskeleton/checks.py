@@ -29,21 +29,14 @@ def check_email_format(mailaddress: Union[str, None]) -> Union[str, None]:
             return mailaddress
 
 
-def validate_port(port_number: Union[int, None],
-                  database: str) -> int:
+def validate_port(port_number: Union[int, None]) -> int:
     u"""Checks if the port is within range.
     Returns standard port if none is set."""
 
     if port_number is None:
         logging.info('No port number supplied. ' +
                      'Will try standard port instead.')
-        if database == 'mariadb':
-            return 3306
-        elif database == 'postgresql':
-            return 5432
-        else:
-            # should not be reached
-            raise ValueError('Unknown DBMS')
+        return 3306
     elif isinstance(port_number, int):
         if port_number >= 0 and port_number < 65536:
             logging.debug('Port within range')

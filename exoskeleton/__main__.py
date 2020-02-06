@@ -4,7 +4,7 @@
 """
 Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
-
+A Python framework to build a basic crawler / scraper with a MariaDB backend.
 """
 
 # python standard library:
@@ -41,7 +41,6 @@ class Exoskeleton:
                  database_name: str,
                  database_user: str,
                  database_passphrase: str,
-                 database_type: str = 'MariaDB',
                  database_host: str = 'localhost',
                  database_port: int = None,
                  project_name: str = 'Bot',
@@ -62,30 +61,22 @@ class Exoskeleton:
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
 
-        self.DB_TYPE = database_type.strip().lower()
-        if self.DB_TYPE != 'mariadb':
-            logging.exception("At the moment exoskeleton only supports " +
-                              "MariaDB. PostgreSQL support is planned.")
-            raise ValueError
         self.DB_HOSTNAME = database_host.strip()
 
-        self.DB_PORT = checks.validate_port(database_port, self.DB_TYPE)
+        self.DB_PORT = checks.validate_port(database_port)
         self.DB_NAME = database_name.strip()
         self.DB_USERNAME = database_user.strip()
         self.DB_PASSPHRASE = database_passphrase.strip()
         if self.DB_PASSPHRASE == '':
             logging.warning('No database passphrase provided.')
 
-        if not (self.DB_TYPE and
-                self.DB_HOSTNAME and
+        if not (self.DB_HOSTNAME and
                 self.DB_PORT and
                 self.DB_NAME and
                 self.DB_USERNAME):
 
             # give specific error messages:
             missing_params = []
-            if not self.DB_TYPE:
-                missing_params.append('database type')
             if not self.DB_HOSTNAME:
                 missing_params.append('hostname')
             if not self.DB_PORT:
@@ -100,39 +91,35 @@ class Exoskeleton:
                              '{}'.format(','.join(missing_params)))
             # TO DO: trusted connection case
 
-        if self.DB_TYPE == 'mariadb':
-            try:
-                logging.debug('Trying to connect to database.')
-                connection = pymysql.connect(host=self.DB_HOSTNAME,
-                                             port=self.DB_PORT,
-                                             database=self.DB_NAME,
-                                             user=self.DB_USERNAME,
-                                             password=self.DB_PASSPHRASE,
-                                             autocommit=True)
+        try:
+            logging.debug('Trying to connect to database.')
+            connection = pymysql.connect(host=self.DB_HOSTNAME,
+                                            port=self.DB_PORT,
+                                            database=self.DB_NAME,
+                                            user=self.DB_USERNAME,
+                                            password=self.DB_PASSPHRASE,
+                                            autocommit=True)
 
-                self.cur = connection.cursor()
-                logging.info('Made database connection.')
+            self.cur = connection.cursor()
+            logging.info('Made database connection.')
 
-                self.check_table_existence()
-                self.check_stored_procedures()
+            self.check_table_existence()
+            self.check_stored_procedures()
 
-            except pymysql.InterfaceError:
-                logging.exception('Exception related to the database ' +
-                                  '*interface*.', exc_info=True)
-                raise
-            except pymysql.DatabaseError:
-                logging.exception('Exception related to the database.',
-                                  exc_info=True)
-                raise
-            except Exception:
-                logging.exception('Unknown exception while ' +
-                                  'trying to connect to the DBMS.',
-                                  exc_info=True)
-                raise
-        elif self.DB_TYPE == 'postgresql':
-            raise NotImplementedError('No PostgreSQL yet.')
-        else:
-            raise ValueError('Unknown database type.')
+        except pymysql.InterfaceError:
+            logging.exception('Exception related to the database ' +
+                                '*interface*.', exc_info=True)
+            raise
+        except pymysql.DatabaseError:
+            logging.exception('Exception related to the database.',
+                                exc_info=True)
+            raise
+        except Exception:
+            logging.exception('Unknown exception while ' +
+                                'trying to connect to the DBMS.',
+                                exc_info=True)
+            raise
+
 
         self.CONNECTION_TIMEOUT = self.get_connection_timeout()
 
@@ -446,28 +433,28 @@ class Exoskeleton:
                            'labels', 'labelToMaster', 'labelToQueue', 'labelToVersion',
                            'queue', 'settings', 'statisticsHosts', 'storageTypes']
         tables_count = 0
-        if self.DB_TYPE == 'mariadb':
-            self.cur.execute('SHOW TABLES;')
-            tables = self.cur.fetchall()
-            if len(tables) == 0:
-                logging.error('The database exists, but no tables found! ' +
-                              'Run the SQL-Script found on GitHub to create ' +
-                              'the table structure!')
-                raise OSError('Database table structure missing. Run generator script!')
-            else:
-                tables_found = [item[0] for item in tables]
-                for table in expected_tables:
-                    if table in tables_found:
-                        tables_count += 1
-                        logging.debug('Found table %s', table)
-                    else:
-                        logging.error('Table %s not found.', table)
 
-            if tables_count != len(expected_tables):
-                raise RuntimeError('Database Schema Incomplete: Missing Tables!')
+        self.cur.execute('SHOW TABLES;')
+        tables = self.cur.fetchall()
+        if len(tables) == 0:
+            logging.error('The database exists, but no tables found! ' +
+                            'Run the SQL-Script found on GitHub to create ' +
+                            'the table structure!')
+            raise OSError('Database table structure missing. Run generator script!')
+        else:
+            tables_found = [item[0] for item in tables]
+            for table in expected_tables:
+                if table in tables_found:
+                    tables_count += 1
+                    logging.debug('Found table %s', table)
+                else:
+                    logging.error('Table %s not found.', table)
 
-            logging.info("Found all expected tables.")
-            return True
+        if tables_count != len(expected_tables):
+            raise RuntimeError('Database Schema Incomplete: Missing Tables!')
+
+        logging.info("Found all expected tables.")
+        return True
 
     def check_stored_procedures(self) -> bool:
         u"""Check if all expected stored procedures exist and if the user
@@ -621,10 +608,10 @@ class Exoskeleton:
         waittime = 30
         if delay_seconds:
             waittime = delay_seconds
-        if self.DB_TYPE == 'mariadb':
-            self.cur.execute('UPDATE queue ' +
-                             'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                             'WHERE id = %s', (waittime, queue_id))
+
+        self.cur.execute('UPDATE queue ' +
+                         'SET delayUntil = ADDTIME(NOW(), %s) ' +
+                         'WHERE id = %s', (waittime, queue_id))
 
     def mark_error(self,
                    queue_id: int,
@@ -826,14 +813,14 @@ class Exoskeleton:
 
             # Check if there are already labels assigned
             if target == 'queue':
-                self.cur.execute('SELECT labelID FROM exo.labelToQueue ' +
+                self.cur.execute('SELECT labelID FROM labelToQueue ' +
                                  'WHERE queueID = %s;', object_id)
                 ids_associated = self.cur.fetchall()
 
                 # ignore all labels already associated
                 id_list = tuple(set(id_list) - set(ids_associated))
             elif target == 'master':
-                self.cur.execute('SELECT labelID FROM exo.labelToMaster ' +
+                self.cur.execute('SELECT labelID FROM labelToMaster ' +
                                  'WHERE labelID = %s;', object_id)
                 ids_associated = self.cur.fetchall()
 
