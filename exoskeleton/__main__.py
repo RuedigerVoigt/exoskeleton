@@ -94,30 +94,30 @@ class Exoskeleton:
         try:
             logging.debug('Trying to connect to database.')
             connection = pymysql.connect(host=self.DB_HOSTNAME,
-                                            port=self.DB_PORT,
-                                            database=self.DB_NAME,
-                                            user=self.DB_USERNAME,
-                                            password=self.DB_PASSPHRASE,
-                                            autocommit=True)
+                                         port=self.DB_PORT,
+                                         database=self.DB_NAME,
+                                         user=self.DB_USERNAME,
+                                         password=self.DB_PASSPHRASE,
+                                         autocommit=True)
 
             self.cur = connection.cursor()
-            logging.info('Made database connection.')
+            logging.info('Established database connection.')
 
             self.check_table_existence()
             self.check_stored_procedures()
 
         except pymysql.InterfaceError:
             logging.exception('Exception related to the database ' +
-                                '*interface*.', exc_info=True)
+                              '*interface*.', exc_info=True)
             raise
         except pymysql.DatabaseError:
             logging.exception('Exception related to the database.',
-                                exc_info=True)
+                              exc_info=True)
             raise
         except Exception:
             logging.exception('Unknown exception while ' +
-                                'trying to connect to the DBMS.',
-                                exc_info=True)
+                              'trying to connect to the DBMS.',
+                              exc_info=True)
             raise
 
 
@@ -262,10 +262,10 @@ class Exoskeleton:
 
 
     def __get_object(self,
-                   queue_id: int,
-                   action_type: str,
-                   url: str,
-                   url_hash: str):
+                     queue_id: int,
+                     action_type: str,
+                     url: str,
+                     url_hash: str):
         u""" Generic function to either download a file or store a page's content. """
         # pylint: disable=too-many-branches
         if action_type not in ('file', 'content'):
@@ -273,25 +273,21 @@ class Exoskeleton:
 
         url = url.strip()
 
-        if action_type == 'file':
-            name, ext = os.path.splitext(url)
-            new_filename = self.FILE_PREFIX + str(queue_id) + ext
-
-            # TO Do: more generic pathhandling
-            target_path = self.TARGET_DIR + '/' + new_filename
-
-            logging.debug('starting download of queue id %s', queue_id)
-
-        elif action_type == 'content':
-            logging.debug('retrieving content of queue id %s', queue_id)
-
         try:
             if action_type == 'file':
+                name, ext = os.path.splitext(url)
+                new_filename = self.FILE_PREFIX + str(queue_id) + ext
+
+                # TO Do: more generic pathhandling
+                target_path = self.TARGET_DIR + '/' + new_filename
+
+                logging.debug('starting download of queue id %s', queue_id)
                 r = requests.get(url,
                                  headers={"User-agent": str(self.USER_AGENT)},
                                  timeout=self.CONNECTION_TIMEOUT,
                                  stream=True)
             elif action_type == 'content':
+                logging.debug('retrieving content of queue id %s', queue_id)
                 r = requests.get(url,
                                  headers={"User-agent": str(self.USER_AGENT)},
                                  timeout=self.CONNECTION_TIMEOUT,
@@ -312,28 +308,21 @@ class Exoskeleton:
                         if self.HASH_METHOD:
                             hash_value = utils.get_file_hash(target_path,
                                                              self.HASH_METHOD)
-                elif action_type == 'content':
 
-                    detected_encoding = str(r.encoding)
-                    logging.debug('detected encoding: %s', detected_encoding)
+                    self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
+                                    'VALUES (%s, %s);',
+                                    (url, url_hash))
 
-                # both: Log the download and remove the item from Queue
-                self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                 'VALUES (%s, %s);',
-                                 (url, url_hash))
-
-                # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
-                # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
-                # However, it seems unreliable.
-                #
-                # As of December 2019 "INSERT ... RETURNING" is a feature in the
-                # current ALPHA version of MariaDB.
-                # Until that version is in use, an extra roundtrip is justified:
-                self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
-                                 url_hash)
-                file_id = self.cur.fetchone()[0]
-
-                if action_type == 'file':
+                    # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
+                    # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+                    # However, it seems unreliable.
+                    #
+                    # As of December 2019 "INSERT ... RETURNING" is a feature in the
+                    # current ALPHA version of MariaDB.
+                    # Until that version is in use, an extra roundtrip is justified:
+                    self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
+                                    url_hash)
+                    file_id = self.cur.fetchone()[0]
 
                     self.cur.execute('INSERT INTO fileVersions ' +
                                      '(fileID, storageTypeID, pathOrBucket, fileName, ' +
@@ -350,21 +339,20 @@ class Exoskeleton:
 
                     logging.debug('download successful')
 
+                    # TO DO: integrate into stored procedure to have full transaction
+                    self.__transfer_labels_from_queue_to_master(queue_id, file_id)
+                    self.delete_from_queue(queue_id)
+
                 elif action_type == 'content':
 
-                    self.cur.execute('INSERT INTO fileVersions ' +
-                                     '(fileID, storageTypeID, mimeType) ' +
-                                     'VALUES (%s , 1, %s); ',
-                                     (file_id, mime_type))
+                    detected_encoding = str(r.encoding)
+                    logging.debug('detected encoding: %s', detected_encoding)
+                    # Stored procedure saves the content,
+                    # transfers the labels from the queue,
+                    # and removes the queue item:
+                    self.cur.callproc('insert_content_SP',
+                                      (url, url_hash, queue_id, mime_type, r.text))
 
-                    self.cur.execute('INSERT INTO fileContent ' +
-                                     '(versionID, pageContent) ' +
-                                     'VALUES (LAST_INSERT_ID(), %s); ',
-                                     r.text)
-
-                # for both actions again:
-                self.__transfer_labels_from_queue_to_master(queue_id, file_id)
-                self.delete_from_queue(queue_id)
 
                 self.cnt['processed'] += 1
                 self.__update_host_statistics(url, True)
@@ -437,9 +425,7 @@ class Exoskeleton:
         self.cur.execute('SHOW TABLES;')
         tables = self.cur.fetchall()
         if len(tables) == 0:
-            logging.error('The database exists, but no tables found! ' +
-                            'Run the SQL-Script found on GitHub to create ' +
-                            'the table structure!')
+            logging.error('The database exists, but no tables found!')
             raise OSError('Database table structure missing. Run generator script!')
         else:
             tables_found = [item[0] for item in tables]
@@ -460,7 +446,8 @@ class Exoskeleton:
         u"""Check if all expected stored procedures exist and if the user
         is allowed to execute them. """
         logging.debug('Checking if stored procedures exist.')
-        expected_procedures = ['delete_all_versions_SP', 'delete_from_queue_SP']
+        expected_procedures = ['delete_all_versions_SP', 'delete_from_queue_SP',
+                               'insert_content_SP']
 
         procedures_count = 0
         self.cur.execute('SELECT SPECIFIC_NAME FROM INFORMATION_SCHEMA.ROUTINES ' +

@@ -390,7 +390,7 @@ END $$
 
 
 
-
+DELIMITER $$
 CREATE PROCEDURE delete_from_queue_SP (IN queueID_p INT)
 MODIFIES SQL DATA
 BEGIN
@@ -405,6 +405,58 @@ BEGIN
 END $$
 
 
+DELIMITER $$
+CREATE PROCEDURE insert_content_SP (IN url_p TEXT,
+                                    IN url_hash_p CHAR(64),
+                                    IN queueID_p INT,
+                                    IN mimeType_p VARCHAR(127),
+                                    IN text_p MEDIUMTEXT)
+MODIFIES SQL DATA
+BEGIN
+
+    START TRANSACTION;
+
+    INSERT INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
+
+    SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
+
+    INSERT INTO fileVersions (fileID, storageTypeID, mimeType)
+    VALUES (@fileMasterID, 1, mimeType_p);
+
+    -- https://mariadb.com/kb/en/last_insert_id/ :
+    -- 'Within the body of a stored routine (procedure or function)
+    -- or a trigger, the value of LAST_INSERT_ID() changes the same way
+    -- as for statements executed outside the body of these kinds of objects.'
+
+    SELECT LAST_INSERT_ID() INTO @newVersionID;
+
+
+    INSERT INTO fileContent (versionID, pageContent)
+    VALUES (@newVersionID, text_p);
+
+    CREATE TEMPORARY TABLE foundLabels_tmp (
+        SELECT labelID FROM labelToQueue WHERE queueID = queueID_p
+    );
+
+    -- Transfer labels if they exist:
+    SELECT COUNT(*) FROM foundLabels_tmp INTO @numLabels;
+    IF @numLabels > 0 THEN
+        INSERT IGNORE INTO labelToMaster (labelID, masterID)
+            SELECT labelID, @fileMasterID AS masterID FROM foundLabels_tmp;
+
+    END IF;
+
+    -- If there were labels attached to the queue item, remove them.
+    -- Then remove the queue-entry:
+    CALL delete_from_queue_SP (queueID_p);
+
+    -- Drop the temporary table as we sustain the db connection:
+    DROP TEMPORARY TABLE foundLabels_tmp;
+
+
+    COMMIT;
+
+END $$
 
 
 
