@@ -276,7 +276,7 @@ class Exoskeleton:
         try:
             if action_type == 'file':
                 name, ext = os.path.splitext(url)
-                new_filename = self.FILE_PREFIX + str(queue_id) + ext
+                new_filename = f"{self.FILE_PREFIX}{queue_id}{ext}"
 
                 # TO Do: more generic pathhandling
                 target_path = self.TARGET_DIR + '/' + new_filename
@@ -310,8 +310,8 @@ class Exoskeleton:
                                                              self.HASH_METHOD)
 
                     self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                    'VALUES (%s, %s);',
-                                    (url, url_hash))
+                                     'VALUES (%s, %s);',
+                                     (url, url_hash))
 
                     # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
                     # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
@@ -321,7 +321,7 @@ class Exoskeleton:
                     # current ALPHA version of MariaDB.
                     # Until that version is in use, an extra roundtrip is justified:
                     self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
-                                    url_hash)
+                                     url_hash)
                     file_id = self.cur.fetchone()[0]
 
                     self.cur.execute('INSERT INTO fileVersions ' +
@@ -699,13 +699,13 @@ class Exoskeleton:
                              str(processed))
 
             if self.MAIL_SEND:
-                subject = (self.PROJECT + ": Milestone reached: " +
-                           str(self.cnt['processed']) + " processed")
-                content = (str(self.cnt['processed']) + " processed.\n" +
-                           str(self.num_items_in_queue()) + " items " +
-                           "remaining in the queue.\n" +
-                           "Estimated time to complete queue: " +
-                           str(self.estimate_remaining_time()) + "seconds.\n")
+                subject = (f"{self.PROJECT} Milestone reached: " +
+                           f"{self.cnt['processed']} processed")
+                content = (f"{self.cnt['processed']} processed.\n" +
+                           f"{self.num_items_in_queue()} items " +
+                           f"remaining in the queue.\n" +
+                           f"Estimated time to complete queue: " +
+                           f"{self.estimate_remaining_time()} seconds.\n")
                 communication.send_mail(self.MAIL_ADMIN,
                                         self.MAIL_SENDER,
                                         subject, content)
