@@ -391,18 +391,85 @@ END $$
 
 
 DELIMITER $$
+CREATE PROCEDURE transfer_labels_from_queue_to_master_SP (IN queueID_p INT,
+                                                          IN masterID_p INT)
+MODIFIES SQL DATA
+BEGIN
+-- Not a transaction as designed to be called from within transactions.
+
+    CREATE TEMPORARY TABLE foundLabels_tmp (
+        SELECT labelID FROM labelToQueue WHERE queueID = queueID_p
+    );
+
+    -- Transfer labels if they exist:
+    SELECT COUNT(*) FROM foundLabels_tmp INTO @numLabels;
+    IF @numLabels > 0 THEN
+        INSERT IGNORE INTO labelToMaster (labelID, masterID)
+            SELECT labelID, masterID_p AS masterID FROM foundLabels_tmp;
+
+    END IF;
+
+    -- If there were labels attached to the queue item, remove them.
+    -- Then remove the queue-entry:
+    CALL delete_from_queue_SP (queueID_p);
+
+    -- Drop the temporary table as we sustain the db connection:
+    DROP TEMPORARY TABLE foundLabels_tmp;
+
+END $$
+
+
+
+DELIMITER $$
 CREATE PROCEDURE delete_from_queue_SP (IN queueID_p INT)
 MODIFIES SQL DATA
 BEGIN
+-- Not a transaction as designed to be called from within transactions.
+-- If there were labels attached to the queue item, remove them.
+-- Then remove the queue-entry.
 
-    START TRANSACTION;
+
     -- remove all labels attached to the queue item:
     DELETE FROM labelToQueue WHERE queueID = queueID_p;
     -- now as the constraint does not interfere, remove the queue-entry:
     DELETE FROM queue WHERE id = queueID_p;
+
+END $$
+
+
+
+DELIMITER $$
+CREATE PROCEDURE insert_file_SP (IN url_p TEXT,
+                                 IN url_hash_p CHAR(64),
+                                 IN queueID_p INT,
+                                 IN mimeType_p VARCHAR(127),
+                                 IN path_or_bucket_p VARCHAR(2048),
+                                 IN file_name_p VARCHAR(255),
+                                 IN size_p INT UNSIGNED,
+                                 IN hash_method_p VARCHAR(6),
+                                 IN hash_value_p VARCHAR(512)
+                                 )
+MODIFIES SQL DATA
+BEGIN
+
+    START TRANSACTION;
+
+    INSERT INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
+
+    SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
+
+    INSERT INTO fileVersions (fileID, storageTypeID, mimeType,
+                              pathOrBucket, fileName, size, hashMethod,
+                              hashValue) VALUES (@fileMasterID, 2, mimeType_p,
+                              path_or_bucket_p, file_name_p, size_p,
+                              hash_method_p, hash_value_p);
+
+    CALL transfer_labels_from_queue_to_master_SP(queueID_p, @fileMasterID);
+
     COMMIT;
 
 END $$
+
 
 
 DELIMITER $$
@@ -418,6 +485,13 @@ BEGIN
 
     INSERT INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
 
+    -- LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
+    -- https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
+    -- However, it seems unreliable.
+    --
+    -- As of December 2019 "INSERT ... RETURNING" is a feature in the
+    -- current ALPHA version of MariaDB.
+    -- Until that version is in use, an extra roundtrip is justified:
     SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
 
     INSERT INTO fileVersions (fileID, storageTypeID, mimeType)
@@ -430,29 +504,10 @@ BEGIN
 
     SELECT LAST_INSERT_ID() INTO @newVersionID;
 
-
     INSERT INTO fileContent (versionID, pageContent)
     VALUES (@newVersionID, text_p);
 
-    CREATE TEMPORARY TABLE foundLabels_tmp (
-        SELECT labelID FROM labelToQueue WHERE queueID = queueID_p
-    );
-
-    -- Transfer labels if they exist:
-    SELECT COUNT(*) FROM foundLabels_tmp INTO @numLabels;
-    IF @numLabels > 0 THEN
-        INSERT IGNORE INTO labelToMaster (labelID, masterID)
-            SELECT labelID, @fileMasterID AS masterID FROM foundLabels_tmp;
-
-    END IF;
-
-    -- If there were labels attached to the queue item, remove them.
-    -- Then remove the queue-entry:
-    CALL delete_from_queue_SP (queueID_p);
-
-    -- Drop the temporary table as we sustain the db connection:
-    DROP TEMPORARY TABLE foundLabels_tmp;
-
+    CALL transfer_labels_from_queue_to_master_SP(queueID_p, @fileMasterID);
 
     COMMIT;
 

@@ -309,39 +309,12 @@ class Exoskeleton:
                             hash_value = utils.get_file_hash(target_path,
                                                              self.HASH_METHOD)
 
-                    self.cur.execute('INSERT INTO fileMaster (url, urlHash) ' +
-                                     'VALUES (%s, %s);',
-                                     (url, url_hash))
-
-                    # LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
-                    # https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
-                    # However, it seems unreliable.
-                    #
-                    # As of December 2019 "INSERT ... RETURNING" is a feature in the
-                    # current ALPHA version of MariaDB.
-                    # Until that version is in use, an extra roundtrip is justified:
-                    self.cur.execute('SELECT id FROM fileMaster WHERE urlHash = %s;',
-                                     url_hash)
-                    file_id = self.cur.fetchone()[0]
-
-                    self.cur.execute('INSERT INTO fileVersions ' +
-                                     '(fileID, storageTypeID, pathOrBucket, fileName, ' +
-                                     'mimeType, size, hashMethod, hashValue) ' +
-                                     'VALUES (%s , 2, %s, %s, %s, %s, %s, %s); ',
-                                     (file_id,
-                                      self.TARGET_DIR,
-                                      new_filename,
-                                      mime_type,
-                                      utils.get_file_size(target_path),
-                                      self.HASH_METHOD,
-                                      hash_value)
-                                    )
-
                     logging.debug('download successful')
 
-                    # TO DO: integrate into stored procedure to have full transaction
-                    self.__transfer_labels_from_queue_to_master(queue_id, file_id)
-                    self.delete_from_queue(queue_id)
+                    self.cur.callproc('insert_file_SP',
+                                      (url, url_hash, queue_id, mime_type,
+                                       self.TARGET_DIR, new_filename, utils.get_file_size(target_path),
+                                       self.HASH_METHOD, hash_value))
 
                 elif action_type == 'content':
 
@@ -383,7 +356,7 @@ class Exoskeleton:
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
                           'protocol i.e. http:// or https:// ? See queue_id = %s',
-                          queue_id, exc_info=True)
+                          queue_id)
             self.mark_error(queue_id, 1)
 
         except Exception:
@@ -611,6 +584,7 @@ class Exoskeleton:
         self.cur.execute('UPDATE queue ' +
                          'SET causesError = %s ' +
                          'WHERE id = %s;', (error, queue_id))
+        logging.debug('Marked queue-item that caused a problem.')
         if error in (429, 500, 503):
             self.add_crawl_delay_to_item(queue_id, 600)
 
