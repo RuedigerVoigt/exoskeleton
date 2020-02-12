@@ -56,7 +56,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton in version 0.7.1 (beta)')
+        logging.info('You are using exoskeleton in version 0.8.0 (beta / February 12, 2020)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -70,56 +70,11 @@ class Exoskeleton:
         if self.DB_PASSPHRASE == '':
             logging.warning('No database passphrase provided.')
 
-        if not (self.DB_HOSTNAME and
-                self.DB_PORT and
-                self.DB_NAME and
-                self.DB_USERNAME):
-
-            # give specific error messages:
-            missing_params = []
-            if not self.DB_HOSTNAME:
-                missing_params.append('hostname')
-            if not self.DB_PORT:
-                missing_params.append('port')
-            if not self.DB_NAME:
-                missing_params.append('database name')
-            if not self.DB_USERNAME:
-                missing_params.append('username')
-            # ... stop before connection try:
-            raise ValueError('The following parameters were not supplied, ' +
-                             'but are needed to connect to the database: ' +
-                             '{}'.format(','.join(missing_params)))
-            # TO DO: trusted connection case
-
-        try:
-            logging.debug('Trying to connect to database.')
-            connection = pymysql.connect(host=self.DB_HOSTNAME,
-                                         port=self.DB_PORT,
-                                         database=self.DB_NAME,
-                                         user=self.DB_USERNAME,
-                                         password=self.DB_PASSPHRASE,
-                                         autocommit=True)
-
-            self.cur = connection.cursor()
-            logging.info('Established database connection.')
-
-            self.check_table_existence()
-            self.check_stored_procedures()
-
-        except pymysql.InterfaceError:
-            logging.exception('Exception related to the database ' +
-                              '*interface*.', exc_info=True)
-            raise
-        except pymysql.DatabaseError:
-            logging.exception('Exception related to the database.',
-                              exc_info=True)
-            raise
-        except Exception:
-            logging.exception('Unknown exception while ' +
-                              'trying to connect to the DBMS.',
-                              exc_info=True)
-            raise
-
+        self.connection = None
+        self.establish_db_connection()
+        self.cur = self.connection.cursor()
+        self.check_table_existence()
+        self.check_stored_procedures()
 
         self.CONNECTION_TIMEOUT = self.get_connection_timeout()
 
@@ -196,7 +151,6 @@ class Exoskeleton:
 
         self.MAX_PATH_LENGTH = 255
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # SETTINGS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -225,8 +179,7 @@ class Exoskeleton:
             else:
                 raise ValueError
         except ValueError:
-            logging.error('Setting field %s contains non-numeric value.',
-                          key)
+            logging.error('Setting field %s contains non-numeric value.', key)
             return None
 
     def get_connection_timeout(self) -> Union[float, int]:
@@ -309,23 +262,34 @@ class Exoskeleton:
                             hash_value = utils.get_file_hash(target_path,
                                                              self.HASH_METHOD)
 
-                    logging.debug('download successful')
-
-                    self.cur.callproc('insert_file_SP',
-                                      (url, url_hash, queue_id, mime_type,
-                                       self.TARGET_DIR, new_filename, utils.get_file_size(target_path),
-                                       self.HASH_METHOD, hash_value))
+                    logging.debug('file written to disk')
+                    try:
+                        self.cur.callproc('insert_file_SP',
+                                          (url, url_hash, queue_id, mime_type,
+                                           self.TARGET_DIR, new_filename,
+                                           utils.get_file_size(target_path),
+                                           self.HASH_METHOD, hash_value))
+                    except pymysql.DatabaseError:
+                        self.cnt['transaction_fail'] += 1
+                        logging.error('Transaction failed: Could not add already ' +
+                                      'downloaded file %s to the database!',
+                                      new_filename)
 
                 elif action_type == 'content':
 
                     detected_encoding = str(r.encoding)
                     logging.debug('detected encoding: %s', detected_encoding)
-                    # Stored procedure saves the content,
-                    # transfers the labels from the queue,
-                    # and removes the queue item:
-                    self.cur.callproc('insert_content_SP',
-                                      (url, url_hash, queue_id, mime_type, r.text))
-
+                    try:
+                        # Stored procedure saves the content,
+                        # transfers the labels from the queue,
+                        # and removes the queue item:
+                        self.cur.callproc('insert_content_SP',
+                                          (url, url_hash, queue_id,
+                                           mime_type, r.text))
+                    except pymysql.DatabaseError:
+                        self.cnt['transaction_fail'] += 1
+                        logging.error('Transaction failed: Could not add page code ' +
+                                      'of queue item %s to the database!', queue_id)
 
                 self.cnt['processed'] += 1
                 self.__update_host_statistics(url, True)
@@ -361,11 +325,10 @@ class Exoskeleton:
 
         except Exception:
             logging.error('Unknown exception while trying ' +
-                          'to download a file.',
+                          'to download.',
                           exc_info=True)
             self.__update_host_statistics(url, False)
             raise
-
 
     def get_file(self,
                  queue_id: int,
@@ -385,6 +348,54 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def establish_db_connection(self):
+        u"""Establish a connection to MariaDB """
+
+        if not (self.DB_HOSTNAME and
+                self.DB_PORT and
+                self.DB_NAME and
+                self.DB_USERNAME):
+
+            # give specific error messages:
+            missing_params = []
+            if not self.DB_HOSTNAME:
+                missing_params.append('hostname')
+            if not self.DB_PORT:
+                missing_params.append('port')
+            if not self.DB_NAME:
+                missing_params.append('database name')
+            if not self.DB_USERNAME:
+                missing_params.append('username')
+            # ... stop before connection try:
+            raise ValueError('The following parameters were not supplied, ' +
+                             'but are needed to connect to the database: ' +
+                             '{}'.format(','.join(missing_params)))
+
+        try:
+            logging.debug('Trying to connect to database.')
+            self.connection = pymysql.connect(host=self.DB_HOSTNAME,
+                                              port=self.DB_PORT,
+                                              database=self.DB_NAME,
+                                              user=self.DB_USERNAME,
+                                              password=self.DB_PASSPHRASE,
+                                              autocommit=True)
+
+            logging.info('Established database connection.')
+
+        except pymysql.InterfaceError:
+            logging.exception('Exception related to the database ' +
+                              '*interface*.', exc_info=True)
+            raise
+        except pymysql.DatabaseError:
+            logging.exception('Exception related to the database.',
+                              exc_info=True)
+            raise
+        except Exception:
+            logging.exception('Unknown exception while ' +
+                              'trying to connect to the DBMS.',
+                              exc_info=True)
+            raise
 
     def check_table_existence(self) -> bool:
         u"""Check if all expected tables exist."""
@@ -419,8 +430,11 @@ class Exoskeleton:
         u"""Check if all expected stored procedures exist and if the user
         is allowed to execute them. """
         logging.debug('Checking if stored procedures exist.')
-        expected_procedures = ['delete_all_versions_SP', 'delete_from_queue_SP',
-                               'insert_content_SP']
+        expected_procedures = ['delete_all_versions_SP',
+                               'delete_from_queue_SP',
+                               'insert_content_SP',
+                               'insert_file_SP',
+                               'transfer_labels_from_queue_to_master_SP']
 
         procedures_count = 0
         self.cur.execute('SELECT SPECIFIC_NAME FROM INFORMATION_SCHEMA.ROUTINES ' +
@@ -455,8 +469,7 @@ class Exoskeleton:
         the queried host. Some host actually enforce
         limits through IP blocking."""
         query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX) # nosec
-        logging.debug("%s seconds delay until next action",
-                      query_delay)
+        logging.debug("%s seconds delay until next action", query_delay)
         time.sleep(query_delay)
         return
 
@@ -530,6 +543,7 @@ class Exoskeleton:
             self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
                              'VALUES (%s, %s, SHA2(%s,256));',
                              (action, url, url))
+
             # get the id in the queue
             self.cur.execute('SELECT id FROM queue ' +
                              'WHERE urlHash = SHA2(%s,256) ' +
@@ -607,9 +621,9 @@ class Exoskeleton:
                 # empty queue: either full stop or wait for new tasks
                 if self.QUEUE_STOP_IF_EMPTY:
                     logging.info('Queue empty. Bot stops as configured to do.')
-                    subject = self.PROJECT + ": queue empty / bot stopped"
-                    content = ("The queue is empty. The bot " + self.PROJECT +
-                               " stopped as configured.")
+                    subject = f"{self.PROJECT}: queue empty / bot stopped"
+                    content = (f"The queue is empty. The bot {self.PROJECT} " +
+                               f"stopped as configured.")
                     if self.MAIL_SEND:
                         communication.send_mail(self.MAIL_ADMIN,
                                                 self.MAIL_SENDER,
@@ -665,7 +679,7 @@ class Exoskeleton:
 
     def check_milestone(self):
         u""" Check if milestone is reached. In case,
-        send mail if configured so."""
+        send mail (if configured so)."""
         processed = self.cnt['processed']
         if isinstance(self.MILESTONE, int):
             if processed % self.MILESTONE == 0:
@@ -709,9 +723,10 @@ class Exoskeleton:
             self.cur.execute('INSERT INTO labels (shortName, description) ' +
                              'VALUES (%s, %s);',
                              (shortname, description))
+
             logging.debug('Added label to the database.')
         except pymysql.err.IntegrityError:
-            logging.debug('Could not add label as it already existed!')
+            logging.debug('Label already existed.')
 
     def define_or_update_label(self,
                                shortname: str,
@@ -800,33 +815,17 @@ class Exoskeleton:
                 self.cur.executemany('INSERT IGNORE INTO labelToQueue ' +
                                      '(labelID, queueID) ' +
                                      'VALUES (%s, %s);', insert_list)
+
             elif target == 'master':
                 self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
                                      '(labelID, masterID) ' +
                                      'VALUES (%s, %s);', insert_list)
+
             elif  target == 'version':
                 self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
                                      '(labelID, versionID) ' +
                                      'VALUES (%s, %s);', insert_list)
+
             else:
                 raise ValueError('The target parameter has to be ' +
                                  'either master, queue, or version.')
-
-
-    def __transfer_labels_from_queue_to_master(self,
-                                               queue_id: int,
-                                               master_id: int):
-        u""" Transfer labels from a queue object to the file master object. """
-
-        self.cur.execute('SELECT labelID FROM labelToQueue ' +
-                         'WHERE queueID = %s;',
-                         queue_id)
-        label_id = self.cur.fetchall()
-
-        if label_id is not None:
-            insert_list = [(label, master_id) for label in label_id]
-            self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
-                                 '(labelID, masterID) ' +
-                                 'VALUES (%s, %s);', insert_list)
-            self.cur.execute('DELETE FROM labelToQueue ' +
-                             'WHERE queueID = %s;', queue_id)
