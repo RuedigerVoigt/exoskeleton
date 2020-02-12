@@ -19,18 +19,18 @@ class BotTest(unittest.TestCase):
         self.assertRaises(ValueError, checks.check_email_format, 'test@example.')
 
     def test_check_hash_algo(self):
-        self.assertEqual(checks.check_hash_algo('md5'), 'md5')
-        self.assertEqual(checks.check_hash_algo('sha1'), 'sha1')
+        self.assertRaises(ValueError,checks.check_hash_algo, 'md5')
+        self.assertRaises(ValueError,checks.check_hash_algo, 'sha1')
         self.assertEqual(checks.check_hash_algo('sha224'), 'sha224')
         self.assertEqual(checks.check_hash_algo('sha256'), 'sha256')
         self.assertEqual(checks.check_hash_algo('sha512'), 'sha512')
         self.assertRaises(ValueError, checks.check_hash_algo, 'NonExistentMethod')
 
     def test_validate_port(self):
-        self.assertEqual(checks.validate_port(3306, 'mariadb'), 3306)
-        self.assertEqual(checks.validate_port(5432, 'mariadb'), 5432)
-        self.assertRaises(ValueError, checks.validate_port, 65537, 'mariadb')
-        self.assertRaises(ValueError, checks.validate_port, -1, 'mariadb')
+        self.assertEqual(checks.validate_port(3306), 3306)
+        self.assertEqual(checks.validate_port(5432), 5432)
+        self.assertRaises(ValueError, checks.validate_port, 65537)
+        self.assertRaises(ValueError, checks.validate_port, -1)
 
     def test_validate_aws_s3_bucket_name(self):
         self.assertTrue(checks.validate_aws_s3_bucket_name('abc'))

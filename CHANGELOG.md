@@ -3,7 +3,7 @@
 ## upcoming
 
 * Require Python 3.6 (Debian 10 "Buster" just moved to Python 3.7 with the 10.3 update. Ubuntu stable uses 3.6.)
-* Use transactions to ensure dbms integrety.
+* Use transactions and rollbacks to ensure dbms integrity.
 
 ## version 0.7.1 beta (2020-01-27)
 
