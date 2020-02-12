@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 0.7.1 of exoskeleton
+-- for version 0.8.0 of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS errorType (
 
 INSERT INTO errorType (id, short, permanent, description) VALUES
 (1, 'malformed url', 1, 'URL is malformed. Missing Schema (http:// or https://) ?'),
+(2, 'transaction fails', 0, 'The database transaction failed. Rollback was initiated.'),
 (402, '402', 1, 'Server replied: Payment Required'),
 (403, '403', 1, 'Server replied: Forbidden'),
 (404, '404', 1, 'Server replied: File not found'),
@@ -370,6 +371,12 @@ DELIMITER $$
 CREATE PROCEDURE delete_all_versions_SP (IN fileMasterID_p INT)
 MODIFIES SQL DATA
 BEGIN
+-- TO DO: DOES NOT DELETE THE ACTUAL FILES
+DECLARE EXIT HANDLER FOR sqlexception
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
 
     START TRANSACTION;
     -- remove all labels attached to versions:
@@ -452,6 +459,13 @@ CREATE PROCEDURE insert_file_SP (IN url_p TEXT,
 MODIFIES SQL DATA
 BEGIN
 
+DECLARE EXIT HANDLER FOR sqlexception
+    BEGIN
+        ROLLBACK;
+        UPDATE queue SET causesError = 2 WHERE id = queueID_p;
+        RESIGNAL;
+    END;
+
     START TRANSACTION;
 
     INSERT INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
@@ -480,6 +494,13 @@ CREATE PROCEDURE insert_content_SP (IN url_p TEXT,
                                     IN text_p MEDIUMTEXT)
 MODIFIES SQL DATA
 BEGIN
+
+DECLARE EXIT HANDLER FOR sqlexception
+    BEGIN
+        ROLLBACK;
+        UPDATE queue SET causesError = 2 WHERE id = queueID_p;
+        RESIGNAL;
+    END;
 
     START TRANSACTION;
 
