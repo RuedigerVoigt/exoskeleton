@@ -11,12 +11,12 @@ from exoskeleton import utils as utils
 class BotTest(unittest.TestCase):
 
     def test_check_email_format(self):
-        self.assertEqual(checks.check_email_format('test@example.com'), 'test@example.com')
-        self.assertEqual(checks.check_email_format('  test@example.com  '), 'test@example.com')
-        self.assertEqual(checks.check_email_format('test+filter@example.com'), 'test+filter@example.com')
-        self.assertRaises(ValueError, checks.check_email_format, '@example.com')
-        self.assertRaises(ValueError, checks.check_email_format, 'test@@example.com')
-        self.assertRaises(ValueError, checks.check_email_format, 'test@example.')
+        self.assertTrue(checks.check_email_format('test@example.com'))
+        self.assertTrue(checks.check_email_format('  test@example.com  '))
+        self.assertTrue(checks.check_email_format('test+filter@example.com'))
+        self.assertFalse(checks.check_email_format('@example.com'))
+        self.assertFalse(checks.check_email_format('test@@example.com'))
+        self.assertFalse(checks.check_email_format('test@example.'))
 
     def test_check_hash_algo(self):
         self.assertRaises(ValueError,checks.check_hash_algo, 'md5')
@@ -64,7 +64,6 @@ class BotTest(unittest.TestCase):
         self.assertEqual(utils.convert_to_set({'a','b','c'}), {'a','b','c'})
         # unsupported data type integer
         self.assertRaises(TypeError, utils.convert_to_set, 3)
-
 
 if __name__ == "__main__":
     unittest.main()

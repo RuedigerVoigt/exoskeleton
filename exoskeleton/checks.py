@@ -9,24 +9,22 @@ import re
 from typing import Union
 
 
-def check_email_format(mailaddress: Union[str, None]) -> Union[str, None]:
+def check_email_format(mailaddress: Union[str, None]) -> bool:
     u"""Very basic check if the email address has a valid format
     and returns it as is except if it is obviously false."""
 
     if mailaddress is None or mailaddress == '':
-        logging.warning('No mail address supplied. ' +
-                        'Unable to send emails.')
-        return None
+        logging.warning('No mail address supplied.')
+        return False
     else:
         mailaddress = mailaddress.strip()
         if not re.match(r"^[^\s@]+@[^\s\W@]+\.[a-zA-Z]+", mailaddress):
             logging.error('The supplied mailaddress %s has an unknown ' +
-                          'format.',
-                          mailaddress)
-            raise ValueError
+                          'format.', mailaddress)
+            return False
         else:
             logging.debug('%s seems to have a valid format', mailaddress)
-            return mailaddress
+            return True
 
 
 def validate_port(port_number: Union[int, None]) -> int:
