@@ -31,11 +31,15 @@ import exoskeleton.utils as utils
 
 
 class Exoskeleton:
+    u""" Main class of the exoskeleton crawler framework. """
+    # The class is complex which leads pylint3 to complain a lot.
+    # As the complexity is needed, disable some warnings:
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-public-methods
+    # pylint: disable=too-many-branches
 
     def __init__(self,
                  database_name: str,
@@ -56,7 +60,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton in version 0.8.0 (beta / February 12, 2020)')
+        logging.info('You are using exoskeleton 0.8.0 (beta / Feb 13, 2020)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -87,8 +91,14 @@ class Exoskeleton:
             self.MILESTONE = milestone_num
         elif milestone_num is not None:
             raise ValueError
-        self.MAIL_ADMIN = checks.check_email_format(mail_admin)
-        self.MAIL_SENDER = checks.check_email_format(mail_sender)
+
+        self.MAIL_ADMIN = None
+        if checks.check_email_format(mail_admin):
+            self.MAIL_ADMIN = mail_admin.strip()
+        self.MAIL_SENDER = None
+        if checks.check_email_format(mail_sender):
+            self.MAIL_SENDER = mail_sender.strip()
+
         self.MAIL_SEND = False
         if self.MAIL_ADMIN and self.MAIL_SENDER:
             # needing both to send mails
@@ -135,8 +145,7 @@ class Exoskeleton:
             else:
                 raise OSError("Cannot find or access the user " +
                               "supplied target directory! " +
-                              "Create this directory or " +
-                              "check permissions.")
+                              "Create this directory or check permissions.")
 
 
         self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
@@ -325,8 +334,7 @@ class Exoskeleton:
 
         except Exception:
             logging.error('Unknown exception while trying ' +
-                          'to download.',
-                          exc_info=True)
+                          'to download.', exc_info=True)
             self.__update_host_statistics(url, False)
             raise
 
@@ -408,7 +416,7 @@ class Exoskeleton:
 
         self.cur.execute('SHOW TABLES;')
         tables = self.cur.fetchall()
-        if len(tables) == 0:
+        if not tables:
             logging.error('The database exists, but no tables found!')
             raise OSError('Database table structure missing. Run generator script!')
         else:
@@ -717,7 +725,7 @@ class Exoskeleton:
         and a description. """
         if len(shortname) > 31:
             logging.error("Labelname exceeds max length of 31 " +
-                          "characters. Cannot add it")
+                          "characters. Cannot add it.")
             return
         try:
             self.cur.execute('INSERT INTO labels (shortName, description) ' +
@@ -736,7 +744,7 @@ class Exoskeleton:
         if an update has to be avoided. """
         if len(shortname) > 31:
             logging.error("Labelname exceeds max length of 31 " +
-                          "characters. Cannot add it")
+                          "characters. Cannot add it.")
             return
 
         self.cur.execute('INSERT INTO labels (shortName, description) ' +
@@ -803,7 +811,7 @@ class Exoskeleton:
                 # ignore all labels already associated
                 id_list = tuple(set(id_list) - set(ids_associated))
 
-            if len(id_list) > 0:
+            if id_list:
                 # Case: there are new labels
                 # Convert into a format to INSERT with executemany
                 insert_list = [(id[0], object_id) for id in id_list]
