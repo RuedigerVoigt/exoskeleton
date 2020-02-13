@@ -25,13 +25,13 @@ def get_file_hash(file_path: str,
     hash_algo = method
 
     if hash_algo == 'sha224':
-        h = hashlib.sha256()
+        h = hashlib.sha224()
     elif hash_algo == 'sha256':
         h = hashlib.sha256()
     elif hash_algo == 'sha512':
         h = hashlib.sha512()
     else:
-        raise ValueError('Hash method not supported by exoskeleton')
+        raise ValueError('Hash method not supported by exoskeleton.')
 
     try:
         with open(file_path, 'rb') as file:
