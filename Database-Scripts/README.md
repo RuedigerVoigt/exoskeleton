@@ -1,7 +1,5 @@
 # Exoskeleton Database Structure
 
-The database structure has changed from 0.5.X to 0.6.0, but should be almost stable now.
-
 ## The Queue
 
 ![EER Diagram: Queue Management in the Exoskelleton Database](EER-diagrams/EER-Queue-Management.png)
