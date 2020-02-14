@@ -70,7 +70,7 @@ ON UPDATE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS errorType (
     id INT NOT NULL
-    ,short VARCHAR(15)
+    ,short VARCHAR(31)
     ,description VARCHAR(255)
     ,permanent BOOLEAN
     ,PRIMARY KEY(`id`)
@@ -293,9 +293,16 @@ CREATE TABLE IF NOT EXISTS labelToQueue (
     ) ENGINE=InnoDB;
 
 ALTER TABLE `labelToQueue`
-ADD CONSTRAINT `label to id in queue`
+ADD CONSTRAINT `l2q labelID to id in labels`
 FOREIGN KEY (`labelID`)
 REFERENCES `labels`(`id`)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+
+ALTER TABLE `labelToQueue`
+ADD CONSTRAINT `l2q queueID to id in queue`
+FOREIGN KEY (`queueID`)
+REFERENCES `queue`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
@@ -311,9 +318,16 @@ CREATE TABLE IF NOT EXISTS labelToMaster (
     ) ENGINE=InnoDB;
 
 ALTER TABLE `labelToMaster`
-ADD CONSTRAINT `label to id in labels`
+ADD CONSTRAINT `l2m labelID to id in labels`
 FOREIGN KEY (`labelID`)
 REFERENCES `labels`(`id`)
+ON DELETE RESTRICT
+ON UPDATE RESTRICT;
+
+ALTER TABLE `labelToMaster`
+ADD CONSTRAINT `l2m masterID to id in fileMaster`
+FOREIGN KEY (`masterID`)
+REFERENCES `fileMaster`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
@@ -329,14 +343,14 @@ CREATE TABLE IF NOT EXISTS labelToVersion (
     ) ENGINE=InnoDB;
 
 ALTER TABLE `labelToVersion`
-ADD CONSTRAINT `label for the version to id in labels`
+ADD CONSTRAINT `l2v labelID to id in labels`
 FOREIGN KEY (`labelID`)
 REFERENCES `labels`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
 ALTER TABLE `labelToVersion`
-ADD CONSTRAINT `label to document version id`
+ADD CONSTRAINT `l2v versionID to id in fileVersions`
 FOREIGN KEY (`versionID`)
 REFERENCES `fileVersions`(`id`)
 ON DELETE RESTRICT
