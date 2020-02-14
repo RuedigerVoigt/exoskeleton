@@ -21,3 +21,13 @@ The "fileMaster" table is a comprehensive list of all files in the system. The "
 If a file's content is stored in the database itself, it has an entry in "fileMaster", another entry in "fileVersions" and it's content in "fileContent".
 
 The relations between those tables are assured via foreign key constraints. On top there are database triggers: if the last version of a file is deleted, the corresponding entry is automatically removed from the "fileMaster" table.
+
+## Labels
+
+![EER Diagram Labels in the Exoskelleton Database](EER-diagrams/EER-Labels.png)
+
+A central feature of exoskeleton is to add labels. The table "labels" manages those. Labels can be assigned to items in the queue, items in the fileMaster or specific versions of a file. Aptly named tables map these relationships.
+
+## Stored Procedures
+
+Exoskeleton uses several stored procedures in order to make complex changes to the database. Usually these are transactions to ensure referential integrity. You should not use these procedures directly. Instead call the corresponding python function which encapsulate them plus add logging, and error handling.
