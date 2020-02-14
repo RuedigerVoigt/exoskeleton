@@ -60,7 +60,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.8.0 (beta / Feb 13, 2020)')
+        logging.info('You are using exoskeleton 0.8.0 (beta / Feb 14, 2020)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -87,7 +87,7 @@ class Exoskeleton:
         self.MAIL_START_MSG = True if self.get_setting('MAIL_START_MSG') == 'True' else False
         self.MAIL_FINISH_MSG = True if self.get_setting('MAIL_FINISH_MSG') == 'True' else False
         self.MILESTONE = None
-        if type(milestone_num) is int:
+        if isinstance(milestone_num, int):
             self.MILESTONE = milestone_num
         elif milestone_num is not None:
             raise ValueError
@@ -230,10 +230,15 @@ class Exoskeleton:
                      url_hash: str):
         u""" Generic function to either download a file or store a page's content. """
         # pylint: disable=too-many-branches
+        if not isinstance(queue_id, int):
+            raise ValueError('The queue_id must be an integer.')
         if action_type not in ('file', 'content'):
             raise ValueError('Invalid action')
-
+        if url == '' or url is None:
+            raise ValueError('Missing url')
         url = url.strip()
+        if url_hash == '' or url_hash is None:
+            raise ValueError('Missing url_hash')
 
         try:
             if action_type == 'file':
@@ -708,7 +713,7 @@ class Exoskeleton:
 
             return True
 
-        elif type(self.MILESTONE) is list:
+        elif isinstance(self.MILESTONE, list):
             logging.error("Feature not yet implemented")
             return False
         else:
