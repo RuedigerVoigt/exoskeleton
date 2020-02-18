@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 0.8.0 of exoskeleton
+-- for version 0.8.1 of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -40,6 +40,23 @@ CREATE TABLE IF NOT EXISTS queue (
     ,UNIQUE(`urlHash`)
     ,INDEX(`addedToQueue`)
     ,INDEX(`delayUntil`)
+) ENGINE=InnoDB;
+
+
+-- ----------------------------------------------------------
+-- JOBS
+-- ----------------------------------------------------------
+
+CREATE TABLE jobs (
+    jobName VARCHAR(127) NOT NULL
+    ,created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ,finished TIMESTAMP NULL
+    ,startUrl TEXT NOT NULL
+    ,startUrlHash CHAR(64) NOT NULL
+    ,currentUrl TEXT NULL
+    ,PRIMARY KEY(`jobName`)
+    ,INDEX(`created`)
+    ,INDEX(`finished`)
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------

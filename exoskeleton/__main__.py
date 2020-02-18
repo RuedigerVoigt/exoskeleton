@@ -60,7 +60,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.8.0 (beta / Feb 14, 2020)')
+        logging.info('You are using exoskeleton 0.8.1 (beta / Feb 18, 2020)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -470,6 +470,91 @@ class Exoskeleton:
         logging.info("Found all expected stored procedures.")
         return True
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# JOB MANAGEMENT
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+    def job_define_new(self,
+                       job_name: str,
+                       start_url: str):
+        u""" Create a new crawl job identified by it name and an url
+        to start crawling. """
+        if job_name == '' or job_name is None:
+            raise ValueError
+        job_name = job_name.strip()
+        if len(job_name) > 127:
+            raise ValueError('Invalid job name: maximum 127 characters.')
+
+        if start_url == '' or start_url is None:
+            raise ValueError
+
+        try:
+            self.cur.execute('INSERT INTO jobs ' +
+                             '(jobName, startUrl, startUrlHash) ' +
+                             'VALUES (%s, %s, SHA2(%s,256));',
+                             (job_name, start_url, start_url))
+            logging.debug('Defined new job.')
+        except pymysql.IntegrityError:
+            # A job with this name already exists
+            # Check if startURL is the same:
+            self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
+                             job_name)
+            existing_start_url = self.cur.fetchone()[0]
+            if existing_start_url == start_url:
+                logging.warning('A job with identical name and startURL is already defined.')
+            else:
+                raise ValueError('A job with the identical name but ' +
+                                 '*different* startURL is already defined!')
+
+    def job_update_current_url(self,
+                               job_name: str,
+                               current_url: str):
+        u""" Set the currentUrl for a specific job. """
+
+        if job_name == '' or job_name is None:
+            raise ValueError('Provide the job name.')
+        if current_url == '' or current_url is None:
+            raise ValueError('Current URL must not be empty.')
+
+        affected_rows = self.cur.execute('UPDATE jobs ' +
+                                         'SET currentURL = %s ' +
+                                         'WHERE jobName = %s;',
+                                         (current_url, job_name))
+        if affected_rows == 0:
+            raise ValueError('A job with this name is not known.')
+
+
+    def job_get_current_url(self,
+                            job_name: str) -> str:
+        u""" Returns the current URl for this job. If none is stored, this
+        returns the start URL. Raises exception if the job is already finished. """
+
+        self.cur.execute('SELECT finished FROM jobs ' +
+                         'WHERE jobName = %s;',
+                         job_name)
+        job_state = self.cur.fetchone()[0]
+        if not job_state:
+            raise RuntimeError('Job already finished!')
+        self.cur.execute('SELECT COALESCE(currentUrl, startUrl) ' +
+                         'FROM jobs ' +
+                         'WHERE jobName = %s;',
+                         job_name)
+        return(self.cur.fetchone()[0])
+
+    def job_mark_as_finished(self,
+                             job_name: str):
+        u""" Mark a crawl job as finished. """
+        if job_name == '' or job_name is None:
+            raise ValueError
+        job_name = job_name.strip()
+        affected_rows = self.cur.execute('UPDATE jobs SET ' +
+                                         'finished = CURRENT_TIMESTAMP() ' +
+                                         'WHERE jobName = %s;',
+                                         job_name)
+        if affected_rows == 0:
+            raise ValueError('A job with this name is not known.')
+        logging.debug('Marked job %s as finished.', job_name)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # QUEUE MANAGEMENT
