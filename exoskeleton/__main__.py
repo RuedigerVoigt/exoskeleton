@@ -350,13 +350,46 @@ class Exoskeleton:
         u"""Download a file and save it in the specified folder."""
         self.__get_object(queue_id, 'file', url, url_hash)
 
-
     def store_page_content(self,
                            url: str,
                            url_hash: str,
                            queue_id: int):
         u"""Retrieve a page and store it's content to the database. """
         self.__get_object(queue_id, 'content', url, url_hash)
+
+    def return_page_code(self,
+                         url: str):
+        u"""Directly return a page's code and do *not* store it
+        in the database. """
+        if url == '' or url is None:
+            raise ValueError('Missing url')
+        url = url.strip()
+
+        try:
+            r = requests.get(url,
+                             headers={"User-agent": str(self.USER_AGENT)},
+                             timeout=self.CONNECTION_TIMEOUT,
+                             stream=False
+                            )
+
+            if r.status_code == 200:
+                return r.text
+            else:
+                raise RuntimeError('Cannot return page code')
+
+        except TimeoutError:
+            logging.error('Reached timeout.', exc_info=True)
+            self.__update_host_statistics(url, False)
+            raise
+
+        except ConnectionError:
+            logging.error('Connection Error', exc_info=True)
+            self.__update_host_statistics(url, False)
+            raise
+
+        except Exception:
+            logging.exception('Unknown exception while trying to get page-code', exc_info=True)
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
@@ -540,7 +573,7 @@ class Exoskeleton:
                          'FROM jobs ' +
                          'WHERE jobName = %s;',
                          job_name)
-        return(self.cur.fetchone()[0])
+        return self.cur.fetchone()[0]
 
     def job_mark_as_finished(self,
                              job_name: str):
