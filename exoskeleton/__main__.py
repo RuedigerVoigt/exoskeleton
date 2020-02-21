@@ -60,7 +60,7 @@ class Exoskeleton:
                  filename_prefix: str = ''):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.8.1 (beta / Feb 18, 2020)')
+        logging.info('You are using exoskeleton 0.8.2 (beta / Feb 21, 2020)')
 
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
@@ -566,9 +566,23 @@ class Exoskeleton:
         self.cur.execute('SELECT finished FROM jobs ' +
                          'WHERE jobName = %s;',
                          job_name)
-        job_state = self.cur.fetchone()[0]
-        if not job_state:
-            raise RuntimeError('Job already finished!')
+        job_state = self.cur.fetchone()
+        # If the job does not exist at all, then MariaDB returns None.
+        # If the job exists, but the finished field has a value of NULL,
+        # then MariaDB returns (None,)
+        try:
+            job_state = job_state[0]
+        except TypeError:
+            # Occurs if the the result was None, i.e. the job
+            # does not exist.
+            raise ValueError('Job is unknown!')
+
+        if job_state is not None:
+            # i.e. the finished field is not empty
+            raise RuntimeError(f"Job already finished at {job_state}.")
+
+        # The job exists and is not finished. So return the currentUrl,
+        # or - in case that is not defined - the startUrl value.
         self.cur.execute('SELECT COALESCE(currentUrl, startUrl) ' +
                          'FROM jobs ' +
                          'WHERE jobName = %s;',
