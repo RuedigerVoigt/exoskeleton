@@ -7,7 +7,24 @@ import hashlib
 import logging
 import re
 from typing import Union
+from urllib.parse import urlparse
 
+def check_url_format(url: str) -> bool:
+    u"""Very basic check if the URL has a supported scheme and
+    fulfills basic conditions ("LGTM"). Will not try to connect
+    at this point."""
+    parsed = urlparse(url)
+    if parsed.scheme == '':
+        logging.error('The URL has no scheme like http or https')
+        return False
+    elif parsed.scheme not in ('http', 'https'):
+        logging.error('Scheme %s not supported.', parsed.scheme)
+        return False
+    elif parsed.netloc == '':
+        logging.error('URL is missing or malformed.')
+        return False
+    else:
+        return True
 
 def check_email_format(mailaddress: Union[str, None]) -> bool:
     u"""Very basic check if the email address has a valid format

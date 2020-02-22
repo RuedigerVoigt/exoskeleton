@@ -513,9 +513,13 @@ class Exoskeleton:
                        start_url: str):
         u""" Create a new crawl job identified by it name and an url
         to start crawling. """
-        if job_name == '' or job_name is None:
-            raise ValueError
+        # no check for None or '' here as it is a required argument
+
         job_name = job_name.strip()
+        # the job_name may have consisted only of whitespace_
+        if job_name == '':
+            raise ValueError('Provide a valid job_name')
+
         if len(job_name) > 127:
             raise ValueError('Invalid job name: maximum 127 characters.')
 
@@ -672,6 +676,11 @@ class Exoskeleton:
         # Excess whitespace might be common (copy and paste)
         # and would change the hash:
         url = url.strip()
+
+        if not checks.check_url_format(url):
+            logging.error('Could not add URL %s : invalid or unsupported',
+                          url)
+            return
 
         # check if the file already has been processed
         self.cur.execute('SElECT id FROM fileMaster ' +

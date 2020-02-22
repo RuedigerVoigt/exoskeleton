@@ -82,5 +82,17 @@ class BotTest(unittest.TestCase):
         self.assertRaises(ValueError, communication.send_mail, 'recipient@example.com', 'sender@example.com', 'subject', '')
         self.assertRaises(ValueError, communication.send_mail, 'recipient@example.com', 'sender@example.com', 'subject', None)
 
+    def  test_check_url_format(self):
+        # missing scheme
+        self.assertFalse(checks.check_url_format('noscheme.example.com'))
+        # unsuported scheme
+        self.assertFalse(checks.check_url_format('ftp://example.com'))
+        # scheme with typo (one instead of two slashes)
+        self.assertFalse(checks.check_url_format('https:/example.com'))
+        # valid URLs
+        self.assertTrue(checks.check_url_format('https://example.com'))
+        self.assertTrue(checks.check_url_format('https://subdomain.example.com'))
+        self.assertTrue(checks.check_url_format('https://example.com/index.php?id=42'))
+
 if __name__ == "__main__":
     unittest.main()
