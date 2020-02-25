@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 
 # 3rd party libraries:
 import pymysql
+import urllib3
 import requests
 
 # import other modules of this framework
@@ -330,6 +331,14 @@ class Exoskeleton:
             logging.error('Connection Error', exc_info=True)
             self.__update_host_statistics(url, False)
             raise
+
+        except urllib3.exceptions.NewConnectionError:
+            logging.error('New Connection Error: might be a rate limit', exc_info=True)
+            self.__update_host_statistics(url, False)
+            if self.WAIT_MIN < 10.0:
+                self.WAIT_MIN = self.WAIT_MIN + 1.0
+                self.WAIT_MAX = self.WAIT_MAX + 1.0
+                logging.info('Increased min and max wait by 1 second each.')
 
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain the ' +
