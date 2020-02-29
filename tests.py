@@ -7,6 +7,7 @@ import unittest
 
 from exoskeleton import checks as checks
 from exoskeleton import communication as communication
+from exoskeleton import helpers as helpers
 from exoskeleton import utils as utils
 
 class BotTest(unittest.TestCase):
@@ -93,6 +94,28 @@ class BotTest(unittest.TestCase):
         self.assertTrue(checks.check_url_format('https://example.com'))
         self.assertTrue(checks.check_url_format('https://subdomain.example.com'))
         self.assertTrue(checks.check_url_format('https://example.com/index.php?id=42'))
+
+    def test_date_en_long_to_iso(self):
+        # valid input:
+        self.assertEqual(helpers.date_en_long_to_iso('Jul. 4, 1776'), '1776-07-04')
+        self.assertEqual(helpers.date_en_long_to_iso('May 8, 1945'), '1945-05-08')
+        self.assertEqual(helpers.date_en_long_to_iso('May 08, 1945'), '1945-05-08')
+        self.assertEqual(helpers.date_en_long_to_iso('October 3, 1990'), '1990-10-03')
+        self.assertEqual(helpers.date_en_long_to_iso('November 03, 2020'), '2020-11-03')
+        # messed up whitespace:
+        self.assertEqual(helpers.date_en_long_to_iso('Jul. 4,      1776'), '1776-07-04')
+        self.assertEqual(helpers.date_en_long_to_iso('Jul. 4,1776'), '1776-07-04')
+        self.assertEqual(helpers.date_en_long_to_iso('   Jul. 4, 1776  '), '1776-07-04')
+        self.assertEqual(helpers.date_en_long_to_iso('Jul.    4, 1776'), '1776-07-04')
+        # grammatically incorrect, but clear:
+        self.assertEqual(helpers.date_en_long_to_iso('May 8th, 1945'), '1945-05-08')
+        # upper and lower case:
+        self.assertEqual(helpers.date_en_long_to_iso('jul. 4, 1776'), '1776-07-04')
+        self.assertEqual(helpers.date_en_long_to_iso('JUL. 4, 1776'), '1776-07-04')
+        # leap year:
+        self.assertEqual(helpers.date_en_long_to_iso('February 29, 2020'), '2020-02-29')
+        # non-existing date:
+        self.assertRaises(ValueError, helpers.date_en_long_to_iso, 'February 30, 2020')
 
 if __name__ == "__main__":
     unittest.main()
