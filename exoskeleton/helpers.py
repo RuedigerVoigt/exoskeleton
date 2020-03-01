@@ -10,13 +10,23 @@ import re
 from typing import Union
 
 
-def check_date_validity(year: int,
-                        month: int,
-                        day: int) -> bool:
+def check_date_validity(year: Union[int, str],
+                        month: Union[int, str],
+                        day: Union[int, str]) -> bool:
     u"""Check if a date is valid i.e exists in the calendar. """
+    try:
+        # int() will convert something like '01' to 1
+        year = int(year)
+        month = int(month)
+        day = int(day)
+    except ValueError:
+        logging.error('Could not convert date parts to integer.')
+        return False
+
     try:
         datetime.datetime(year, month, day)
     except ValueError:
+        logging.error('Provided date does not exist in the calendar.')
         return False
     return True
 
@@ -58,7 +68,7 @@ def date_en_long_to_iso(date_string: str) -> str:
         'Dec.': '12'
         }
     matchMonth = months[str(matchMonth).lower().capitalize()]
-    if check_date_validity(int(matchYear), int(matchMonth), int(matchDay)):
+    if check_date_validity(matchYear, matchMonth, matchDay):
         return(f"{matchYear}-{matchMonth}-{matchDay}")
     else:
         raise ValueError('Provided date is invalid.')
