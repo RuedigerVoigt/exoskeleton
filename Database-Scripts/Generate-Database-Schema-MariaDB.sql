@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS actions (
 
 INSERT INTO actions (id, description) VALUES
 (1, 'download file to disk'),
-(2, 'save page code into database');
+(2, 'save page code into database'),
+(3, 'save as PDF using headless Chrome');
 
 
 ALTER TABLE `queue`

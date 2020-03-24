@@ -14,6 +14,7 @@ import logging
 import os
 import queue
 import random
+import subprocess
 import time
 from typing import Union
 from urllib.parse import urlparse
@@ -59,7 +60,8 @@ class Exoskeleton:
                  milestone_num: int = None,
                  target_directory: str = None,
                  queue_stop_on_empty: bool = False,
-                 filename_prefix: str = ''):
+                 filename_prefix: str = '',
+                 chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
         logging.info('You are using exoskeleton 0.8.2 (beta / Feb 21, 2020)')
@@ -161,6 +163,8 @@ class Exoskeleton:
         self.local_download_queue = queue.Queue() # type: queue.Queue
 
         self.MAX_PATH_LENGTH = 255
+
+        self.chrome_process = chrome_name.strip()
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # SETTINGS
@@ -366,6 +370,70 @@ class Exoskeleton:
                            queue_id: int):
         u"""Retrieve a page and store it's content to the database. """
         self.__get_object(queue_id, 'content', url, url_hash)
+
+    def __page_to_pdf(self,
+                      url: str,
+                      url_hash: str,
+                      queue_id: int):
+        u""" Uses the Google Chrome browser in headless mode
+        to print the page to PDF and stores that."""
+        # Using headless Chrome instead of Selenium for the following
+        # reasons:
+        # * The user does not need to install and update a version of
+        #   chromedriver matching the browser.
+        # * It is faster.
+        # * It does not open a GUI.
+        # * Selenium has no built in command for PDF export, but needs
+        #   to operate the dialog. That is far more likely to break.
+
+        if self.chrome_process is None:
+            raise ValueError('You must provide the name of the Chrome process to use this.')
+        filename = f"{self.FILE_PREFIX}{queue_id}.pdf"
+        # TO Do: more generic pathhandling
+        path = f"{self.TARGET_DIR}/{filename}"
+
+        try:
+            # Using the subprocess module as it is part of the
+            # standard library and set up to replace os.system
+            # and os.spawn!
+            subprocess.run([self.chrome_process,
+                            "--headless",
+                            "--new-windows",
+                            "--disable-gpu",
+                            # No additional quotation marks around the path:
+                            # subprocess does the necessary escaping!
+                            f"--print-to-pdf={path}",
+                            url],
+                           shell=False,
+                           timeout=30,
+                           check=True)
+
+            hash_value = None
+            if self.HASH_METHOD:
+                hash_value = utils.get_file_hash(path,
+                                                 self.HASH_METHOD)
+            logging.debug('PDF of page saved to disk')
+            try:
+                self.cur.callproc('insert_file_SP',
+                                  (url, url_hash, queue_id, 'application/pdf',
+                                   self.TARGET_DIR, filename,
+                                   utils.get_file_size(path),
+                                   self.HASH_METHOD, hash_value))
+            except pymysql.DatabaseError:
+                self.cnt['transaction_fail'] += 1
+                logging.error('Transaction failed: Could not add already ' +
+                              'downloaded file %s to the database!',
+                              filename)
+            self.cnt['processed'] += 1
+            self.__update_host_statistics(url, True)
+        except subprocess.TimeoutExpired:
+            logging.error('Cannot create PDF due to timeout.')
+            self.__update_host_statistics(url, False)
+        except subprocess.CalledProcessError:
+            logging.error('Cannot create PDF due to process error.',
+                          exc_info=True)
+        except:
+            pass
 
     def return_page_code(self,
                          url: str):
@@ -663,14 +731,20 @@ class Exoskeleton:
     def add_file_download(self,
                           url: str,
                           labels: set = None):
-        u"""add a file download URL to the queue """
+        u"""Add a file download URL to the queue """
         self.add_to_queue(url, 1, labels)
 
     def add_save_page_code(self,
                            url: str,
                            labels: set = None):
-        u""" add an URL to the queue to save it's HTML code into the database."""
+        u"""Add an URL to the queue to save it's HTML code into the database."""
         self.add_to_queue(url, 2, labels)
+
+    def add_page_to_pdf(self,
+                        url: str,
+                        labels: set = None):
+        u"""Add an URL to the queue to print it to PDF with headless Chrome. """
+        self.add_to_queue(url, 3, labels)
 
     def add_to_queue(self,
                      url: str,
@@ -679,7 +753,7 @@ class Exoskeleton:
         u""" More general function to add items to queue. Called by
         add_file_download and add_save_page_code."""
 
-        if action not in (1, 2):
+        if action not in (1, 2, 3):
             logging.error('Invalid value for action to take!')
             return
 
@@ -811,6 +885,9 @@ class Exoskeleton:
                 elif action == 2:
                     # save page code into database
                     self.store_page_content(url, url_hash, queue_id)
+                elif action == 3:
+                    # headless Chrome to create PDF
+                    self.__page_to_pdf(url, url_hash, queue_id)
                 else:
                     logging.error('Unknown action id!')
 
