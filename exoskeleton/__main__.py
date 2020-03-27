@@ -843,12 +843,39 @@ class Exoskeleton:
         if error in (429, 500, 503):
             self.add_crawl_delay_to_item(queue_id, 600)
 
+    def __get_next_task(self):
+        u""" get the next suitable task"""
+        self.cur.execute('CALL next_queue_object_SP();')
+        return self.cur.fetchone()
+
     def process_queue(self):
         u"""Process the queue"""
         while True:
-            # get the next suitable task
-            self.cur.execute('CALL next_queue_object_SP();')
-            next_in_queue = self.cur.fetchone()
+            try:
+                next_in_queue = self.__get_next_task()
+            except pymysql.err.OperationalError as e:
+                if e.args[0] == 2013: # errno
+                    logging.error('Lost connection to database server. Trying to restore it...')
+                    time.sleep(10) # this error is unusual. Give the db some time
+                    try:
+                        self.establish_db_connection()
+                        self.cur = self.connection.cursor()
+                        next_in_queue = self.__get_next_task()
+                        logging.info('Succesfully restored connection to database server!')
+                    except:
+                        logging.error('Could not reestablish database server connection!')
+                        if self.MAIL_SEND:
+                            subject = f"{self.PROJECT}: bot ABORTED"
+                            content = ("The bot lost the database connection and " +
+                                       "could not restore it.")
+                            communication.send_mail(self.MAIL_ADMIN,
+                                                    self.MAIL_SENDER,
+                                                    subject, content)
+                        raise ConnectionError('Lost DB connection and could not restore it.')
+                else:
+                    logging.error('Unexpected Operational Error', exc_info=True)
+                    raise
+
             if next_in_queue is None:
                 # no actionable item in the queue
                 if self.QUEUE_STOP_IF_EMPTY:
@@ -858,7 +885,8 @@ class Exoskeleton:
                     num_temp_errors = self.cur.fetchone()[0]
                     if num_temp_errors > 0:
                         # there is still something to do, but not now
-                        logging.debug("Tasks with temporary erros: waiting %s seconds until next try.",
+                        logging.debug("Tasks with temporary errors: " +
+                                      "waiting %s seconds until next try.",
                                       self.QUEUE_REVISIT)
                         time.sleep(self.QUEUE_REVISIT)
                         continue

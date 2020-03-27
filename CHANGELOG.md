@@ -1,6 +1,11 @@
 # Changelog / History
 
-## version 0.8.2 (2020-02-21)
+## upcoming version 0.9.0 beta
+
+* Add Ability to store any webpage as PDF file using headless Chrome.
+* Restore lost database connection after timeout.
+
+## version 0.8.2 beta (2020-02-21)
 
 * Bugfix in job_get_current_url()
 
