@@ -569,3 +569,30 @@ END $$
 
 
 DELIMITER ;
+
+
+
+-- ----------------------------------------------------------
+-- FUNCTIONS
+-- ----------------------------------------------------------
+
+
+DELIMITER $$
+CREATE PROCEDURE next_queue_object_SP ()
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+
+    SELECT
+    id
+    ,action
+    ,url
+    ,urlHash
+    FROM queue
+    WHERE causesError IS NULL AND
+    (delayUntil IS NULL OR delayUntil < NOW())
+    ORDER BY addedToQueue ASC
+    LIMIT 1;
+
+END$$
+DELIMITER ;

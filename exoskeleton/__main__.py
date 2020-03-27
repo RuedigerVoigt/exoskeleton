@@ -376,7 +376,9 @@ class Exoskeleton:
                       url_hash: str,
                       queue_id: int):
         u""" Uses the Google Chrome browser in headless mode
-        to print the page to PDF and stores that."""
+        to print the page to PDF and stores that.
+        Beware: some cookie-popups blank out the page and
+        all what is stored is the dialogue."""
         # Using headless Chrome instead of Selenium for the following
         # reasons:
         # * The user does not need to install and update a version of
@@ -400,6 +402,7 @@ class Exoskeleton:
                             "--headless",
                             "--new-windows",
                             "--disable-gpu",
+                            "--account-consistency",
                             # No additional quotation marks around the path:
                             # subprocess does the necessary escaping!
                             f"--print-to-pdf={path}",
@@ -844,16 +847,7 @@ class Exoskeleton:
         u"""Process the queue"""
         while True:
             # get the next suitable task
-            self.cur.execute('SELECT ' +
-                             '  id' +
-                             '  ,action' +
-                             '  ,url ' +
-                             '  ,urlHash ' +
-                             'FROM queue ' +
-                             'WHERE causesError IS NULL AND ' +
-                             '(delayUntil IS NULL OR delayUntil < NOW()) ' +
-                             'ORDER BY addedToQueue ASC ' +
-                             'LIMIT 1;')
+            self.cur.execute('CALL next_queue_object_SP();')
             next_in_queue = self.cur.fetchone()
             if next_in_queue is None:
                 # empty queue: either full stop or wait for new tasks
