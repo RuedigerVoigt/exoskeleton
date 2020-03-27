@@ -572,10 +572,6 @@ DELIMITER ;
 
 
 
--- ----------------------------------------------------------
--- FUNCTIONS
--- ----------------------------------------------------------
-
 
 DELIMITER $$
 CREATE PROCEDURE next_queue_object_SP ()
@@ -596,3 +592,19 @@ BEGIN
 
 END$$
 DELIMITER ;
+
+
+CREATE FUNCTION num_items_with_temporary_errors ()
+-- Some errors are only temporary. So before the bot stops,
+-- those have to be counted.
+RETURNS INTEGER
+RETURN(SELECT COUNT(*) FROM queue WHERE causesError IN (
+    SELECT id FROM exo.errorType WHERE permanent = 0)
+    );
+
+CREATE FUNCTION num_items_with_permanent_error ()
+-- Count the number of errors the bot cannot resolve.
+RETURNS INTEGER
+RETURN(SELECT COUNT(*) FROM queue WHERE causesError IN (
+    SELECT id FROM exo.errorType WHERE permanent = 1)
+    );

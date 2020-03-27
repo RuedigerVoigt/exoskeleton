@@ -850,19 +850,38 @@ class Exoskeleton:
             self.cur.execute('CALL next_queue_object_SP();')
             next_in_queue = self.cur.fetchone()
             if next_in_queue is None:
-                # empty queue: either full stop or wait for new tasks
+                # no actionable item in the queue
                 if self.QUEUE_STOP_IF_EMPTY:
-                    logging.info('Queue empty. Bot stops as configured to do.')
-                    subject = f"{self.PROJECT}: queue empty / bot stopped"
-                    content = (f"The queue is empty. The bot {self.PROJECT} " +
-                               f"stopped as configured.")
+                    # Bot is configured to stop if queue is empty
+                    # => check if that is omnly temporary or everything is done
+                    self.cur.execute('SELECT num_items_with_temporary_errors();')
+                    num_temp_errors = self.cur.fetchone()[0]
+                    if num_temp_errors > 0:
+                        # there is still something to do, but not now
+                        logging.debug("Tasks with temporary erros: waiting %s seconds until next try.",
+                                      self.QUEUE_REVISIT)
+                        time.sleep(self.QUEUE_REVISIT)
+                        continue
+                    else:
+                        # Nothing to do left
+                        logging.info('Queue empty. Bot stops as configured to do.')
+
+                        self.cur.execute('SELECT num_items_with_permanent_error();')
+                        num_permanent_errors = self.cur.fetchone()[0]
+                        if num_permanent_errors > 0:
+                            logging.error("%s permanent errors!", num_permanent_errors)
+
                     if self.MAIL_SEND:
+                        subject = f"{self.PROJECT}: queue empty / bot stopped"
+                        content = (f"The queue is empty. The bot {self.PROJECT} " +
+                                   f"stopped as configured. " +
+                                   f"{num_permanent_errors} errors.")
                         communication.send_mail(self.MAIL_ADMIN,
                                                 self.MAIL_SENDER,
                                                 subject, content)
                     break
                 else:
-                    logging.debug("Queue empty. Waiting %s seconds until next check",
+                    logging.debug("No actionable task: waiting %s seconds until next check",
                                   self.QUEUE_REVISIT)
                     time.sleep(self.QUEUE_REVISIT)
                     continue
