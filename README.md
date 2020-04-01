@@ -1,14 +1,17 @@
 # Exoskeleton
 
-For my dissertation I download hundreds of thousands of documents and feed them into a ML system. Using a 1 Gbit/s connection is helpful, but carries the risk to run a involuntary denial-of-service attack on the servers that provide the documents.
+For my dissertation I downloaded hundreds of thousands of documents and feed them into a machine learning pipeline. Using a high-speed-connection is helpful but carries the risk to run an involuntary denial-of-service attack on the servers that provide those documents. This creates a need for a crawler / scraper that avoids too high loads on the connection and instead runs permanently and fault tolerant to ultimately download all files.
 
-That creates a need for a crawler / scraper that avoids too high loads on the connection, but runs permanently and fault tolerant to ultimately download all files.
-
-Exoskeleton is a python framework that aims for that goal. It has five main functionalities:
-* Managing a download queue within a SQL database.
-* Working through that queue by downloading files to disk and page source code into a database table.
+Exoskeleton is a python framework that aims to help you a similar bot. Main functionalities are:
+* Managing a download queue within a MariaDB database.
 * Avoid processing the same URL more than once.
-* Assigning labels to downloads, so they can be found and grouped easily.
+* Working through that queue by either
+    * downloading files to disk,
+    * storing the page source code into a database table,
+    * or making PDF-copies of webpages.
+* Managing already downloaded files:
+    * Storing multiple versions of a specific file.
+    * Assigning labels to downloads, so they can be found and grouped easily.
 * Sending progress reports to the admin.
 
 To analyze the content of a page I recommend the [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/ "beautiful soup project homepage") package.
@@ -17,7 +20,7 @@ To analyze the content of a page I recommend the [Beautiful Soup](https://www.cr
 
 *Please take note that exoskeleton’s development status is "beta version".* This means it may still contain some bugs and some commands could change with one of the next releases.
 
-1. Exoskeleton requires a database backend. Create a separate database for your project and create the necessary tables. You find scripts to create them on the GitHub project page within the folder named [Database-Scripts](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts)
+1. Exoskeleton requires MariaDB as a database backend. Create a separate database for your project and create the necessary tables. You find scripts to create them on the GitHub project page within the folder named [Database-Scripts](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts).
 2. Create a database user with read / write / update rights for this database. The crawler will use it to access and manage the queue. That account needs no permissions on other database and therefore should not have them.
 3. Install exoskeleton using `pip` or `pip3`. For example: `pip install exoskeleton`. You may consider using a [virtualenv](https://virtualenv.pypa.io/en/latest/userguide/ "Documentation").
 4. Exoskeleton sets reasonable defaults, but you have to set at least some parameters. See the code examples below.
