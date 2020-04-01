@@ -12,6 +12,7 @@ from collections import Counter
 import errno
 import logging
 import os
+import pathlib
 import queue
 import random
 import subprocess
@@ -130,8 +131,9 @@ class Exoskeleton:
 
         self.cnt = Counter() # type: Counter
 
-        self.TARGET_DIR = os.getcwd()
+        self.TARGET_DIR = pathlib.Path.cwd()
 
+        target_directory = target_directory.strip()
         if target_directory is None or target_directory == '':
             logging.warning("Target directory is not set. " +
                             "Using the current working directory " +
@@ -141,9 +143,8 @@ class Exoskeleton:
             # Assuming that if a directory was set, it has
             # to be used. Therefore no fallback to the current
             # working directory.
-            target_directory = target_directory.strip()
-            if os.path.isdir(target_directory):
-                self.TARGET_DIR = target_directory
+            self.TARGET_DIR = pathlib.Path(target_directory).resolve()
+            if self.TARGET_DIR.is_dir():
                 logging.debug("Set target directory to %s",
                               target_directory)
             else:
@@ -251,8 +252,7 @@ class Exoskeleton:
                 name, ext = os.path.splitext(url)
                 new_filename = f"{self.FILE_PREFIX}{queue_id}{ext}"
 
-                # TO Do: more generic pathhandling
-                target_path = self.TARGET_DIR + '/' + new_filename
+                target_path = self.TARGET_DIR.joinpath(new_filename)
 
                 logging.debug('starting download of queue id %s', queue_id)
                 r = requests.get(url,
@@ -286,7 +286,7 @@ class Exoskeleton:
                     try:
                         self.cur.callproc('insert_file_SP',
                                           (url, url_hash, queue_id, mime_type,
-                                           self.TARGET_DIR, new_filename,
+                                           str(self.TARGET_DIR), new_filename,
                                            utils.get_file_size(target_path),
                                            self.HASH_METHOD, hash_value))
                     except pymysql.DatabaseError:
@@ -391,8 +391,7 @@ class Exoskeleton:
         if self.chrome_process is None:
             raise ValueError('You must provide the name of the Chrome process to use this.')
         filename = f"{self.FILE_PREFIX}{queue_id}.pdf"
-        # TO Do: more generic pathhandling
-        path = f"{self.TARGET_DIR}/{filename}"
+        path = self.TARGET_DIR.joinpath(filename)
 
         try:
             # Using the subprocess module as it is part of the
@@ -419,7 +418,7 @@ class Exoskeleton:
             try:
                 self.cur.callproc('insert_file_SP',
                                   (url, url_hash, queue_id, 'application/pdf',
-                                   self.TARGET_DIR, filename,
+                                   str(self.TARGET_DIR), filename,
                                    utils.get_file_size(path),
                                    self.HASH_METHOD, hash_value))
             except pymysql.DatabaseError:
@@ -427,6 +426,8 @@ class Exoskeleton:
                 logging.error('Transaction failed: Could not add already ' +
                               'downloaded file %s to the database!',
                               filename)
+            except:
+                logging.error('Unknown exception', exc_info=True)
             self.cnt['processed'] += 1
             self.__update_host_statistics(url, True)
         except subprocess.TimeoutExpired:
@@ -884,15 +885,15 @@ class Exoskeleton:
                     self.cur.execute('SELECT num_items_with_temporary_errors();')
                     num_temp_errors = self.cur.fetchone()[0]
                     if num_temp_errors > 0:
-                        # there is still something to do, but not now
+                        # there are still tasks, but they have to wait
                         logging.debug("Tasks with temporary errors: " +
                                       "waiting %s seconds until next try.",
                                       self.QUEUE_REVISIT)
                         time.sleep(self.QUEUE_REVISIT)
                         continue
                     else:
-                        # Nothing to do left
-                        logging.info('Queue empty. Bot stops as configured to do.')
+                        # Nothing left
+                        logging.info('Queue empty. Bot stops as configured.')
 
                         self.cur.execute('SELECT num_items_with_permanent_error();')
                         num_permanent_errors = self.cur.fetchone()[0]
