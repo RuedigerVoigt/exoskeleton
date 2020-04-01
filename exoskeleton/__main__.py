@@ -11,7 +11,6 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 from collections import Counter
 import errno
 import logging
-import os
 import pathlib
 import queue
 import random
@@ -249,11 +248,6 @@ class Exoskeleton:
 
         try:
             if action_type == 'file':
-                name, ext = os.path.splitext(url)
-                new_filename = f"{self.FILE_PREFIX}{queue_id}{ext}"
-
-                target_path = self.TARGET_DIR.joinpath(new_filename)
-
                 logging.debug('starting download of queue id %s', queue_id)
                 r = requests.get(url,
                                  headers={"User-agent": str(self.USER_AGENT)},
@@ -273,6 +267,10 @@ class Exoskeleton:
                     mime_type = (r.headers.get('content-type')).split(';')[0] # type: ignore
 
                 if action_type == 'file':
+                    extension = utils.determine_file_extension(url, mime_type)
+                    new_filename = f"{self.FILE_PREFIX}{queue_id}{extension}"
+                    target_path = self.TARGET_DIR.joinpath(new_filename)
+
                     with open(target_path, 'wb') as file_handle:
                         for block in r.iter_content(1024):
                             file_handle.write(block)

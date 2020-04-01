@@ -54,6 +54,22 @@ class BotTest(unittest.TestCase):
         # containing dots
         self.assertTrue(checks.validate_aws_s3_bucket_name('iekoht9choofe.eixeeseizoo0iuzos1ibee.pae7ph'))
 
+    def test_determine_file_extension(self):
+        # URL hint matches server header
+        self.assertEqual(utils.determine_file_extension('https://www.example.com/example.pdf', 'application/pdf'), '.pdf')
+        # URL does not provide a hint, but the HTTP header does
+        self.assertEqual(utils.determine_file_extension('https://www.example.com/', 'text/html'), '.html')
+        # no server header, but hint in URL
+        self.assertEqual(utils.determine_file_extension('https://www.example.com/example.pdf', ''), '.pdf')
+        # no hint at all
+        self.assertEqual(utils.determine_file_extension('https://www.example.com/', ''), '.unknown')
+        # malformed server header and no hint in the URL
+        self.assertEqual(utils.determine_file_extension('https://www.example.com/', 'malformed/nonexist'), '.unknown')
+        # text/plain
+        self.assertEqual(utils.determine_file_extension('https://www.example.com/test.txt', 'text/plain'), '.txt')
+
+
+
     def test_convert_to_set(self):
         # single string with multiple characters
         # (wrong would be making each character into an element)
