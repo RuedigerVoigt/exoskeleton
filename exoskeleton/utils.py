@@ -5,20 +5,20 @@ u""" Utility functions to interact with files, ... """
 
 import hashlib
 import logging
-import os
+import pathlib
 
 
-def get_file_size(file_path: str) -> int:
+def get_file_size(file_path: pathlib.Path) -> int:
     u"""file size in bytes."""
     try:
         # TO DO: needs a path like object
-        return os.path.getsize(file_path)
+        return file_path.stat().st_size
     except:
         logging.error('Cannot get file size', exc_info=True)
         raise
 
 
-def get_file_hash(file_path: str,
+def get_file_hash(file_path: pathlib.Path,
                   method: str) -> str:
     u"""hash value for a file"""
 
