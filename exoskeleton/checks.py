@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-u""" A range of function to check correctness of parameters """
+u""" A range of function to check correctness
+     of settings and parameters """
 
 import hashlib
 import logging
@@ -90,6 +91,31 @@ def check_hash_algo(hash_method: Union[str, None]) -> Union[str, None]:
         raise ValueError('The hash method chosen  is NOT available ' +
                          'on this system! Update FILE_HASH_METHOD in the ' +
                          'settings table.')
+
+def check_connection_timeout(timeout: float) -> Union[float, int]:
+    u""" Connection timeout is set in the settings table.
+         Check if it is reasonable."""
+
+    if timeout is None:
+        logging.error('Setting CONNECTION_TIMEOUT is missing. '+
+                        'Fallback to 60 seconds.')
+        return 60
+
+    try:
+        if timeout <= 0:
+            logging.error('Negative or zero value for timeout. ' +
+                            'Fallback to 60 seconds.')
+            return 60
+        else:
+            if timeout > 120:
+                logging.info('Very high value for timeout: ' +
+                                '%s seconds', timeout)
+        logging.debug('Connection timeout set to %s s.', timeout)
+        return timeout
+    except TypeError:
+        logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
+                        'Fallback to 60 seconds.')
+        return 60
 
 def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
     u"""returns True if bucket name is well-formed for AWS S3 buckets

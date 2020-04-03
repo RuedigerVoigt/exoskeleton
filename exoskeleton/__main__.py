@@ -44,6 +44,8 @@ class Exoskeleton:
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-branches
 
+    MAX_PATH_LENGTH = 255
+
     def __init__(self,
                  database_name: str,
                  database_user: str,
@@ -69,13 +71,14 @@ class Exoskeleton:
         self.PROJECT = project_name.strip()
         self.USER_AGENT = bot_user_agent.strip()
 
-        self.DB_HOSTNAME = database_host.strip()
+        # ESTABLISH A DATABASE CONNECTION
+        self.db_hostname = database_host.strip()
 
-        self.DB_PORT = checks.validate_port(database_port)
-        self.DB_NAME = database_name.strip()
-        self.DB_USERNAME = database_user.strip()
-        self.DB_PASSPHRASE = database_passphrase.strip()
-        if self.DB_PASSPHRASE == '':
+        self.db_port = checks.validate_port(database_port)
+        self.db_name = database_name.strip()
+        self.db_username = database_user.strip()
+        self.db_passphrase = database_passphrase.strip()
+        if self.db_passphrase == '':
             logging.warning('No database passphrase provided.')
 
         self.connection = None
@@ -84,7 +87,7 @@ class Exoskeleton:
         self.check_table_existence()
         self.check_stored_procedures()
 
-        self.CONNECTION_TIMEOUT = self.get_connection_timeout()
+        self.CONNECTION_TIMEOUT = checks.check_connection_timeout(self.get_numeric_setting('CONNECTION_TIMEOUT'))
 
         self.HASH_METHOD = checks.check_hash_algo(self.get_setting('FILE_HASH_METHOD'))
 
@@ -107,12 +110,9 @@ class Exoskeleton:
         if self.MAIL_ADMIN and self.MAIL_SENDER:
             # needing both to send mails
             self.MAIL_SEND = True
-        elif self.MILESTONE:
-            logging.error('Cannot send mail when milestone is reached. ' +
-                          'Either sender or receiver for mails is missing.')
-        elif self.MAIL_FINISH_MSG:
-            logging.error('Cannot send mail when bot is done. ' +
-                          'Either sender or receiver for mails is missing.')
+        elif self.MILESTONE or self.MAIL_FINISH_MSG:
+            logging.error('Cannot send mail. Either sender or ' +
+                          'receiver for mails is missing.')
 
         self.QUEUE_MAX_RETRY = 3 # NOT YET IMPLEMENTET
         if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
@@ -154,15 +154,13 @@ class Exoskeleton:
 
         self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
 
-        self.FILE_PREFIX = filename_prefix.strip()
+        self.file_prefix = filename_prefix.strip()
 
         self.BOT_START = time.monotonic()
         self.PROCESS_TIME_START = time.process_time()
         logging.debug('started timer')
 
         self.local_download_queue = queue.Queue() # type: queue.Queue
-
-        self.MAX_PATH_LENGTH = 255
 
         self.chrome_process = chrome_name.strip()
 
@@ -196,32 +194,6 @@ class Exoskeleton:
         except ValueError:
             logging.error('Setting field %s contains non-numeric value.', key)
             return None
-
-    def get_connection_timeout(self) -> Union[float, int]:
-        u""" Connection timeout is set in the settings table. """
-
-        timeout = self.get_numeric_setting('CONNECTION_TIMEOUT')
-
-        if timeout is None:
-            logging.error('Setting CONNECTION_TIMEOUT is missing. '+
-                          'Fallback to 60 seconds.')
-            return 60
-
-        try:
-            if timeout <= 0:
-                logging.error('Negative or zero value for timeout. ' +
-                              'Fallback to 60 seconds.')
-                return 60
-            else:
-                if timeout > 120:
-                    logging.info('Very high value for timeout: ' +
-                                 '%s seconds', timeout)
-            logging.debug('Connection timeout set to %s s.', timeout)
-            return timeout
-        except TypeError:
-            logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
-                          'Fallback to 60 seconds.')
-            return 60
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -268,7 +240,7 @@ class Exoskeleton:
 
                 if action_type == 'file':
                     extension = utils.determine_file_extension(url, mime_type)
-                    new_filename = f"{self.FILE_PREFIX}{queue_id}{extension}"
+                    new_filename = f"{self.file_prefix}{queue_id}{extension}"
                     target_path = self.TARGET_DIR.joinpath(new_filename)
 
                     with open(target_path, 'wb') as file_handle:
@@ -388,7 +360,7 @@ class Exoskeleton:
 
         if self.chrome_process is None:
             raise ValueError('You must provide the name of the Chrome process to use this.')
-        filename = f"{self.FILE_PREFIX}{queue_id}.pdf"
+        filename = f"{self.file_prefix}{queue_id}.pdf"
         path = self.TARGET_DIR.joinpath(filename)
 
         try:
@@ -478,20 +450,20 @@ class Exoskeleton:
     def establish_db_connection(self):
         u"""Establish a connection to MariaDB """
 
-        if not (self.DB_HOSTNAME and
-                self.DB_PORT and
-                self.DB_NAME and
-                self.DB_USERNAME):
+        if not (self.db_hostname and
+                self.db_port and
+                self.db_name and
+                self.db_username):
 
             # give specific error messages:
             missing_params = []
-            if not self.DB_HOSTNAME:
+            if not self.db_hostname:
                 missing_params.append('hostname')
-            if not self.DB_PORT:
+            if not self.db_port:
                 missing_params.append('port')
-            if not self.DB_NAME:
+            if not self.db_name:
                 missing_params.append('database name')
-            if not self.DB_USERNAME:
+            if not self.db_username:
                 missing_params.append('username')
             # ... stop before connection try:
             raise ValueError('The following parameters were not supplied, ' +
@@ -500,11 +472,11 @@ class Exoskeleton:
 
         try:
             logging.debug('Trying to connect to database.')
-            self.connection = pymysql.connect(host=self.DB_HOSTNAME,
-                                              port=self.DB_PORT,
-                                              database=self.DB_NAME,
-                                              user=self.DB_USERNAME,
-                                              password=self.DB_PASSPHRASE,
+            self.connection = pymysql.connect(host=self.db_hostname,
+                                              port=self.db_port,
+                                              database=self.db_name,
+                                              user=self.db_username,
+                                              password=self.db_passphrase,
                                               autocommit=True)
 
             logging.info('Established database connection.')
@@ -565,7 +537,7 @@ class Exoskeleton:
         procedures_count = 0
         self.cur.execute('SELECT SPECIFIC_NAME FROM INFORMATION_SCHEMA.ROUTINES ' +
                          'WHERE ROUTINE_SCHEMA = %s;',
-                         self.DB_NAME)
+                         self.db_name)
         procedures = self.cur.fetchall()
         procedures_found = [item[0] for item in procedures]
         for procedure in expected_procedures:
