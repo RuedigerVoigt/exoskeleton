@@ -499,7 +499,7 @@ class Exoskeleton:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions', 'errorType', 'eventLog',
-                           'fileContent', 'fileMaster', 'fileVersions',
+                           'fileContent', 'fileMaster', 'fileVersions', 'jobs',
                            'labels', 'labelToMaster', 'labelToQueue', 'labelToVersion',
                            'queue', 'settings', 'statisticsHosts', 'storageTypes']
         tables_count = 0
@@ -532,6 +532,7 @@ class Exoskeleton:
                                'delete_from_queue_SP',
                                'insert_content_SP',
                                'insert_file_SP',
+                               'next_queue_object_SP',
                                'transfer_labels_from_queue_to_master_SP']
 
         procedures_count = 0
