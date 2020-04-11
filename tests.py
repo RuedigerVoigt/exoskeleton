@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import sys
 import unittest
 
 from exoskeleton import checks as checks
 from exoskeleton import communication as communication
 from exoskeleton import helpers as helpers
 from exoskeleton import utils as utils
+
 
 class BotTest(unittest.TestCase):
 
@@ -21,8 +20,8 @@ class BotTest(unittest.TestCase):
         self.assertFalse(checks.check_email_format('test@example.'))
 
     def test_check_hash_algo(self):
-        self.assertRaises(ValueError,checks.check_hash_algo, 'md5')
-        self.assertRaises(ValueError,checks.check_hash_algo, 'sha1')
+        self.assertRaises(ValueError, checks.check_hash_algo, 'md5')
+        self.assertRaises(ValueError, checks.check_hash_algo, 'sha1')
         self.assertEqual(checks.check_hash_algo('sha224'), 'sha224')
         self.assertEqual(checks.check_hash_algo('sha256'), 'sha256')
         self.assertEqual(checks.check_hash_algo('sha512'), 'sha512')
@@ -75,11 +74,11 @@ class BotTest(unittest.TestCase):
         # (wrong would be making each character into an element)
         self.assertEqual(utils.convert_to_set('abc'), {'abc'})
         # list with duplicates to set
-        self.assertEqual(utils.convert_to_set(['a','a','b','c']), {'a','b','c'})
+        self.assertEqual(utils.convert_to_set(['a', 'a', 'b', 'c']), {'a', 'b', 'c'})
         # tuple with duplicates
-        self.assertEqual(utils.convert_to_set(('a','a','b','c')), {'a','b','c'})
+        self.assertEqual(utils.convert_to_set(('a', 'a', 'b', 'c')), {'a', 'b', 'c'})
         # set should return unchanged
-        self.assertEqual(utils.convert_to_set({'a','b','c'}), {'a','b','c'})
+        self.assertEqual(utils.convert_to_set({'a', 'b', 'c'}), {'a', 'b', 'c'})
         # unsupported data type integer
         self.assertRaises(TypeError, utils.convert_to_set, 3)
 

@@ -17,11 +17,12 @@ setuptools.setup(
     url="https://github.com/RuedigerVoigt/exoskeleton",
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
-    install_requires=["requests", "pymysql"],
+    install_requires=["lxml", "pymysql", "requests", "urllib3"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",
