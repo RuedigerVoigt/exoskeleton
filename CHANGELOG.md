@@ -2,8 +2,15 @@
 
 ## upcoming version 0.9.0 beta
 
-* Add Ability to store any webpage as PDF file using headless Chrome.
+Features:
 * Restore lost database connection after timeout.
+* Add Ability to store any webpage as PDF file using headless Chrome.
+* Prettify HTML before storing it.
+* The content header is used to determine the file extension.
+
+Bugfixes:
+* Build process improved: with GitHub-Actions syntax checks and unit-tests are run for each build in Python 3.6, 3.7 and 3.8.
+
 
 ## version 0.8.2 beta (2020-02-21)
 

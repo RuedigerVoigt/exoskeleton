@@ -3,10 +3,15 @@
 
 u""" Utility functions to interact with files, ... """
 
+# python standard library:
 import hashlib
 import logging
 import mimetypes
 import pathlib
+
+# 3rd party libraries:
+from bs4 import BeautifulSoup
+import lxml
 
 
 def get_file_size(file_path: pathlib.Path) -> int:
@@ -109,3 +114,19 @@ def convert_to_set(convert_this: list) -> set:
         raise TypeError('The function calling this expects a set.')
 
     return new_set
+
+
+def prettify_html(content: str) -> str:
+    u"""Parse the HTML => add a document structure if needed
+        => Encode HTML-entities and the document as Unicode (UTF-8).
+        Only use for HTML, not XML."""
+
+    # Empty elements are not removed as they might
+    # be used to find specific elements within the tree.
+
+    content = BeautifulSoup(content, 'lxml').prettify()
+
+    # TO DO: Add functionality to add a base URL
+    # See issue #13.
+
+    return content

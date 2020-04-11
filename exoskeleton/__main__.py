@@ -9,7 +9,6 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 # python standard library:
 from collections import Counter
-import errno
 import logging
 import pathlib
 import queue
@@ -30,7 +29,6 @@ import exoskeleton.checks as checks
 import exoskeleton.communication as communication
 import exoskeleton.utils as utils
 import exoskeleton.helpers as helpers
-
 
 
 class Exoskeleton:
@@ -87,7 +85,8 @@ class Exoskeleton:
         self.check_table_existence()
         self.check_stored_procedures()
 
-        self.CONNECTION_TIMEOUT = checks.check_connection_timeout(self.get_numeric_setting('CONNECTION_TIMEOUT'))
+        self.CONNECTION_TIMEOUT = checks.check_connection_timeout(
+            self.get_numeric_setting('CONNECTION_TIMEOUT'))
 
         self.HASH_METHOD = checks.check_hash_algo(self.get_setting('FILE_HASH_METHOD'))
 
@@ -114,7 +113,7 @@ class Exoskeleton:
             logging.error('Cannot send mail. Either sender or ' +
                           'receiver for mails is missing.')
 
-        self.QUEUE_MAX_RETRY = 3 # NOT YET IMPLEMENTET
+        self.QUEUE_MAX_RETRY = 3  # NOT YET IMPLEMENTET
         if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
             self.QUEUE_MAX_RETRY = int(self.get_numeric_setting('QUEUE_MAX_RETRY'))
         self.QUEUE_REVISIT = 60.0
@@ -128,7 +127,7 @@ class Exoskeleton:
         if type(max_wait) in (int, float):
             self.WAIT_MAX = max_wait
 
-        self.cnt = Counter() # type: Counter
+        self.cnt = Counter()  # type: Counter
 
         self.TARGET_DIR = pathlib.Path.cwd()
 
@@ -160,7 +159,7 @@ class Exoskeleton:
         self.PROCESS_TIME_START = time.process_time()
         logging.debug('started timer')
 
-        self.local_download_queue = queue.Queue() # type: queue.Queue
+        self.local_download_queue = queue.Queue()  # type: queue.Queue
 
         self.chrome_process = chrome_name.strip()
 
@@ -176,7 +175,7 @@ class Exoskeleton:
                          'FROM settings ' +
                          'WHERE settingKey = %s;', key)
         try:
-            return self.cur.fetchone()[0] # type: ignore
+            return self.cur.fetchone()[0]  # type: ignore
         except TypeError:
             logging.error('Setting not available')
             return None
@@ -205,7 +204,8 @@ class Exoskeleton:
                      queue_id: int,
                      action_type: str,
                      url: str,
-                     url_hash: str):
+                     url_hash: str,
+                     prettify_html: bool = False):
         u""" Generic function to either download a file or store a page's content. """
         # pylint: disable=too-many-branches
         if not isinstance(queue_id, int):
@@ -217,6 +217,10 @@ class Exoskeleton:
         url = url.strip()
         if url_hash == '' or url_hash is None:
             raise ValueError('Missing url_hash')
+
+        if action_type != 'content' and prettify_html:
+            logging.error('Parameter prettify_html ignored ' +
+                          'because of wrong action_type.')
 
         try:
             if action_type == 'file':
@@ -269,13 +273,19 @@ class Exoskeleton:
 
                     detected_encoding = str(r.encoding)
                     logging.debug('detected encoding: %s', detected_encoding)
+
+                    page_content = r.text
+
+                    if mime_type == 'text/html' and prettify_html:
+                        page_content = utils.prettify_html(page_content)
+
                     try:
                         # Stored procedure saves the content,
                         # transfers the labels from the queue,
                         # and removes the queue item:
                         self.cur.callproc('insert_content_SP',
                                           (url, url_hash, queue_id,
-                                           mime_type, r.text))
+                                           mime_type, page_content))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
                         logging.error('Transaction failed: Could not add page code ' +
@@ -327,19 +337,6 @@ class Exoskeleton:
             self.__update_host_statistics(url, False)
             raise
 
-    def get_file(self,
-                 queue_id: int,
-                 url: str,
-                 url_hash: str):
-        u"""Download a file and save it in the specified folder."""
-        self.__get_object(queue_id, 'file', url, url_hash)
-
-    def store_page_content(self,
-                           url: str,
-                           url_hash: str,
-                           queue_id: int):
-        u"""Retrieve a page and store it's content to the database. """
-        self.__get_object(queue_id, 'content', url, url_hash)
 
     def __page_to_pdf(self,
                       url: str,
@@ -707,30 +704,39 @@ class Exoskeleton:
                           url: str,
                           labels: set = None):
         u"""Add a file download URL to the queue """
-        self.add_to_queue(url, 1, labels)
+        self.__add_to_queue(url, 1, labels)
 
     def add_save_page_code(self,
                            url: str,
-                           labels: set = None):
+                           labels: set = None,
+                           prettify_html: bool = False):
         u"""Add an URL to the queue to save it's HTML code into the database."""
-        self.add_to_queue(url, 2, labels)
+        self.__add_to_queue(url, 2, labels, prettify_html)
 
     def add_page_to_pdf(self,
                         url: str,
                         labels: set = None):
         u"""Add an URL to the queue to print it to PDF with headless Chrome. """
-        self.add_to_queue(url, 3, labels)
+        self.__add_to_queue(url, 3, labels)
 
-    def add_to_queue(self,
-                     url: str,
-                     action: int,
-                     labels: set = None):
+    def __add_to_queue(self,
+                       url: str,
+                       action: int,
+                       labels: set = None,
+                       prettify_html: bool = False):
         u""" More general function to add items to queue. Called by
-        add_file_download and add_save_page_code."""
+        add_file_download, add_save_page_code and add_page_to_pdf."""
 
         if action not in (1, 2, 3):
-            logging.error('Invalid value for action to take!')
+            logging.error('Invalid value for action!')
             return
+
+        prettify = 0
+        if prettify_html and action != 2:
+            logging.error('Option prettify_html not ' +
+                          'supported for this action.')
+        elif prettify_html:
+            prettify = 1
 
         # Excess whitespace might be common (copy and paste)
         # and would change the hash:
@@ -753,9 +759,9 @@ class Exoskeleton:
 
         try:
             # add the new element to the queue
-            self.cur.execute('INSERT INTO queue (action, url, urlHash) ' +
-                             'VALUES (%s, %s, SHA2(%s,256));',
-                             (action, url, url))
+            self.cur.execute('INSERT INTO queue (action, url, urlHash, prettifyHtml) ' +
+                             'VALUES (%s, %s, SHA2(%s,256), %s);',
+                             (action, url, url, prettify))
 
             # get the id in the queue
             self.cur.execute('SELECT id FROM queue ' +
@@ -891,13 +897,14 @@ class Exoskeleton:
                 action = next_in_queue[1]
                 url = next_in_queue[2]
                 url_hash = next_in_queue[3]
+                prettify_html = 1 if next_in_queue[4] == 1 else 0
 
                 if action == 1:
                     # download file to disk
-                    self.get_file(queue_id, url, url_hash)
+                    self.__get_object(queue_id, 'file', url, url_hash)
                 elif action == 2:
                     # save page code into database
-                    self.store_page_content(url, url_hash, queue_id)
+                    self.__get_object(queue_id, 'content', url, url_hash, prettify_html)
                 elif action == 3:
                     # headless Chrome to create PDF
                     self.__page_to_pdf(url, url_hash, queue_id)

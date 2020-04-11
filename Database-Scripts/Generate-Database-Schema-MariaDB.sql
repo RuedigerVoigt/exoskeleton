@@ -1,15 +1,15 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 0.8.1 of exoskeleton
+-- for version 0.8.1 beta of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
 -- This file generates the table structure needed for the
 -- exoskeleton framework in MariaDB.
--- For a documentation of the package, see:
+--
+-- For the current version and a documentation of the package,
+-- please see:
 -- https://github.com/RuedigerVoigt/exoskeleton
--- There you will also find scripts to create this table
--- structure in other dbms.
 --
 -- BEWARE: This should be run in an empty database as otherwise
 -- this script might alter existing tables!
@@ -24,11 +24,16 @@ USE `nameOfYourDatabase`;
 -- QUEUE
 --
 -- Needed by the bot to know what to do next.
+--
+-- IMPORTANT: The queue must not use an integer with auto-increment
+-- as an id.
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS queue (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,action TINYINT UNSIGNED
+    -- MySQL does not no the alias BOOLEAN, so stick to TINYINT:
+    ,prettifyHtml TINYINT UNSIGNED DEFAULT 0
     ,url TEXT NOT NULL
     ,urlHash CHAR(64) NOT NULL
     ,addedToQueue TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -143,8 +148,8 @@ CREATE TABLE IF NOT EXISTS storageTypes (
     ) ENGINE=InnoDB;
 
 INSERT INTO storageTypes (id, shortName, fullName) VALUES
-(1, 'local', 'Local Database'),
-(2, 'local', 'Local Filesystem'),
+(1, 'Database', 'Local Database'),
+(2, 'Filesystem', 'Local Filesystem'),
 (3, 'AWS', 'Amazon Web Services'),
 (4, 'GCP', 'Google Cloud Platform'),
 (5, 'Azure', 'Microsoft Azure'),
@@ -518,6 +523,11 @@ END $$
 
 
 
+-- --------------------------------------------------------
+-- insert_content_SP:
+--
+--
+-- --------------------------------------------------------
 DELIMITER $$
 CREATE PROCEDURE insert_content_SP (IN url_p TEXT,
                                     IN url_hash_p CHAR(64),
@@ -563,16 +573,17 @@ DECLARE EXIT HANDLER FOR sqlexception
     CALL transfer_labels_from_queue_to_master_SP(queueID_p, @fileMasterID);
 
     COMMIT;
-
 END $$
-
-
-
 DELIMITER ;
 
 
 
-
+-- --------------------------------------------------------
+-- next_queue_object_SP:
+-- A stored procedure to return the next object in the queue.
+-- It does not return URLs which are temoprarily blocked or
+-- cause errors.
+-- --------------------------------------------------------
 DELIMITER $$
 CREATE PROCEDURE next_queue_object_SP ()
 NOT DETERMINISTIC
@@ -584,6 +595,7 @@ BEGIN
     ,action
     ,url
     ,urlHash
+    ,prettifyHtml
     FROM queue
     WHERE causesError IS NULL AND
     (delayUntil IS NULL OR delayUntil < NOW())
