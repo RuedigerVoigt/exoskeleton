@@ -53,6 +53,7 @@ def get_file_hash(file_path: pathlib.Path,
                       'to get file hash', exc_info=True)
         raise
 
+
 def determine_file_extension(url: str,
                              provided_mime_type: str) -> str:
     u"""Guess the correct filename extension from an URL and / or

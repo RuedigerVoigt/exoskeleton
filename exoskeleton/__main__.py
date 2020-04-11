@@ -85,7 +85,7 @@ class Exoskeleton:
         self.check_table_existence()
         self.check_stored_procedures()
 
-        self.CONNECTION_TIMEOUT = checks.check_connection_timeout(
+        self.connection_timeout = checks.check_connection_timeout(
             self.get_numeric_setting('CONNECTION_TIMEOUT'))
 
         self.HASH_METHOD = checks.check_hash_algo(self.get_setting('FILE_HASH_METHOD'))
@@ -150,12 +150,11 @@ class Exoskeleton:
                               "supplied target directory! " +
                               "Create this directory or check permissions.")
 
-
         self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
 
         self.file_prefix = filename_prefix.strip()
 
-        self.BOT_START = time.monotonic()
+        self.bot_start = time.monotonic()
         self.PROCESS_TIME_START = time.process_time()
         logging.debug('started timer')
 
@@ -166,7 +165,6 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # SETTINGS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
     def get_setting(self,
                     key: str) -> Union[str, None]:
@@ -194,11 +192,9 @@ class Exoskeleton:
             logging.error('Setting field %s contains non-numeric value.', key)
             return None
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ACTIONS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
     def __get_object(self,
                      queue_id: int,
@@ -206,7 +202,8 @@ class Exoskeleton:
                      url: str,
                      url_hash: str,
                      prettify_html: bool = False):
-        u""" Generic function to either download a file or store a page's content. """
+        u""" Generic function to either download a file or
+             store a page's content. """
         # pylint: disable=too-many-branches
         if not isinstance(queue_id, int):
             raise ValueError('The queue_id must be an integer.')
@@ -227,20 +224,20 @@ class Exoskeleton:
                 logging.debug('starting download of queue id %s', queue_id)
                 r = requests.get(url,
                                  headers={"User-agent": str(self.USER_AGENT)},
-                                 timeout=self.CONNECTION_TIMEOUT,
+                                 timeout=self.connection_timeout,
                                  stream=True)
             elif action_type == 'content':
                 logging.debug('retrieving content of queue id %s', queue_id)
                 r = requests.get(url,
                                  headers={"User-agent": str(self.USER_AGENT)},
-                                 timeout=self.CONNECTION_TIMEOUT,
+                                 timeout=self.connection_timeout,
                                  stream=False
-                                )
+                                 )
 
             if r.status_code == 200:
                 mime_type = ''
                 if r.headers.get('content-type') is not None:
-                    mime_type = (r.headers.get('content-type')).split(';')[0] # type: ignore
+                    mime_type = (r.headers.get('content-type')).split(';')[0]  # type: ignore
 
                 if action_type == 'file':
                     extension = utils.determine_file_extension(url, mime_type)
@@ -265,9 +262,9 @@ class Exoskeleton:
                                            self.HASH_METHOD, hash_value))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
-                        logging.error('Transaction failed: Could not add already ' +
-                                      'downloaded file %s to the database!',
-                                      new_filename)
+                        logging.error('Transaction failed: Could not add ' +
+                                      'already downloaded file %s to the ' +
+                                      'database!', new_filename)
 
                 elif action_type == 'content':
 
@@ -288,8 +285,10 @@ class Exoskeleton:
                                            mime_type, page_content))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
-                        logging.error('Transaction failed: Could not add page code ' +
-                                      'of queue item %s to the database!', queue_id)
+                        logging.error('Transaction failed: Could not add ' +
+                                      'page code of queue item %s to ' +
+                                      'the database!',
+                                      queue_id)
 
                 self.cnt['processed'] += 1
                 self.__update_host_statistics(url, True)
@@ -318,7 +317,8 @@ class Exoskeleton:
             raise
 
         except urllib3.exceptions.NewConnectionError:
-            logging.error('New Connection Error: might be a rate limit', exc_info=True)
+            logging.error('New Connection Error: might be a rate limit',
+                          exc_info=True)
             self.__update_host_statistics(url, False)
             if self.WAIT_MIN < 10.0:
                 self.WAIT_MIN = self.WAIT_MIN + 1.0
@@ -326,9 +326,9 @@ class Exoskeleton:
                 logging.info('Increased min and max wait by 1 second each.')
 
         except requests.exceptions.MissingSchema:
-            logging.error('Missing Schema Exception. Does your URL contain the ' +
-                          'protocol i.e. http:// or https:// ? See queue_id = %s',
-                          queue_id)
+            logging.error('Missing Schema Exception. Does your URL contain ' +
+                          'the protocol i.e. http:// or https:// ? ' +
+                          'See queue_id = %s', queue_id)
             self.mark_error(queue_id, 1)
 
         except Exception:
@@ -336,7 +336,6 @@ class Exoskeleton:
                           'to download.', exc_info=True)
             self.__update_host_statistics(url, False)
             raise
-
 
     def __page_to_pdf(self,
                       url: str,
@@ -356,7 +355,8 @@ class Exoskeleton:
         #   to operate the dialog. That is far more likely to break.
 
         if self.chrome_process is None:
-            raise ValueError('You must provide the name of the Chrome process to use this.')
+            raise ValueError('You must provide the name of the Chrome ' +
+                             'process to use this.')
         filename = f"{self.file_prefix}{queue_id}.pdf"
         path = self.TARGET_DIR.joinpath(filename)
 
@@ -417,9 +417,9 @@ class Exoskeleton:
         try:
             r = requests.get(url,
                              headers={"User-agent": str(self.USER_AGENT)},
-                             timeout=self.CONNECTION_TIMEOUT,
+                             timeout=self.connection_timeout,
                              stream=False
-                            )
+                             )
 
             if r.status_code == 200:
                 return r.text
@@ -437,7 +437,8 @@ class Exoskeleton:
             raise
 
         except Exception:
-            logging.exception('Unknown exception while trying to get page-code', exc_info=True)
+            logging.exception('Exception while trying to get page-code',
+                              exc_info=True)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -495,17 +496,22 @@ class Exoskeleton:
     def check_table_existence(self) -> bool:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
-        expected_tables = ['actions', 'errorType', 'eventLog',
-                           'fileContent', 'fileMaster', 'fileVersions', 'jobs',
-                           'labels', 'labelToMaster', 'labelToQueue', 'labelToVersion',
-                           'queue', 'settings', 'statisticsHosts', 'storageTypes']
+        expected_tables = ['actions',
+                           'errorType', 'eventLog',
+                           'fileContent', 'fileMaster', 'fileVersions',
+                           'jobs',
+                           'labels', 'labelToMaster', 'labelToQueue',
+                           'labelToVersion',
+                           'queue',
+                           'settings', 'statisticsHosts', 'storageTypes']
         tables_count = 0
 
         self.cur.execute('SHOW TABLES;')
         tables = self.cur.fetchall()
         if not tables:
             logging.error('The database exists, but no tables found!')
-            raise OSError('Database table structure missing. Run generator script!')
+            raise OSError('Database table structure missing. ' +
+                          'Run generator script!')
         else:
             tables_found = [item[0] for item in tables]
             for table in expected_tables:
@@ -548,7 +554,8 @@ class Exoskeleton:
                               'permissions to use it.', procedure)
 
         if procedures_count != len(expected_procedures):
-            raise RuntimeError('Database Schema Incomplete: Missing Stored Procedures!')
+            raise RuntimeError('Database Schema Incomplete: ' +
+                               'Missing Stored Procedures!')
 
         logging.info("Found all expected stored procedures.")
         return True
@@ -556,7 +563,6 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # JOB MANAGEMENT
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
     def job_define_new(self,
                        job_name: str,
@@ -589,7 +595,8 @@ class Exoskeleton:
                              job_name)
             existing_start_url = self.cur.fetchone()[0]
             if existing_start_url == start_url:
-                logging.warning('A job with identical name and startURL is already defined.')
+                logging.warning('A job with identical name and startURL ' +
+                                'is already defined.')
             else:
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
@@ -611,11 +618,11 @@ class Exoskeleton:
         if affected_rows == 0:
             raise ValueError('A job with this name is not known.')
 
-
     def job_get_current_url(self,
                             job_name: str) -> str:
         u""" Returns the current URl for this job. If none is stored, this
-        returns the start URL. Raises exception if the job is already finished. """
+             returns the start URL. Raises exception if the job is already
+             finished."""
 
         self.cur.execute('SELECT finished FROM jobs ' +
                          'WHERE jobName = %s;',
@@ -667,7 +674,7 @@ class Exoskeleton:
         This is done to avoid to accidentially overload
         the queried host. Some host actually enforce
         limits through IP blocking."""
-        query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX) # nosec
+        query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX)  # nosec
         logging.debug("%s seconds delay until next action", query_delay)
         time.sleep(query_delay)
         return
@@ -677,11 +684,11 @@ class Exoskeleton:
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
-        return int(self.cur.fetchone()[0]) # type: ignore
+        return int(self.cur.fetchone()[0])  # type: ignore
 
     def absolute_run_time(self) -> float:
         u"""Return seconds since init. """
-        return time.monotonic() - self.BOT_START
+        return time.monotonic() - self.bot_start
 
     def get_process_time(self) -> float:
         u"""Return execution time since init"""
@@ -716,7 +723,8 @@ class Exoskeleton:
     def add_page_to_pdf(self,
                         url: str,
                         labels: set = None):
-        u"""Add an URL to the queue to print it to PDF with headless Chrome. """
+        u"""Add an URL to the queue to print it to PDF
+            with headless Chrome. """
         self.__add_to_queue(url, 3, labels)
 
     def __add_to_queue(self,
@@ -759,7 +767,8 @@ class Exoskeleton:
 
         try:
             # add the new element to the queue
-            self.cur.execute('INSERT INTO queue (action, url, urlHash, prettifyHtml) ' +
+            self.cur.execute('INSERT INTO queue ' +
+                             '(action, url, urlHash, prettifyHtml) ' +
                              'VALUES (%s, %s, SHA2(%s,256), %s);',
                              (action, url, url, prettify))
 
@@ -767,7 +776,7 @@ class Exoskeleton:
             self.cur.execute('SELECT id FROM queue ' +
                              'WHERE urlHash = SHA2(%s,256) ' +
                              'LIMIT 1;', url)
-            queue_id = self.cur.fetchone()[0] # type: ignore
+            queue_id = self.cur.fetchone()[0]  # type: ignore
 
             # link labels to queue item
             if labels:
@@ -782,13 +791,14 @@ class Exoskeleton:
             self.cur.execute('SELECT id FROM queue ' +
                              'WHERE urlHash = SHA2(%s,256) ' +
                              'LIMIT 1;', url)
-            queue_id = self.cur.fetchone()[0] # type: ignore
+            queue_id = self.cur.fetchone()[0]  # type: ignore
             # add possibly new labels
             self.assign_labels(queue_id, labels, 'queue')
 
     def delete_from_queue(self,
                           queue_id: int):
-        u"""Remove all label links from a queue item and then delete it from the queue."""
+        u"""Remove all label links from a queue item
+            and then delete it from the queue."""
         # callproc expects a tuple. Do not remove the comma.
         self.cur.callproc('delete_from_queue_SP', (queue_id, ))
 
@@ -832,26 +842,32 @@ class Exoskeleton:
             try:
                 next_in_queue = self.__get_next_task()
             except pymysql.err.OperationalError as e:
-                if e.args[0] == 2013: # errno
-                    logging.error('Lost connection to database server. Trying to restore it...')
-                    time.sleep(10) # this error is unusual. Give the db some time
+                if e.args[0] == 2013:  # errno
+                    logging.error('Lost connection to database server. ' +
+                                  'Trying to restore it...')
+                    # this error is unusual. Give the db some time:
+                    time.sleep(10)
                     try:
                         self.establish_db_connection()
                         self.cur = self.connection.cursor()
                         next_in_queue = self.__get_next_task()
-                        logging.info('Succesfully restored connection to database server!')
+                        logging.info('Succesfully restored connection ' +
+                                     'to database server!')
                     except:
-                        logging.error('Could not reestablish database server connection!')
+                        logging.error('Could not reestablish database ' +
+                                      'server connection!')
                         if self.MAIL_SEND:
                             subject = f"{self.PROJECT}: bot ABORTED"
-                            content = ("The bot lost the database connection and " +
-                                       "could not restore it.")
+                            content = ("The bot lost the database " +
+                                       "connection and could not restore it.")
                             communication.send_mail(self.MAIL_ADMIN,
                                                     self.MAIL_SENDER,
                                                     subject, content)
-                        raise ConnectionError('Lost DB connection and could not restore it.')
+                        raise ConnectionError('Lost DB connection and ' +
+                                              'could not restore it.')
                 else:
-                    logging.error('Unexpected Operational Error', exc_info=True)
+                    logging.error('Unexpected Operational Error',
+                                  exc_info=True)
                     raise
 
             if next_in_queue is None:
@@ -875,20 +891,21 @@ class Exoskeleton:
                         self.cur.execute('SELECT num_items_with_permanent_error();')
                         num_permanent_errors = self.cur.fetchone()[0]
                         if num_permanent_errors > 0:
-                            logging.error("%s permanent errors!", num_permanent_errors)
+                            logging.error("%s permanent errors!",
+                                          num_permanent_errors)
 
                     if self.MAIL_SEND:
                         subject = f"{self.PROJECT}: queue empty / bot stopped"
-                        content = (f"The queue is empty. The bot {self.PROJECT} " +
-                                   f"stopped as configured. " +
+                        content = (f"The queue is empty. The bot " +
+                                   f"{self.PROJECT} stopped as configured. " +
                                    f"{num_permanent_errors} errors.")
                         communication.send_mail(self.MAIL_ADMIN,
                                                 self.MAIL_SENDER,
                                                 subject, content)
                     break
                 else:
-                    logging.debug("No actionable task: waiting %s seconds until next check",
-                                  self.QUEUE_REVISIT)
+                    logging.debug("No actionable task: waiting %s seconds " +
+                                  "until next check", self.QUEUE_REVISIT)
                     time.sleep(self.QUEUE_REVISIT)
                     continue
             else:
@@ -904,7 +921,9 @@ class Exoskeleton:
                     self.__get_object(queue_id, 'file', url, url_hash)
                 elif action == 2:
                     # save page code into database
-                    self.__get_object(queue_id, 'content', url, url_hash, prettify_html)
+                    self.__get_object(queue_id, 'content',
+                                      url, url_hash,
+                                      prettify_html)
                 elif action == 3:
                     # headless Chrome to create PDF
                     self.__page_to_pdf(url, url_hash, queue_id)
@@ -1082,7 +1101,7 @@ class Exoskeleton:
                                      '(labelID, masterID) ' +
                                      'VALUES (%s, %s);', insert_list)
 
-            elif  target == 'version':
+            elif target == 'version':
                 self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
                                      '(labelID, versionID) ' +
                                      'VALUES (%s, %s);', insert_list)

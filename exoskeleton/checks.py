@@ -10,6 +10,7 @@ import re
 from typing import Union
 from urllib.parse import urlparse
 
+
 def check_url_format(url: str) -> bool:
     u"""Very basic check if the URL has a supported scheme and
     fulfills basic conditions ("LGTM"). Will not try to connect
@@ -26,6 +27,7 @@ def check_url_format(url: str) -> bool:
         return False
     else:
         return True
+
 
 def check_email_format(mailaddress: Union[str, None]) -> bool:
     u"""Very basic check if the email address has a valid format
@@ -92,30 +94,32 @@ def check_hash_algo(hash_method: Union[str, None]) -> Union[str, None]:
                          'on this system! Update FILE_HASH_METHOD in the ' +
                          'settings table.')
 
+
 def check_connection_timeout(timeout: float) -> Union[float, int]:
     u""" Connection timeout is set in the settings table.
          Check if it is reasonable."""
 
     if timeout is None:
-        logging.error('Setting CONNECTION_TIMEOUT is missing. '+
-                        'Fallback to 60 seconds.')
+        logging.error('Setting CONNECTION_TIMEOUT is missing. ' +
+                      'Fallback to 60 seconds.')
         return 60
 
     try:
         if timeout <= 0:
             logging.error('Negative or zero value for timeout. ' +
-                            'Fallback to 60 seconds.')
+                          'Fallback to 60 seconds.')
             return 60
         else:
             if timeout > 120:
                 logging.info('Very high value for timeout: ' +
-                                '%s seconds', timeout)
+                             '%s seconds', timeout)
         logging.debug('Connection timeout set to %s s.', timeout)
         return timeout
     except TypeError:
         logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
-                        'Fallback to 60 seconds.')
+                      'Fallback to 60 seconds.')
         return 60
+
 
 def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
     u"""returns True if bucket name is well-formed for AWS S3 buckets
@@ -142,7 +146,8 @@ def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
         # No need to check IPv6 as the colon is not an allowed character.
         logging.error('An AWS must not resemble an IP address.')
         return False
-    if re.match(r"([a-z0-9][a-z0-9\-]*[a-z0-9]\.)*[a-z0-9][a-z0-9\-]*[a-z0-9]", bucket_name):
+    if re.match(r"([a-z0-9][a-z0-9\-]*[a-z0-9]\.)*[a-z0-9][a-z0-9\-]*[a-z0-9]",
+                bucket_name):
         # must start with a lowercase letter or number
         # Bucket names must be a series of one or more labels.
         # Adjacent labels are separated by a single period (.).
