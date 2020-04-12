@@ -87,9 +87,6 @@ class Exoskeleton:
         self.check_table_existence()
         self.check_stored_procedures()
 
-        self.connection_timeout = checks.check_connection_timeout(
-            self.get_numeric_setting('CONNECTION_TIMEOUT'))
-
         self.hash_method = hash_method
         checks.check_hash_algo(self.hash_method)
 
@@ -174,12 +171,14 @@ class Exoskeleton:
         # Bot Behavior
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.QUEUE_MAX_RETRY = 3  # NOT YET IMPLEMENTET
-        if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
-            self.QUEUE_MAX_RETRY = int(self.get_numeric_setting('QUEUE_MAX_RETRY'))
+        # Maximum number of retries if downloading a page/file failed
+        self.queue_max_retries = 3  # NOT YET IMPLEMENTET
+
+        # Time to wait after the queue is empty to check for new elements:
         self.queue_revisit = 60.0
-        if self.get_numeric_setting('QUEUE_REVISIT') is not None:
-            self.queue_revisit = self.get_numeric_setting('QUEUE_REVISIT')
+
+        # Seconds until a connection times out:
+        self.connection_timeout = 60.0
 
         self.WAIT_MIN = 5.0
         if type(min_wait) in (int, float):
@@ -233,36 +232,6 @@ class Exoskeleton:
         self.local_download_queue = queue.Queue()  # type: queue.Queue
 
         self.chrome_process = chrome_name.strip()
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# SETTINGS
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def get_setting(self,
-                    key: str) -> Union[str, None]:
-        u""" Get setting from the database table by using the key. """
-        self.cur.execute('SELECT settingValue ' +
-                         'FROM settings ' +
-                         'WHERE settingKey = %s;', key)
-        try:
-            return self.cur.fetchone()[0]  # type: ignore
-        except TypeError:
-            logging.error('Setting not available')
-            return None
-
-    def get_numeric_setting(self,
-                            key: str) -> Union[float, None]:
-        u""" Get numeric setting. Raise ValueError if field's content
-        cannot be coerced into float. """
-        try:
-            setting_value = float(self.get_setting(key))
-            if setting_value is not None:
-                return setting_value
-            else:
-                raise ValueError
-        except ValueError:
-            logging.error('Setting field %s contains non-numeric value.', key)
-            return None
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ACTIONS

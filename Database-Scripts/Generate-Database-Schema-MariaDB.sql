@@ -269,27 +269,6 @@ CREATE TABLE IF NOT EXISTS statisticsHosts (
     ,INDEX(`firstSeen`)
 ) ENGINE=InnoDB;
 
-
-
--- ----------------------------------------------------------
--- SETTINGS
--- ----------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS settings (
-    settingKey VARCHAR(31) NOT NULL
-    -- not just "key" as this is reserved word
-    ,settingValue VARCHAR(63) NOT NULL
-    ,description VARCHAR(255) NULL
-    ,PRIMARY KEY(`settingKey`)
-    ) ENGINE=InnoDB;
-
-INSERT IGNORE INTO settings
-(settingKey, settingValue, description)
-VALUES
-('CONNECTION_TIMEOUT', '60','Seconds until a connection times out.'),
-('QUEUE_MAX_RETRY','3','NOT YET IMPLEMENTED: Int: Maximum number of retries if downloading a page/file failed.'),
-('QUEUE_REVISIT','60','Seconds: Time to wait after the queue is empty to check for new elements.');
-
 -- ----------------------------------------------------------
 -- LABELS
 -- ----------------------------------------------------------
