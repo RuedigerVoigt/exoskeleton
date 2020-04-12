@@ -22,9 +22,9 @@ class BotTest(unittest.TestCase):
     def test_check_hash_algo(self):
         self.assertRaises(ValueError, checks.check_hash_algo, 'md5')
         self.assertRaises(ValueError, checks.check_hash_algo, 'sha1')
-        self.assertEqual(checks.check_hash_algo('sha224'), 'sha224')
-        self.assertEqual(checks.check_hash_algo('sha256'), 'sha256')
-        self.assertEqual(checks.check_hash_algo('sha512'), 'sha512')
+        self.assertTrue(checks.check_hash_algo('sha224'))
+        self.assertTrue(checks.check_hash_algo('sha256'))
+        self.assertTrue(checks.check_hash_algo('sha512'))
         self.assertRaises(ValueError,
                           checks.check_hash_algo,
                           'NonExistentMethod')

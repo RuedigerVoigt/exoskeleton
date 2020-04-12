@@ -61,13 +61,14 @@ class Exoskeleton:
                  target_directory: str = None,
                  queue_stop_on_empty: bool = False,
                  filename_prefix: str = '',
+                 hash_method: str = 'sha256',
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
         logging.info('You are using exoskeleton 0.8.2 (beta / Feb 21, 2020)')
 
-        self.PROJECT = project_name.strip()
-        self.USER_AGENT = bot_user_agent.strip()
+        self.project = project_name.strip()
+        self.user_agent = bot_user_agent.strip()
 
         # ESTABLISH A DATABASE CONNECTION
         self.db_hostname = database_host.strip()
@@ -88,7 +89,8 @@ class Exoskeleton:
         self.connection_timeout = checks.check_connection_timeout(
             self.get_numeric_setting('CONNECTION_TIMEOUT'))
 
-        self.HASH_METHOD = checks.check_hash_algo(self.get_setting('FILE_HASH_METHOD'))
+        self.hash_method = hash_method
+        checks.check_hash_algo(self.hash_method)
 
         self.MAIL_START_MSG = True if self.get_setting('MAIL_START_MSG') == 'True' else False
         self.MAIL_FINISH_MSG = True if self.get_setting('MAIL_FINISH_MSG') == 'True' else False
@@ -116,9 +118,9 @@ class Exoskeleton:
         self.QUEUE_MAX_RETRY = 3  # NOT YET IMPLEMENTET
         if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
             self.QUEUE_MAX_RETRY = int(self.get_numeric_setting('QUEUE_MAX_RETRY'))
-        self.QUEUE_REVISIT = 60.0
+        self.queue_revisit = 60.0
         if self.get_numeric_setting('QUEUE_REVISIT') is not None:
-            self.QUEUE_REVISIT = self.get_numeric_setting('QUEUE_REVISIT')
+            self.queue_revisit = self.get_numeric_setting('QUEUE_REVISIT')
 
         self.WAIT_MIN = 5.0
         if type(min_wait) in (int, float):
@@ -222,13 +224,13 @@ class Exoskeleton:
             if action_type == 'file':
                 logging.debug('starting download of queue id %s', queue_id)
                 r = requests.get(url,
-                                 headers={"User-agent": str(self.USER_AGENT)},
+                                 headers={"User-agent": str(self.user_agent)},
                                  timeout=self.connection_timeout,
                                  stream=True)
             elif action_type == 'content':
                 logging.debug('retrieving content of queue id %s', queue_id)
                 r = requests.get(url,
-                                 headers={"User-agent": str(self.USER_AGENT)},
+                                 headers={"User-agent": str(self.user_agent)},
                                  timeout=self.connection_timeout,
                                  stream=False
                                  )
@@ -248,9 +250,9 @@ class Exoskeleton:
                             file_handle.write(block)
                         logging.debug('file written')
                         hash_value = None
-                        if self.HASH_METHOD:
+                        if self.hash_method:
                             hash_value = utils.get_file_hash(target_path,
-                                                             self.HASH_METHOD)
+                                                             self.hash_method)
 
                     logging.debug('file written to disk')
                     try:
@@ -258,7 +260,7 @@ class Exoskeleton:
                                           (url, url_hash, queue_id, mime_type,
                                            str(self.TARGET_DIR), new_filename,
                                            utils.get_file_size(target_path),
-                                           self.HASH_METHOD, hash_value))
+                                           self.hash_method, hash_value))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
                         logging.error('Transaction failed: Could not add ' +
@@ -377,16 +379,16 @@ class Exoskeleton:
                            check=True)
 
             hash_value = None
-            if self.HASH_METHOD:
+            if self.hash_method:
                 hash_value = utils.get_file_hash(path,
-                                                 self.HASH_METHOD)
+                                                 self.hash_method)
             logging.debug('PDF of page saved to disk')
             try:
                 self.cur.callproc('insert_file_SP',
                                   (url, url_hash, queue_id, 'application/pdf',
                                    str(self.TARGET_DIR), filename,
                                    utils.get_file_size(path),
-                                   self.HASH_METHOD, hash_value))
+                                   self.hash_method, hash_value))
             except pymysql.DatabaseError:
                 self.cnt['transaction_fail'] += 1
                 logging.error('Transaction failed: Could not add already ' +
@@ -415,7 +417,7 @@ class Exoskeleton:
 
         try:
             r = requests.get(url,
-                             headers={"User-agent": str(self.USER_AGENT)},
+                             headers={"User-agent": str(self.user_agent)},
                              timeout=self.connection_timeout,
                              stream=False
                              )
@@ -538,7 +540,8 @@ class Exoskeleton:
                                'transfer_labels_from_queue_to_master_SP']
 
         procedures_count = 0
-        self.cur.execute('SELECT SPECIFIC_NAME FROM INFORMATION_SCHEMA.ROUTINES ' +
+        self.cur.execute('SELECT SPECIFIC_NAME ' +
+                         'FROM INFORMATION_SCHEMA.ROUTINES ' +
                          'WHERE ROUTINE_SCHEMA = %s;',
                          self.db_name)
         procedures = self.cur.fetchall()
@@ -716,7 +719,8 @@ class Exoskeleton:
                            url: str,
                            labels: set = None,
                            prettify_html: bool = False):
-        u"""Add an URL to the queue to save it's HTML code into the database."""
+        u"""Add an URL to the queue to save it's HTML code
+            into the database."""
         self.__add_to_queue(url, 2, labels, prettify_html)
 
     def add_page_to_pdf(self,
@@ -856,7 +860,7 @@ class Exoskeleton:
                         logging.error('Could not reestablish database ' +
                                       'server connection!')
                         if self.MAIL_SEND:
-                            subject = f"{self.PROJECT}: bot ABORTED"
+                            subject = f"{self.project}: bot ABORTED"
                             content = ("The bot lost the database " +
                                        "connection and could not restore it.")
                             communication.send_mail(self.MAIL_ADMIN,
@@ -880,8 +884,8 @@ class Exoskeleton:
                         # there are still tasks, but they have to wait
                         logging.debug("Tasks with temporary errors: " +
                                       "waiting %s seconds until next try.",
-                                      self.QUEUE_REVISIT)
-                        time.sleep(self.QUEUE_REVISIT)
+                                      self.queue_revisit)
+                        time.sleep(self.queue_revisit)
                         continue
                     else:
                         # Nothing left
@@ -894,9 +898,9 @@ class Exoskeleton:
                                           num_permanent_errors)
 
                     if self.MAIL_SEND:
-                        subject = f"{self.PROJECT}: queue empty / bot stopped"
+                        subject = f"{self.project}: queue empty / bot stopped"
                         content = (f"The queue is empty. The bot " +
-                                   f"{self.PROJECT} stopped as configured. " +
+                                   f"{self.project} stopped as configured. " +
                                    f"{num_permanent_errors} errors.")
                         communication.send_mail(self.MAIL_ADMIN,
                                                 self.MAIL_SENDER,
@@ -904,8 +908,8 @@ class Exoskeleton:
                     break
                 else:
                     logging.debug("No actionable task: waiting %s seconds " +
-                                  "until next check", self.QUEUE_REVISIT)
-                    time.sleep(self.QUEUE_REVISIT)
+                                  "until next check", self.queue_revisit)
+                    time.sleep(self.queue_revisit)
                     continue
             else:
                 # got a task from the queue
@@ -966,7 +970,7 @@ class Exoskeleton:
                              str(processed))
 
             if self.MAIL_SEND:
-                subject = (f"{self.PROJECT} Milestone reached: " +
+                subject = (f"{self.project} Milestone reached: " +
                            f"{self.cnt['processed']} processed")
                 content = (f"{self.cnt['processed']} processed.\n" +
                            f"{self.num_items_in_queue()} items " +

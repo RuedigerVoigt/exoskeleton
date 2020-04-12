@@ -49,8 +49,8 @@ def get_file_hash(file_path: pathlib.Path,
                       'Cannot calculate hash.', exc_info=True)
         raise
     except:
-        logging.error('Unknown exception while trying ' +
-                      'to get file hash', exc_info=True)
+        logging.error('Exception while trying to get file hash',
+                      exc_info=True)
         raise
 
 

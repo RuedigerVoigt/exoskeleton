@@ -66,33 +66,30 @@ def validate_port(port_number: Union[int, None]) -> int:
         raise ValueError('Port has to be an integer.')
 
 
-def check_hash_algo(hash_method: Union[str, None]) -> Union[str, None]:
-    u"""Checks if the supplied hash algo is available and supported."""
+def check_hash_algo(hash_method: Union[str, None]) -> bool:
+    u"""Checks if the supplied hashing algorithm is available
+        and supported. Will raise an exception if not."""
 
-    # Has a method been set?
     if hash_method == '' or hash_method is None:
-        logging.warning('No hash method set. Will not ' +
-                        'calculate file hashes.')
-        return None
+        # switch off calculating hashes
+        logging.warning('No hash method set. Will *not* ' +
+                        'calculate file hashes!')
+        return False
 
     # Is the chosen method available and supported?
     hash_method = hash_method.strip()
     if hash_method in hashlib.algorithms_available:
-        logging.debug('Chosen hashing method is available on the system.')
         if hash_method in ('md5', 'sha1'):
             raise ValueError('The supplied hash method %s is deprecated ' +
                              ' and NOT supported by exoskelton!')
         elif hash_method in ('sha224', 'sha256', 'sha512'):
-            logging.info('Hash method set to %s', hash_method)
-            return hash_method
+            logging.info('File hash method set to %s', hash_method)
+            return True
         else:
             raise ValueError('The supplied hash method is available on ' +
-                             'the system, but NOT (yet) supported ' +
-                             'by exoskelton!')
+                             'the system, but NOT supported by exoskelton!')
     else:
-        raise ValueError('The hash method chosen  is NOT available ' +
-                         'on this system! Update FILE_HASH_METHOD in the ' +
-                         'settings table.')
+        raise ValueError('Chosen hash method NOT available on this system!')
 
 
 def check_connection_timeout(timeout: float) -> Union[float, int]:
@@ -141,19 +138,20 @@ def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
     if not re.match(r"^[a-z0-9\-\.]*$", bucket_name):
         logging.error('The AWS bucket name contains invalid characters.')
         return False
-    if re.match(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}", bucket_name):
+    if re.match(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}",
+                bucket_name):
         # Check if the bucket name resembles an IPv4 address.
         # No need to check IPv6 as the colon is not an allowed character.
         logging.error('An AWS must not resemble an IP address.')
         return False
     if re.match(r"([a-z0-9][a-z0-9\-]*[a-z0-9]\.)*[a-z0-9][a-z0-9\-]*[a-z0-9]",
                 bucket_name):
-        # must start with a lowercase letter or number
+        # Must start with a lowercase letter or number
         # Bucket names must be a series of one or more labels.
         # Adjacent labels are separated by a single period (.).
         # Each label must start and end with a lowercase letter or a number.
-        # => Adopted the answer provided by Zak (zero or more labels followed by
-        # a dot) found here:
+        # => Adopted the answer provided by Zak (zero or more labels
+        # followed by a dot) found here:
         # https://stackoverflow.com/questions/50480924
         return True
 
