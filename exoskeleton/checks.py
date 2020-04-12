@@ -30,8 +30,7 @@ def check_url_format(url: str) -> bool:
 
 
 def check_email_format(mailaddress: Union[str, None]) -> bool:
-    u"""Very basic check if the email address has a valid format
-    and returns it as is except if it is obviously false."""
+    u"""Very basic check if the email address has a valid format."""
 
     if mailaddress is None or mailaddress == '':
         logging.warning('No mail address supplied.')

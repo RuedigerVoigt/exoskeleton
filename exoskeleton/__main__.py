@@ -9,6 +9,7 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 # python standard library:
 from collections import Counter
+from collections import defaultdict
 import logging
 import pathlib
 import queue
@@ -54,10 +55,7 @@ class Exoskeleton:
                  bot_user_agent: str = 'BOT (http://www.example.com)',
                  min_wait: float = 5.0,
                  max_wait: float = 20.0,
-                 mail_server: str = 'localhost',
-                 mail_admin: str = None,
-                 mail_sender: str = None,
-                 milestone_num: int = None,
+                 mail_settings: dict = None,
                  target_directory: str = None,
                  queue_stop_on_empty: bool = False,
                  filename_prefix: str = '',
@@ -70,7 +68,10 @@ class Exoskeleton:
         self.project = project_name.strip()
         self.user_agent = bot_user_agent.strip()
 
-        # ESTABLISH A DATABASE CONNECTION
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Establish a Database Connection
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         self.db_hostname = database_host.strip()
 
         self.db_port = checks.validate_port(database_port)
@@ -92,28 +93,86 @@ class Exoskeleton:
         self.hash_method = hash_method
         checks.check_hash_algo(self.hash_method)
 
-        self.MAIL_START_MSG = True if self.get_setting('MAIL_START_MSG') == 'True' else False
-        self.MAIL_FINISH_MSG = True if self.get_setting('MAIL_FINISH_MSG') == 'True' else False
-        self.MILESTONE = None
-        if isinstance(milestone_num, int):
-            self.MILESTONE = milestone_num
-        elif milestone_num is not None:
-            raise ValueError
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Mail / Notification Setup
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.MAIL_ADMIN = None
-        if checks.check_email_format(mail_admin):
-            self.MAIL_ADMIN = mail_admin.strip()
-        self.MAIL_SENDER = None
-        if checks.check_email_format(mail_sender):
-            self.MAIL_SENDER = mail_sender.strip()
+        self.send_mails = False
+        # Check if notifications *can* be send:
 
-        self.MAIL_SEND = False
-        if self.MAIL_ADMIN and self.MAIL_SENDER:
-            # needing both to send mails
-            self.MAIL_SEND = True
-        elif self.MILESTONE or self.MAIL_FINISH_MSG:
-            logging.error('Cannot send mail. Either sender or ' +
-                          'receiver for mails is missing.')
+        if mail_settings is None:
+            logging.info("Will not send any notification emails " +
+                         "as there are no settings.")
+        else:
+            # Check whether it is a dict and if there are unknown keys:
+            try:
+                known_mail_keys = ('mail_server', 'mail_admin', 'mail_sender',
+                                   'send_start_msg', 'send_finish_msg',
+                                   'milestone_num')
+                found_keys = mail_settings.keys()
+                for key in found_keys:
+                    if key not in known_mail_keys:
+                        raise ValueError('Unknown key in mailsettings: %s',
+                                         key)
+            except AttributeError:
+                raise AttributeError('mail_settings must be a dictionary!')
+
+            # Not all keys must be there. defaultdict lets us provide
+            # default values for those missing!
+
+            self.mail_server = mail_settings.get('mail_server', 'localhost')
+
+            self.mail_admin = mail_settings.get('mail_admin', None)
+            if self.mail_admin:
+                if not checks.check_email_format(self.mail_admin):
+                    raise ValueError('mail_admin is not a valid email!')
+            else:
+                raise ValueError('Need mail_admin in mail_settings ' +
+                                 'to send notification mails!')
+
+            self.mail_sender = mail_settings.get('mail_sender', None)
+            if self.mail_sender:
+                if not checks.check_email_format(self.mail_sender):
+                    raise ValueError('mail_sender is not a valid email!')
+            else:
+                raise ValueError('Need mail_sender in mail_settings ' +
+                                 'to send notification mails!')
+
+            # At this point it should be technically possible to send mails.
+            self.send_mails = True
+            logging.info('This bot will send notications per mail if ' +
+                         'should ever fail.')
+
+            self.send_start_msg = mail_settings.get('send_start_msg', False)
+            if not isinstance(self.send_start_msg, bool):
+                raise ValueError('Value for send_start_msg must be boolean,' +
+                                 'i.e True / False (without quotation marks).')
+            if self.send_start_msg:
+                communication.send_mail(self.mail_admin,
+                                        self.mail_sender,
+                                        f"{self.project}: bot just started.",
+                                        "This is a notification to check " +
+                                        "the mail settings.")
+                logging.info("Just send a notification email. If the " +
+                             "receiving server uses greylisting, " +
+                             "this may take some minutes.")
+
+            self.send_finish_msg = mail_settings.get('send_finish_msg', False)
+            if not isinstance(self.send_finish_msg, bool):
+                raise ValueError('Value for send_finish_msg must be boolean,' +
+                                 'i.e True / False (without quotation marks).')
+            if self.send_finish_msg:
+                logging.info("Will send notification email as soon " +
+                             "the bot is done.")
+
+            self.milestone = mail_settings.get('milestone_num', None)
+            if self.milestone is not None:
+                if not isinstance(self.milestone, int):
+                    raise ValueError('milestone_num must be integer!')
+
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Bot Behavior
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.QUEUE_MAX_RETRY = 3  # NOT YET IMPLEMENTET
         if self.get_numeric_setting('QUEUE_MAX_RETRY') is not None:
@@ -129,7 +188,11 @@ class Exoskeleton:
         if type(max_wait) in (int, float):
             self.WAIT_MAX = max_wait
 
-        self.cnt = Counter()  # type: Counter
+        self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
+
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # File Handling
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.TARGET_DIR = pathlib.Path.cwd()
 
@@ -151,13 +214,21 @@ class Exoskeleton:
                               "supplied target directory! " +
                               "Create this directory or check permissions.")
 
-        self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
-
         self.file_prefix = filename_prefix.strip()
 
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Init Timers
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
         self.bot_start = time.monotonic()
-        self.PROCESS_TIME_START = time.process_time()
-        logging.debug('started timer')
+        self.process_time_start = time.process_time()
+        logging.debug('started timers')
+
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Create Objects
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        self.cnt = Counter()  # type: Counter
 
         self.local_download_queue = queue.Queue()  # type: queue.Queue
 
@@ -694,7 +765,7 @@ class Exoskeleton:
 
     def get_process_time(self) -> float:
         u"""Return execution time since init"""
-        return time.process_time() - self.PROCESS_TIME_START
+        return time.process_time() - self.process_time_start
 
     def estimate_remaining_time(self) -> float:
         u"""estimate remaining seconds to finish crawl."""
@@ -859,12 +930,12 @@ class Exoskeleton:
                     except:
                         logging.error('Could not reestablish database ' +
                                       'server connection!')
-                        if self.MAIL_SEND:
+                        if self.send_mails:
                             subject = f"{self.project}: bot ABORTED"
                             content = ("The bot lost the database " +
                                        "connection and could not restore it.")
-                            communication.send_mail(self.MAIL_ADMIN,
-                                                    self.MAIL_SENDER,
+                            communication.send_mail(self.mail_admin,
+                                                    self.mail_sender,
                                                     subject, content)
                         raise ConnectionError('Lost DB connection and ' +
                                               'could not restore it.')
@@ -897,13 +968,13 @@ class Exoskeleton:
                             logging.error("%s permanent errors!",
                                           num_permanent_errors)
 
-                    if self.MAIL_SEND:
+                    if self.send_mails:
                         subject = f"{self.project}: queue empty / bot stopped"
                         content = (f"The queue is empty. The bot " +
                                    f"{self.project} stopped as configured. " +
                                    f"{num_permanent_errors} errors.")
-                        communication.send_mail(self.MAIL_ADMIN,
-                                                self.MAIL_SENDER,
+                        communication.send_mail(self.mail_admin,
+                                                self.mail_sender,
                                                 subject, content)
                     break
                 else:
@@ -933,7 +1004,7 @@ class Exoskeleton:
                 else:
                     logging.error('Unknown action id!')
 
-                if self.MILESTONE:
+                if self.milestone:
                     self.check_milestone()
 
                 # wait some interval to avoid overloading the server
@@ -964,12 +1035,12 @@ class Exoskeleton:
         u""" Check if milestone is reached. In case,
         send mail (if configured so)."""
         processed = self.cnt['processed']
-        if isinstance(self.MILESTONE, int):
-            if processed % self.MILESTONE == 0:
+        if isinstance(self.milestone, int):
+            if processed % self.milestone == 0:
                 logging.info("Milestone reached: %s processed",
                              str(processed))
 
-            if self.MAIL_SEND:
+            if self.send_mails:
                 subject = (f"{self.project} Milestone reached: " +
                            f"{self.cnt['processed']} processed")
                 content = (f"{self.cnt['processed']} processed.\n" +
@@ -977,13 +1048,13 @@ class Exoskeleton:
                            f"remaining in the queue.\n" +
                            f"Estimated time to complete queue: " +
                            f"{self.estimate_remaining_time()} seconds.\n")
-                communication.send_mail(self.MAIL_ADMIN,
-                                        self.MAIL_SENDER,
+                communication.send_mail(self.mail_admin,
+                                        self.mail_sender,
                                         subject, content)
 
             return True
 
-        elif isinstance(self.MILESTONE, list):
+        elif isinstance(self.milestone, list):
             logging.error("Feature not yet implemented")
             return False
         else:
