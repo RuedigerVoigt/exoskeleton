@@ -131,8 +131,7 @@ class Exoskeleton:
 
         self.TARGET_DIR = pathlib.Path.cwd()
 
-        target_directory = target_directory.strip()
-        if target_directory is None or target_directory == '':
+        if target_directory is None or target_directory.strip() == '':
             logging.warning("Target directory is not set. " +
                             "Using the current working directory " +
                             "%s to store files!",
@@ -1045,7 +1044,7 @@ class Exoskeleton:
 
     def assign_labels(self,
                       object_id: int,
-                      labels: set,
+                      labels: Union[set, None],
                       target: str):
         u""" Assigns one or multiple labels either to an item
         in the master, the queue or a version.
