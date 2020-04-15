@@ -48,13 +48,11 @@ class Exoskeleton:
     def __init__(self,
                  database_settings: dict,
                  target_directory: str,
-                 project_name: str = 'Bot',
-                 bot_user_agent: str = 'BOT (http://www.example.com)',
-                 min_wait: float = 5.0,
-                 max_wait: float = 20.0,
-                 mail_settings: dict = None,
-                 queue_stop_on_empty: bool = False,
                  filename_prefix: str = '',
+                 project_name: str = 'Bot',
+                 bot_user_agent: str = 'Bot',
+                 bot_behavior: dict = None,
+                 mail_settings: dict = None,
                  hash_method: str = 'sha256',
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
@@ -112,23 +110,20 @@ class Exoskeleton:
         # Bot Behavior
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        # Maximum number of retries if downloading a page/file failed
-        self.queue_max_retries = 3  # NOT YET IMPLEMENTET
-
-        # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit = 60.0
-
         # Seconds until a connection times out:
-        self.connection_timeout = 60.0
+        self.connection_timeout = None
 
-        self.WAIT_MIN = 5.0
-        if type(min_wait) in (int, float):
-            self.WAIT_MIN = min_wait
-        self.WAIT_MAX = 20.0
-        if type(max_wait) in (int, float):
-            self.WAIT_MAX = max_wait
+        # Maximum number of retries if downloading a page/file failed:
+        self.queue_max_retries = None
+        # Time to wait after the queue is empty to check for new elements:
+        self.queue_revisit = None
 
-        self.QUEUE_STOP_IF_EMPTY = queue_stop_on_empty
+        self.wait_min = None
+        self.wait_max = None
+
+        self.stop_if_queue_empty = None
+
+        self.__check_behavior_settings(bot_behavior)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # File Handling
@@ -221,6 +216,58 @@ class Exoskeleton:
         if self.db_passphrase == '':
             logging.warning('No database passphrase provided. ' +
                             'Will try to connect without.')
+
+    def __check_behavior_settings(self,
+                                  behavior_settings: dict):
+        u"""Check the settings for bot behavior. """
+
+        known_behavior_keys = ('connection_timeout',
+                               'queue_max_retries',
+                               'queue_revisit',
+                               'stop_if_queue_empty',
+                               'wait_min',
+                               'wait_max')
+
+        try:
+            found_behavior_keys = behavior_settings.keys()
+            for key in found_behavior_keys:
+                if key not in known_behavior_keys:
+                    raise ValueError(f"Unknown key '{key}' " +
+                                     f"in behavior_settings")
+        except AttributeError:
+            raise AttributeError('The parameter behavior_settings must ' +
+                                 'be a dictionary!')
+
+        self.connection_timeout = behavior_settings.get('connection_timeout',
+                                                        60.0)
+        if type(self.connection_timeout) not in (int, float):
+            raise ValueError('The value for connection_timeout ' +
+                             'must be numeric.')
+
+        self.wait_min = behavior_settings.get('wait_min', 5.0)
+        if type(self.wait_min) not in (int, float):
+            raise ValueError('The value for wait_min must be numeric.')
+        self.wait_max = behavior_settings.get('wait_max', 30.0)
+        if type(self.wait_max) not in (int, float):
+            raise ValueError('The value for wait_max must be numeric.')
+
+        self.queue_max_retries = behavior_settings.get('queue_max_retries', 3)  # NOT YET IMPLEMENTET
+        if type(self.queue_max_retries) != int:
+            raise ValueError('The value for queue_max_retries ' +
+                             'must be an integer.')
+
+        self.queue_revisit = behavior_settings.get('queue_revisit', 60)
+        try:
+            self.queue_revisit = int(self.queue_revisit)
+        except ValueError:
+            raise ValueError('The value for queue_revisit must be numeric.')
+
+        self.stop_if_queue_empty = behavior_settings.get(
+            'stop_if_queue_empty',
+            False)
+        if type(self.stop_if_queue_empty) != bool:
+            raise ValueError('The value for "stop_if_queue_empty" ' +
+                             'must be a boolean (True / False).')
 
     def __check_mail_settings(self,
                               mail_settings: dict):
@@ -951,7 +998,7 @@ class Exoskeleton:
 
             if next_in_queue is None:
                 # no actionable item in the queue
-                if self.QUEUE_STOP_IF_EMPTY:
+                if self.stop_if_queue_empty:
                     # Bot is configured to stop if queue is empty
                     # => check if that is omnly temporary or everything is done
                     self.cur.execute('SELECT num_items_with_temporary_errors();')
