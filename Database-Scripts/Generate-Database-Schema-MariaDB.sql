@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS queue (
     ,urlHash CHAR(64) NOT NULL
     ,addedToQueue TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,causesError INT NULL
-    ,retries INT NULL
+    ,numTries INT 0
     ,delayUntil TIMESTAMP NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`action`)

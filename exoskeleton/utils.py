@@ -19,7 +19,7 @@ def get_file_size(file_path: pathlib.Path) -> int:
     try:
         # TO DO: needs a path like object
         return file_path.stat().st_size
-    except:
+    except Exception:
         logging.error('Cannot get file size', exc_info=True)
         raise
 
@@ -48,7 +48,7 @@ def get_file_hash(file_path: pathlib.Path,
         logging.error('File not found or path not readable. ' +
                       'Cannot calculate hash.', exc_info=True)
         raise
-    except:
+    except Exception:
         logging.error('Exception while trying to get file hash',
                       exc_info=True)
         raise

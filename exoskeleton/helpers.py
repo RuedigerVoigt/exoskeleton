@@ -30,6 +30,7 @@ def check_date_validity(year: Union[int, str],
         return False
     return True
 
+
 def date_en_long_to_iso(date_string: str) -> str:
     u""" Changes long format English date to short form date. """
     date_string = date_string.strip()
@@ -72,4 +73,3 @@ def date_en_long_to_iso(date_string: str) -> str:
         return(f"{matchYear}-{matchMonth}-{matchDay}")
     else:
         raise ValueError('Provided date is invalid.')
-

@@ -129,19 +129,19 @@ class Exoskeleton:
         # File Handling
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.TARGET_DIR = pathlib.Path.cwd()
+        self.target_dir = pathlib.Path.cwd()
 
         if target_directory is None or target_directory.strip() == '':
             logging.warning("Target directory is not set. " +
                             "Using the current working directory " +
                             "%s to store files!",
-                            self.TARGET_DIR)
+                            self.target_dir)
         else:
             # Assuming that if a directory was set, it has
             # to be used. Therefore no fallback to the current
             # working directory.
-            self.TARGET_DIR = pathlib.Path(target_directory).resolve()
-            if self.TARGET_DIR.is_dir():
+            self.target_dir = pathlib.Path(target_directory).resolve()
+            if self.target_dir.is_dir():
                 logging.debug("Set target directory to %s",
                               target_directory)
             else:
@@ -456,7 +456,7 @@ class Exoskeleton:
                 if action_type == 'file':
                     extension = utils.determine_file_extension(url, mime_type)
                     new_filename = f"{self.file_prefix}{queue_id}{extension}"
-                    target_path = self.TARGET_DIR.joinpath(new_filename)
+                    target_path = self.target_dir.joinpath(new_filename)
 
                     with open(target_path, 'wb') as file_handle:
                         for block in r.iter_content(1024):
@@ -471,7 +471,7 @@ class Exoskeleton:
                     try:
                         self.cur.callproc('insert_file_SP',
                                           (url, url_hash, queue_id, mime_type,
-                                           str(self.TARGET_DIR), new_filename,
+                                           str(self.target_dir), new_filename,
                                            utils.get_file_size(target_path),
                                            self.hash_method, hash_value))
                     except pymysql.DatabaseError:
@@ -534,9 +534,9 @@ class Exoskeleton:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
             self.__update_host_statistics(url, False)
-            if self.WAIT_MIN < 10.0:
-                self.WAIT_MIN = self.WAIT_MIN + 1.0
-                self.WAIT_MAX = self.WAIT_MAX + 1.0
+            if self.wait_min < 10.0:
+                self.wait_min = self.wait_min + 1.0
+                self.wait_max = self.wait_max + 1.0
                 logging.info('Increased min and max wait by 1 second each.')
 
         except requests.exceptions.MissingSchema:
@@ -572,7 +572,7 @@ class Exoskeleton:
             raise ValueError('You must provide the name of the Chrome ' +
                              'process to use this.')
         filename = f"{self.file_prefix}{queue_id}.pdf"
-        path = self.TARGET_DIR.joinpath(filename)
+        path = self.target_dir.joinpath(filename)
 
         try:
             # Using the subprocess module as it is part of the
@@ -599,7 +599,7 @@ class Exoskeleton:
             try:
                 self.cur.callproc('insert_file_SP',
                                   (url, url_hash, queue_id, 'application/pdf',
-                                   str(self.TARGET_DIR), filename,
+                                   str(self.target_dir), filename,
                                    utils.get_file_size(path),
                                    self.hash_method, hash_value))
             except pymysql.DatabaseError:
@@ -607,7 +607,7 @@ class Exoskeleton:
                 logging.error('Transaction failed: Could not add already ' +
                               'downloaded file %s to the database!',
                               filename)
-            except:
+            except Exception:
                 logging.error('Unknown exception', exc_info=True)
             self.cnt['processed'] += 1
             self.__update_host_statistics(url, True)
@@ -617,7 +617,9 @@ class Exoskeleton:
         except subprocess.CalledProcessError:
             logging.error('Cannot create PDF due to process error.',
                           exc_info=True)
-        except:
+        except Exception:
+            logging.error('Exception.',
+                          exc_info=True)
             pass
 
     def return_page_code(self,
@@ -979,9 +981,9 @@ class Exoskeleton:
                         next_in_queue = self.__get_next_task()
                         logging.info('Succesfully restored connection ' +
                                      'to database server!')
-                    except:
+                    except Exception:
                         logging.error('Could not reestablish database ' +
-                                      'server connection!')
+                                      'server connection!', exc_info=True)
                         if self.send_mails:
                             subject = f"{self.project}: bot ABORTED"
                             content = ("The bot lost the database " +
