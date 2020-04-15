@@ -78,7 +78,7 @@ class Exoskeleton:
             raise ValueError('You must supply database credentials for' +
                              'exoskeleton to work.')
         else:
-            self._check_database_settings(database_settings)
+            self.__check_database_settings(database_settings)
 
         # Establish the connection:
         self.connection = None
@@ -86,8 +86,8 @@ class Exoskeleton:
         self.cur = self.connection.cursor()
 
         # Check the schema:
-        self.check_table_existence()
-        self.check_stored_procedures()
+        self.__check_table_existence()
+        self.__check_stored_procedures()
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Mail / Notification Setup
@@ -106,7 +106,7 @@ class Exoskeleton:
                          "as there are no settings.")
         else:
             # Check if notifications *can* be send:
-            self._check_mail_settings(mail_settings)
+            self.__check_mail_settings(mail_settings)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Bot Behavior
@@ -182,8 +182,8 @@ class Exoskeleton:
 # Functions called from __init__ but outside of it for easier testing.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def _check_database_settings(self,
-                                 database_settings: dict):
+    def __check_database_settings(self,
+                                  database_settings: dict):
         u"""Check the database settings for plausibility. """
 
         known_db_keys = ('host', 'port',
@@ -222,8 +222,8 @@ class Exoskeleton:
             logging.warning('No database passphrase provided. ' +
                             'Will try to connect without.')
 
-    def _check_mail_settings(self,
-                             mail_settings: dict):
+    def __check_mail_settings(self,
+                              mail_settings: dict):
         u"""Check the mail settings for plausibility. """
         try:
             # Check whether it is a dict and if there are unknown keys:
@@ -249,7 +249,7 @@ class Exoskeleton:
                 raise ValueError('mail_admin is not a valid email!')
         else:
             raise ValueError('Need mail_admin in mail_settings ' +
-                                'to send notification mails!')
+                             'to send notification mails!')
 
         self.mail_sender = mail_settings.get('mail_sender', None)
         if self.mail_sender:
@@ -257,7 +257,7 @@ class Exoskeleton:
                 raise ValueError('mail_sender is not a valid email!')
         else:
             raise ValueError('Need mail_sender in mail_settings ' +
-                                'to send notification mails!')
+                             'to send notification mails!')
 
         # At this point it should be technically possible to send mails.
         self.send_mails = True
@@ -290,6 +290,74 @@ class Exoskeleton:
         if self.milestone is not None:
             if not isinstance(self.milestone, int):
                 raise ValueError('milestone_num must be integer!')
+
+    def __check_table_existence(self) -> bool:
+        u"""Check if all expected tables exist."""
+        logging.debug('Checking if the database table structure is complete.')
+        expected_tables = ['actions',
+                           'errorType', 'eventLog',
+                           'fileContent', 'fileMaster', 'fileVersions',
+                           'jobs',
+                           'labels', 'labelToMaster', 'labelToQueue',
+                           'labelToVersion',
+                           'queue',
+                           'settings', 'statisticsHosts', 'storageTypes']
+        tables_count = 0
+
+        self.cur.execute('SHOW TABLES;')
+        tables = self.cur.fetchall()
+        if not tables:
+            logging.error('The database exists, but no tables found!')
+            raise OSError('Database table structure missing. ' +
+                          'Run generator script!')
+        else:
+            tables_found = [item[0] for item in tables]
+            for table in expected_tables:
+                if table in tables_found:
+                    tables_count += 1
+                    logging.debug('Found table %s', table)
+                else:
+                    logging.error('Table %s not found.', table)
+
+        if tables_count != len(expected_tables):
+            raise RuntimeError('Database Schema Incomplete: Missing Tables!')
+
+        logging.info("Found all expected tables.")
+        return True
+
+    def __check_stored_procedures(self) -> bool:
+        u"""Check if all expected stored procedures exist and if the user
+        is allowed to execute them. """
+        logging.debug('Checking if stored procedures exist.')
+        expected_procedures = ['delete_all_versions_SP',
+                               'delete_from_queue_SP',
+                               'insert_content_SP',
+                               'insert_file_SP',
+                               'next_queue_object_SP',
+                               'transfer_labels_from_queue_to_master_SP']
+
+        procedures_count = 0
+        self.cur.execute('SELECT SPECIFIC_NAME ' +
+                         'FROM INFORMATION_SCHEMA.ROUTINES ' +
+                         'WHERE ROUTINE_SCHEMA = %s;',
+                         self.db_name)
+        procedures = self.cur.fetchall()
+        procedures_found = [item[0] for item in procedures]
+        for procedure in expected_procedures:
+            if procedure in procedures_found:
+                procedures_count += 1
+                logging.debug('Found stored procedure %s', procedure)
+            else:
+                logging.error('Stored Procedure %s is missing (create it ' +
+                              'with the database script) or the user lacks ' +
+                              'permissions to use it.', procedure)
+
+        if procedures_count != len(expected_procedures):
+            raise RuntimeError('Database Schema Incomplete: ' +
+                               'Missing Stored Procedures!')
+
+        logging.info("Found all expected stored procedures.")
+        return True
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ACTIONS
@@ -569,74 +637,6 @@ class Exoskeleton:
                               'trying to connect to the DBMS.',
                               exc_info=True)
             raise
-
-    def check_table_existence(self) -> bool:
-        u"""Check if all expected tables exist."""
-        logging.debug('Checking if the database table structure is complete.')
-        expected_tables = ['actions',
-                           'errorType', 'eventLog',
-                           'fileContent', 'fileMaster', 'fileVersions',
-                           'jobs',
-                           'labels', 'labelToMaster', 'labelToQueue',
-                           'labelToVersion',
-                           'queue',
-                           'settings', 'statisticsHosts', 'storageTypes']
-        tables_count = 0
-
-        self.cur.execute('SHOW TABLES;')
-        tables = self.cur.fetchall()
-        if not tables:
-            logging.error('The database exists, but no tables found!')
-            raise OSError('Database table structure missing. ' +
-                          'Run generator script!')
-        else:
-            tables_found = [item[0] for item in tables]
-            for table in expected_tables:
-                if table in tables_found:
-                    tables_count += 1
-                    logging.debug('Found table %s', table)
-                else:
-                    logging.error('Table %s not found.', table)
-
-        if tables_count != len(expected_tables):
-            raise RuntimeError('Database Schema Incomplete: Missing Tables!')
-
-        logging.info("Found all expected tables.")
-        return True
-
-    def check_stored_procedures(self) -> bool:
-        u"""Check if all expected stored procedures exist and if the user
-        is allowed to execute them. """
-        logging.debug('Checking if stored procedures exist.')
-        expected_procedures = ['delete_all_versions_SP',
-                               'delete_from_queue_SP',
-                               'insert_content_SP',
-                               'insert_file_SP',
-                               'next_queue_object_SP',
-                               'transfer_labels_from_queue_to_master_SP']
-
-        procedures_count = 0
-        self.cur.execute('SELECT SPECIFIC_NAME ' +
-                         'FROM INFORMATION_SCHEMA.ROUTINES ' +
-                         'WHERE ROUTINE_SCHEMA = %s;',
-                         self.db_name)
-        procedures = self.cur.fetchall()
-        procedures_found = [item[0] for item in procedures]
-        for procedure in expected_procedures:
-            if procedure in procedures_found:
-                procedures_count += 1
-                logging.debug('Found stored procedure %s', procedure)
-            else:
-                logging.error('Stored Procedure %s is missing (create it ' +
-                              'with the database script) or the user lacks ' +
-                              'permissions to use it.', procedure)
-
-        if procedures_count != len(expected_procedures):
-            raise RuntimeError('Database Schema Incomplete: ' +
-                               'Missing Stored Procedures!')
-
-        logging.info("Found all expected stored procedures.")
-        return True
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # JOB MANAGEMENT
