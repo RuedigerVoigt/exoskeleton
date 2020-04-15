@@ -94,77 +94,19 @@ class Exoskeleton:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.send_mails = False
-        # Check if notifications *can* be send:
+        self.mail_server = None
+        self.mail_admin = None
+        self.mail_sender = None
+        self.send_start_msg = None
+        self.send_finish_msg = None
+        self.milestone = None
 
         if mail_settings is None:
             logging.info("Will not send any notification emails " +
                          "as there are no settings.")
         else:
-            # Check whether it is a dict and if there are unknown keys:
-            try:
-                known_mail_keys = ('mail_server', 'mail_admin', 'mail_sender',
-                                   'send_start_msg', 'send_finish_msg',
-                                   'milestone_num')
-                found_keys = mail_settings.keys()
-                for key in found_keys:
-                    if key not in known_mail_keys:
-                        raise ValueError('Unknown key in mailsettings: %s',
-                                         key)
-            except AttributeError:
-                raise AttributeError('mail_settings must be a dictionary!')
-
-            # Not all keys must be there. defaultdict lets us provide
-            # default values for those missing!
-
-            self.mail_server = mail_settings.get('mail_server', 'localhost')
-
-            self.mail_admin = mail_settings.get('mail_admin', None)
-            if self.mail_admin:
-                if not checks.check_email_format(self.mail_admin):
-                    raise ValueError('mail_admin is not a valid email!')
-            else:
-                raise ValueError('Need mail_admin in mail_settings ' +
-                                 'to send notification mails!')
-
-            self.mail_sender = mail_settings.get('mail_sender', None)
-            if self.mail_sender:
-                if not checks.check_email_format(self.mail_sender):
-                    raise ValueError('mail_sender is not a valid email!')
-            else:
-                raise ValueError('Need mail_sender in mail_settings ' +
-                                 'to send notification mails!')
-
-            # At this point it should be technically possible to send mails.
-            self.send_mails = True
-            logging.info('This bot will send notications per mail if ' +
-                         'should ever fail.')
-
-            self.send_start_msg = mail_settings.get('send_start_msg', False)
-            if not isinstance(self.send_start_msg, bool):
-                raise ValueError('Value for send_start_msg must be boolean,' +
-                                 'i.e True / False (without quotation marks).')
-            if self.send_start_msg:
-                communication.send_mail(self.mail_admin,
-                                        self.mail_sender,
-                                        f"{self.project}: bot just started.",
-                                        "This is a notification to check " +
-                                        "the mail settings.")
-                logging.info("Just send a notification email. If the " +
-                             "receiving server uses greylisting, " +
-                             "this may take some minutes.")
-
-            self.send_finish_msg = mail_settings.get('send_finish_msg', False)
-            if not isinstance(self.send_finish_msg, bool):
-                raise ValueError('Value for send_finish_msg must be boolean,' +
-                                 'i.e True / False (without quotation marks).')
-            if self.send_finish_msg:
-                logging.info("Will send notification email as soon " +
-                             "the bot is done.")
-
-            self.milestone = mail_settings.get('milestone_num', None)
-            if self.milestone is not None:
-                if not isinstance(self.milestone, int):
-                    raise ValueError('milestone_num must be integer!')
+            # Check if notifications *can* be send:
+            self._check_mail_settings(mail_settings)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Bot Behavior
@@ -279,6 +221,75 @@ class Exoskeleton:
         if self.db_passphrase == '':
             logging.warning('No database passphrase provided. ' +
                             'Will try to connect without.')
+
+    def _check_mail_settings(self,
+                             mail_settings: dict):
+        u"""Check the mail settings for plausibility. """
+        try:
+            # Check whether it is a dict and if there are unknown keys:
+            known_mail_keys = ('mail_server',
+                               'mail_admin', 'mail_sender',
+                               'send_start_msg', 'send_finish_msg',
+                               'milestone_num')
+            found_keys = mail_settings.keys()
+            for key in found_keys:
+                if key not in known_mail_keys:
+                    raise ValueError('Unknown key in mail_settings: %s', key)
+        except AttributeError:
+            raise AttributeError('mail_settings must be a dictionary!')
+
+        # Not all keys must be there. defaultdict lets us provide
+        # default values for those missing!
+
+        self.mail_server = mail_settings.get('mail_server', 'localhost')
+
+        self.mail_admin = mail_settings.get('mail_admin', None)
+        if self.mail_admin:
+            if not checks.check_email_format(self.mail_admin):
+                raise ValueError('mail_admin is not a valid email!')
+        else:
+            raise ValueError('Need mail_admin in mail_settings ' +
+                                'to send notification mails!')
+
+        self.mail_sender = mail_settings.get('mail_sender', None)
+        if self.mail_sender:
+            if not checks.check_email_format(self.mail_sender):
+                raise ValueError('mail_sender is not a valid email!')
+        else:
+            raise ValueError('Need mail_sender in mail_settings ' +
+                                'to send notification mails!')
+
+        # At this point it should be technically possible to send mails.
+        self.send_mails = True
+        logging.info('This bot will send notications per mail if ' +
+                     'should ever fail.')
+
+        self.send_start_msg = mail_settings.get('send_start_msg', False)
+        if not isinstance(self.send_start_msg, bool):
+            raise ValueError('Value for send_start_msg must be boolean,' +
+                             'i.e True / False (without quotation marks).')
+        if self.send_start_msg:
+            communication.send_mail(self.mail_admin,
+                                    self.mail_sender,
+                                    f"{self.project}: bot just started.",
+                                    "This is a notification to check " +
+                                    "the mail settings.")
+            logging.info("Just send a notification email. If the " +
+                         "receiving server uses greylisting, " +
+                         "this may take some minutes.")
+
+        self.send_finish_msg = mail_settings.get('send_finish_msg', False)
+        if not isinstance(self.send_finish_msg, bool):
+            raise ValueError('Value for send_finish_msg must be boolean,' +
+                             'i.e True / False (without quotation marks).')
+        if self.send_finish_msg:
+            logging.info('Will send notification email as soon as ' +
+                         'the bot is done.')
+
+        self.milestone = mail_settings.get('milestone_num', None)
+        if self.milestone is not None:
+            if not isinstance(self.milestone, int):
+                raise ValueError('milestone_num must be integer!')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ACTIONS
