@@ -13,6 +13,8 @@ class BotTest(unittest.TestCase):
 
     def test_check_email_format(self):
         self.assertTrue(checks.check_email_format('test@example.com'))
+        self.assertTrue(checks.check_email_format('test@example-example.com'))
+        self.assertTrue(checks.check_email_format('test@example.co.uk'))
         self.assertTrue(checks.check_email_format('  test@example.com  '))
         self.assertTrue(checks.check_email_format('test+filter@example.com'))
         self.assertFalse(checks.check_email_format('@example.com'))

@@ -46,17 +46,13 @@ class Exoskeleton:
     MAX_PATH_LENGTH = 255
 
     def __init__(self,
-                 database_name: str,
-                 database_user: str,
-                 database_passphrase: str,
-                 database_host: str = 'localhost',
-                 database_port: int = None,
+                 database_settings: dict,
+                 target_directory: str,
                  project_name: str = 'Bot',
                  bot_user_agent: str = 'BOT (http://www.example.com)',
                  min_wait: float = 5.0,
                  max_wait: float = 20.0,
                  mail_settings: dict = None,
-                 target_directory: str = None,
                  queue_stop_on_empty: bool = False,
                  filename_prefix: str = '',
                  hash_method: str = 'sha256',
@@ -69,26 +65,29 @@ class Exoskeleton:
         self.user_agent = bot_user_agent.strip()
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Establish a Database Connection
+        # Database Setup / Establish a Database Connection
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.db_hostname = database_host.strip()
+        self.db_host = None
+        self.db_port = None
+        self.db_name = None
+        self.db_username = None
+        self.db_passphrase = None
 
-        self.db_port = checks.validate_port(database_port)
-        self.db_name = database_name.strip()
-        self.db_username = database_user.strip()
-        self.db_passphrase = database_passphrase.strip()
-        if self.db_passphrase == '':
-            logging.warning('No database passphrase provided.')
+        if database_settings is None:
+            raise ValueError('You must supply database credentials for' +
+                             'exoskeleton to work.')
+        else:
+            self._check_database_settings(database_settings)
 
+        # Establish the connection:
         self.connection = None
         self.establish_db_connection()
         self.cur = self.connection.cursor()
+
+        # Check the schema:
         self.check_table_existence()
         self.check_stored_procedures()
-
-        self.hash_method = hash_method
-        checks.check_hash_algo(self.hash_method)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Mail / Notification Setup
@@ -215,6 +214,9 @@ class Exoskeleton:
 
         self.file_prefix = filename_prefix.strip()
 
+        self.hash_method = hash_method
+        checks.check_hash_algo(self.hash_method)
+
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Init Timers
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -232,6 +234,51 @@ class Exoskeleton:
         self.local_download_queue = queue.Queue()  # type: queue.Queue
 
         self.chrome_process = chrome_name.strip()
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# SETUP
+# Functions called from __init__ but outside of it for easier testing.
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def _check_database_settings(self,
+                                 database_settings: dict):
+        u"""Check the database settings for plausibility. """
+
+        known_db_keys = ('host', 'port',
+                         'database',
+                         'username', 'passphrase')
+
+        try:
+            found_db_keys = database_settings.keys()
+            for key in found_db_keys:
+                if key not in known_db_keys:
+                    raise ValueError('Unknown key %s in database_settings',
+                                     key)
+        except AttributeError:
+            raise AttributeError('database_settings must be a dictionary!')
+
+        self.db_host = database_settings.get('host', None)
+        if not self.db_host:
+            logging.warning('No hostname provided. Will try localhost.')
+
+        self.db_port = database_settings.get('port', None)
+        if not self.db_port:
+            self.db_port = checks.validate_port(None)
+        else:
+            checks.validate_port(self.db_port)
+
+        self.db_name = database_settings.get('database', None)
+        if not self.db_name:
+            raise ValueError('You must provide the name of the database.')
+
+        self.db_username = database_settings.get('username', None)
+        if not self.db_username:
+            raise ValueError('You must provide a database user.')
+
+        self.db_passphrase = database_settings.get('passphrase', '')
+        if self.db_passphrase == '':
+            logging.warning('No database passphrase provided. ' +
+                            'Will try to connect without.')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ACTIONS
@@ -481,37 +528,15 @@ class Exoskeleton:
             logging.exception('Exception while trying to get page-code',
                               exc_info=True)
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # DATABASE MANAGEMENT
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def establish_db_connection(self):
         u"""Establish a connection to MariaDB """
-
-        if not (self.db_hostname and
-                self.db_port and
-                self.db_name and
-                self.db_username):
-
-            # give specific error messages:
-            missing_params = []
-            if not self.db_hostname:
-                missing_params.append('hostname')
-            if not self.db_port:
-                missing_params.append('port')
-            if not self.db_name:
-                missing_params.append('database name')
-            if not self.db_username:
-                missing_params.append('username')
-            # ... stop before connection try:
-            raise ValueError('The following parameters were not supplied, ' +
-                             'but are needed to connect to the database: ' +
-                             '{}'.format(','.join(missing_params)))
-
         try:
             logging.debug('Trying to connect to database.')
-            self.connection = pymysql.connect(host=self.db_hostname,
+            self.connection = pymysql.connect(host=self.db_host,
                                               port=self.db_port,
                                               database=self.db_name,
                                               user=self.db_username,

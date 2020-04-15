@@ -37,7 +37,7 @@ def check_email_format(mailaddress: Union[str, None]) -> bool:
         return False
     else:
         mailaddress = mailaddress.strip()
-        if not re.match(r"^[^\s@]+@[^\s\W@]+\.[a-zA-Z]+", mailaddress):
+        if not re.match(r"^[^\s@]+@[^\s@]+\.[a-zA-Z]+", mailaddress):
             logging.error('The supplied mailaddress %s has an unknown ' +
                           'format.', mailaddress)
             return False
