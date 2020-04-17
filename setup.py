@@ -17,7 +17,8 @@ setuptools.setup(
     url="https://github.com/RuedigerVoigt/exoskeleton",
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
-    install_requires=["beautifulsoup4", "lxml", "pymysql", "requests", "urllib3"],
+    install_requires=["beautifulsoup4", "lxml", "pymysql",
+                      "requests", "urllib3", "userprovided"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",

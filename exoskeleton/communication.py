@@ -9,6 +9,8 @@ import logging
 import textwrap
 import exoskeleton.checks as checks
 
+import userprovided  # sister-project
+
 
 def send_mail(recipient: str,
               sender: str,
@@ -17,11 +19,17 @@ def send_mail(recipient: str,
     u"""Inform the recipient about milestones or
         important events via email. """
 
-    if recipient == '' or recipient is None or not checks.check_email_format(recipient):
+    if recipient == '' or recipient is None:
         raise ValueError('Cannot send mail as no recipient is supplied!')
 
-    if sender == '' or sender is None or not checks.check_email_format(sender):
+    if not userprovided.mail.is_email(recipient):
+        raise ValueError('Cannot send mail as email for recipient is invalid!')
+
+    if sender == '' or sender is None:
         raise ValueError('Cannot send mail as no sender is supplied!')
+
+    if not userprovided.mail.is_email(sender):
+        raise ValueError('Cannot send mail as email for sender is invalid!')
 
     if message_subject == '' or message_subject is None:
         raise ValueError('Mails need a subject line. Otherwise they' +

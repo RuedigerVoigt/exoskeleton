@@ -11,16 +11,6 @@ from exoskeleton import utils as utils
 
 class BotTest(unittest.TestCase):
 
-    def test_check_email_format(self):
-        self.assertTrue(checks.check_email_format('test@example.com'))
-        self.assertTrue(checks.check_email_format('test@example-example.com'))
-        self.assertTrue(checks.check_email_format('test@example.co.uk'))
-        self.assertTrue(checks.check_email_format('  test@example.com  '))
-        self.assertTrue(checks.check_email_format('test+filter@example.com'))
-        self.assertFalse(checks.check_email_format('@example.com'))
-        self.assertFalse(checks.check_email_format('test@@example.com'))
-        self.assertFalse(checks.check_email_format('test@example.'))
-
     def test_check_hash_algo(self):
         self.assertRaises(ValueError, checks.check_hash_algo, 'md5')
         self.assertRaises(ValueError, checks.check_hash_algo, 'sha1')
@@ -36,30 +26,6 @@ class BotTest(unittest.TestCase):
         self.assertEqual(checks.validate_port(5432), 5432)
         self.assertRaises(ValueError, checks.validate_port, 65537)
         self.assertRaises(ValueError, checks.validate_port, -1)
-
-    def test_validate_aws_s3_bucket_name(self):
-        self.assertTrue(checks.validate_aws_s3_bucket_name('abc'))
-        # too short
-        self.assertFalse(checks.validate_aws_s3_bucket_name('ab'))
-        # too long
-        self.assertFalse(checks.validate_aws_s3_bucket_name(
-            'iekoht9choofe9eixeeseizoo0iuzos1ibeepae7phee3aeghaif7shal9kiepiy'))
-        # Ipv4 address
-        self.assertFalse(checks.validate_aws_s3_bucket_name('127.0.0.1'))
-        # invalid characters
-        self.assertFalse(checks.validate_aws_s3_bucket_name(
-            'iekoht9choofe9ei_xeeseizo'))
-        self.assertFalse(checks.validate_aws_s3_bucket_name('iekoh#xeeseizo'))
-        self.assertFalse(checks.validate_aws_s3_bucket_name('ab$$c'))
-        self.assertFalse(checks.validate_aws_s3_bucket_name('ABc'))
-        # starting with lowercase letter or number
-        self.assertFalse(checks.validate_aws_s3_bucket_name('-abc'))
-        # prefectly fine at max length
-        self.assertTrue(checks.validate_aws_s3_bucket_name(
-            'iekoht9choofe9eixeeseizoo0iuzos1ibeepae7phee3aeghai7shal9kiepiy'))
-        # containing dots
-        self.assertTrue(checks.validate_aws_s3_bucket_name(
-            'iekoht9choofe.eixeeseizoo0iuzos1ibee.pae7ph'))
 
     def test_determine_file_extension(self):
         # URL hint matches server header
@@ -134,21 +100,6 @@ class BotTest(unittest.TestCase):
         self.assertRaises(ValueError, communication.send_mail,
                           'recipient@example.com', 'sender@example.com',
                           'subject', None)
-
-    def test_check_url_format(self):
-        # missing scheme
-        self.assertFalse(checks.check_url_format('noscheme.example.com'))
-        # unsuported scheme
-        self.assertFalse(checks.check_url_format('ftp://example.com'))
-        # scheme with typo (one instead of two slashes)
-        self.assertFalse(checks.check_url_format('https:/example.com'))
-        # valid URLs
-        self.assertTrue(
-            checks.check_url_format('https://example.com'))
-        self.assertTrue(
-            checks.check_url_format('https://subdomain.example.com'))
-        self.assertTrue(
-            checks.check_url_format('https://example.com/index.php?id=42'))
 
     def test_date_en_long_to_iso(self):
         # valid input:

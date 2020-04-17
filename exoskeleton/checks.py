@@ -6,44 +6,7 @@ u""" A range of function to check correctness
 
 import hashlib
 import logging
-import re
 from typing import Union
-from urllib.parse import urlparse
-
-
-def check_url_format(url: str) -> bool:
-    u"""Very basic check if the URL has a supported scheme and
-    fulfills basic conditions ("LGTM"). Will not try to connect
-    at this point."""
-    parsed = urlparse(url)
-    if parsed.scheme == '':
-        logging.error('The URL has no scheme like http or https')
-        return False
-    elif parsed.scheme not in ('http', 'https'):
-        logging.error('Scheme %s not supported.', parsed.scheme)
-        return False
-    elif parsed.netloc == '':
-        logging.error('URL is missing or malformed.')
-        return False
-    else:
-        return True
-
-
-def check_email_format(mailaddress: Union[str, None]) -> bool:
-    u"""Very basic check if the email address has a valid format."""
-
-    if mailaddress is None or mailaddress == '':
-        logging.warning('No mail address supplied.')
-        return False
-    else:
-        mailaddress = mailaddress.strip()
-        if not re.match(r"^[^\s@]+@[^\s@]+\.[a-zA-Z]+", mailaddress):
-            logging.error('The supplied mailaddress %s has an unknown ' +
-                          'format.', mailaddress)
-            return False
-        else:
-            logging.debug('%s seems to have a valid format', mailaddress)
-            return True
 
 
 def validate_port(port_number: Union[int, None]) -> int:
@@ -115,44 +78,3 @@ def check_connection_timeout(timeout: float) -> Union[float, int]:
         logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
                       'Fallback to 60 seconds.')
         return 60
-
-
-def validate_aws_s3_bucket_name(bucket_name: str) -> bool:
-    u"""returns True if bucket name is well-formed for AWS S3 buckets
-
-    Applying the rules set here:
-    https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html
-    """
-
-    # Lengthy code which could be written as a single regular expression.
-    # However written in this way to provide useful error messages.
-    if len(bucket_name) < 3:
-        logging.error('Any AWS bucket name has to be at least 3 ' +
-                      'characters long.')
-        return False
-    if len(bucket_name) > 63:
-        logging.error('The provided bucket name for AWS exceeds the ' +
-                      'maximum length of 63 characters.')
-        return False
-    if not re.match(r"^[a-z0-9\-\.]*$", bucket_name):
-        logging.error('The AWS bucket name contains invalid characters.')
-        return False
-    if re.match(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}",
-                bucket_name):
-        # Check if the bucket name resembles an IPv4 address.
-        # No need to check IPv6 as the colon is not an allowed character.
-        logging.error('An AWS must not resemble an IP address.')
-        return False
-    if re.match(r"([a-z0-9][a-z0-9\-]*[a-z0-9]\.)*[a-z0-9][a-z0-9\-]*[a-z0-9]",
-                bucket_name):
-        # Must start with a lowercase letter or number
-        # Bucket names must be a series of one or more labels.
-        # Adjacent labels are separated by a single period (.).
-        # Each label must start and end with a lowercase letter or a number.
-        # => Adopted the answer provided by Zak (zero or more labels
-        # followed by a dot) found here:
-        # https://stackoverflow.com/questions/50480924
-        return True
-
-    logging.error('Invalid AWS bucket name.')
-    return False

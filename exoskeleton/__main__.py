@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 import pymysql
 import urllib3
 import requests
+import userprovided  # sister-project
 
 # import other modules of this framework
 import exoskeleton.checks as checks
@@ -292,7 +293,7 @@ class Exoskeleton:
 
         self.mail_admin = mail_settings.get('mail_admin', None)
         if self.mail_admin:
-            if not checks.check_email_format(self.mail_admin):
+            if not userprovided.mail.is_email(self.mail_admin):
                 raise ValueError('mail_admin is not a valid email!')
         else:
             raise ValueError('Need mail_admin in mail_settings ' +
@@ -300,7 +301,7 @@ class Exoskeleton:
 
         self.mail_sender = mail_settings.get('mail_sender', None)
         if self.mail_sender:
-            if not checks.check_email_format(self.mail_sender):
+            if not userprovided.mail.is_email(self.mail_sender):
                 raise ValueError('mail_sender is not a valid email!')
         else:
             raise ValueError('Need mail_sender in mail_settings ' +
@@ -801,7 +802,7 @@ class Exoskeleton:
         This is done to avoid to accidentially overload
         the queried host. Some host actually enforce
         limits through IP blocking."""
-        query_delay = random.randint(self.WAIT_MIN, self.WAIT_MAX)  # nosec
+        query_delay = random.randint(self.wait_min, self.wait_max)  # nosec
         logging.debug("%s seconds delay until next action", query_delay)
         time.sleep(query_delay)
         return
@@ -878,7 +879,7 @@ class Exoskeleton:
         # and would change the hash:
         url = url.strip()
 
-        if not checks.check_url_format(url):
+        if not userprovided.url.is_url(url, ('http', 'https')):
             logging.error('Could not add URL %s : invalid or unsupported',
                           url)
             return
