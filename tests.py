@@ -3,18 +3,11 @@
 
 import unittest
 
-from exoskeleton import checks as checks
 from exoskeleton import communication as communication
 from exoskeleton import utils as utils
 
 
 class BotTest(unittest.TestCase):
-
-    def test_validate_port(self):
-        self.assertEqual(checks.validate_port(3306), 3306)
-        self.assertEqual(checks.validate_port(5432), 5432)
-        self.assertRaises(ValueError, checks.validate_port, 65537)
-        self.assertRaises(ValueError, checks.validate_port, -1)
 
     def test_determine_file_extension(self):
         # URL hint matches server header

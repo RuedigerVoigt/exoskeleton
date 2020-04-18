@@ -27,7 +27,6 @@ import requests
 import userprovided  # sister-project
 
 # import other modules of this framework
-import exoskeleton.checks as checks
 import exoskeleton.communication as communication
 import exoskeleton.utils as utils
 
@@ -201,9 +200,11 @@ class Exoskeleton:
 
         self.db_port = database_settings.get('port', None)
         if not self.db_port:
-            self.db_port = checks.validate_port(None)
-        else:
-            checks.validate_port(self.db_port)
+            logging.info('No port number supplied. ' +
+                         'Will try standard port instead.')
+            self.db_port = 3306
+        elif not userprovided.port.port_in_range(self.db_port):
+            raise ValueError('Port outside valid range!')
 
         self.db_name = database_settings.get('database', None)
         if not self.db_name:
