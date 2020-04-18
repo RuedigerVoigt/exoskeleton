@@ -243,6 +243,12 @@ class Exoskeleton:
         if type(self.connection_timeout) not in (int, float):
             raise ValueError('The value for connection_timeout ' +
                              'must be numeric.')
+        if self.connection_timeout <= 0:
+            logging.error('Negative or zero value for timeout. ' +
+                          'Fallback to 60 seconds.')
+            self.connection_timeout = 60.0
+        elif self.connection_timeout > 120:
+            logging.info('Very high value for connection_timeout')
 
         self.wait_min = behavior_settings.get('wait_min', 5.0)
         if type(self.wait_min) not in (int, float):

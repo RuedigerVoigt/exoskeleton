@@ -52,29 +52,3 @@ def check_hash_algo(hash_method: Union[str, None]) -> bool:
                              'the system, but NOT supported by exoskelton!')
     else:
         raise ValueError('Chosen hash method NOT available on this system!')
-
-
-def check_connection_timeout(timeout: float) -> Union[float, int]:
-    u""" Connection timeout is set in the settings table.
-         Check if it is reasonable."""
-
-    if timeout is None:
-        logging.error('Setting CONNECTION_TIMEOUT is missing. ' +
-                      'Fallback to 60 seconds.')
-        return 60
-
-    try:
-        if timeout <= 0:
-            logging.error('Negative or zero value for timeout. ' +
-                          'Fallback to 60 seconds.')
-            return 60
-        else:
-            if timeout > 120:
-                logging.info('Very high value for timeout: ' +
-                             '%s seconds', timeout)
-        logging.debug('Connection timeout set to %s s.', timeout)
-        return timeout
-    except TypeError:
-        logging.error('Invalid format for setting CONNECTION_TIMEOUT. ' +
-                      'Fallback to 60 seconds.')
-        return 60

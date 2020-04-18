@@ -7,7 +7,6 @@ import smtplib
 from email.message import EmailMessage
 import logging
 import textwrap
-import exoskeleton.checks as checks
 
 import userprovided  # sister-project
 
