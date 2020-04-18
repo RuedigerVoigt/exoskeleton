@@ -10,16 +10,6 @@ from exoskeleton import utils as utils
 
 class BotTest(unittest.TestCase):
 
-    def test_check_hash_algo(self):
-        self.assertRaises(ValueError, checks.check_hash_algo, 'md5')
-        self.assertRaises(ValueError, checks.check_hash_algo, 'sha1')
-        self.assertTrue(checks.check_hash_algo('sha224'))
-        self.assertTrue(checks.check_hash_algo('sha256'))
-        self.assertTrue(checks.check_hash_algo('sha512'))
-        self.assertRaises(ValueError,
-                          checks.check_hash_algo,
-                          'NonExistentMethod')
-
     def test_validate_port(self):
         self.assertEqual(checks.validate_port(3306), 3306)
         self.assertEqual(checks.validate_port(5432), 5432)

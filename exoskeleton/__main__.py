@@ -53,7 +53,6 @@ class Exoskeleton:
                  bot_user_agent: str = 'Bot',
                  bot_behavior: dict = None,
                  mail_settings: dict = None,
-                 hash_method: str = 'sha256',
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
@@ -151,8 +150,10 @@ class Exoskeleton:
 
         self.file_prefix = filename_prefix.strip()
 
-        self.hash_method = hash_method
-        checks.check_hash_algo(self.hash_method)
+        self.hash_method = 'sha256'
+        if not userprovided.hash.hash_available(self.hash_method):
+            raise ValueError('The hash method SHA256 is not available on ' +
+                             'your system.')
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Init Timers
