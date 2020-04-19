@@ -18,6 +18,7 @@ import subprocess
 import time
 from typing import Union
 from urllib.parse import urlparse
+import uuid
 
 
 # 3rd party libraries:
@@ -356,13 +357,13 @@ class Exoskeleton:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
-                           'errorType', 'eventLog',
+                           'errorType',
                            'fileContent', 'fileMaster', 'fileVersions',
                            'jobs',
                            'labels', 'labelToMaster', 'labelToQueue',
                            'labelToVersion',
                            'queue',
-                           'settings', 'statisticsHosts', 'storageTypes']
+                           'statisticsHosts', 'storageTypes']
         tables_count = 0
 
         self.cur.execute('SHOW TABLES;')
@@ -425,7 +426,7 @@ class Exoskeleton:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __get_object(self,
-                     queue_id: int,
+                     queue_id: str,
                      action_type: str,
                      url: str,
                      url_hash: str,
@@ -433,8 +434,8 @@ class Exoskeleton:
         u""" Generic function to either download a file or
              store a page's content. """
         # pylint: disable=too-many-branches
-        if not isinstance(queue_id, int):
-            raise ValueError('The queue_id must be an integer.')
+        if not isinstance(queue_id, str):
+            raise ValueError('The queue_id must be a string.')
         if action_type not in ('file', 'content'):
             raise ValueError('Invalid action')
         if url == '' or url is None:
@@ -907,29 +908,27 @@ class Exoskeleton:
             self.assign_labels(id_in_file_master, labels, 'master')
             return
 
+        # generate a random uuid
+        uuid_value = uuid.uuid4().hex
+
         try:
             # add the new element to the queue
             self.cur.execute('INSERT INTO queue ' +
-                             '(action, url, urlHash, prettifyHtml) ' +
-                             'VALUES (%s, %s, SHA2(%s,256), %s);',
-                             (action, url, url, prettify))
-
-            # get the id in the queue
-            self.cur.execute('SELECT id FROM queue ' +
-                             'WHERE urlHash = SHA2(%s,256) ' +
-                             'LIMIT 1;', url)
-            queue_id = self.cur.fetchone()[0]  # type: ignore
+                             '(id, action, url, urlHash, prettifyHtml) ' +
+                             'VALUES (%s, %s, %s, SHA2(%s,256), %s);',
+                             (uuid_value, action, url, url, prettify))
 
             # link labels to queue item
             if labels:
-                self.assign_labels(queue_id, labels, 'queue')
+                self.assign_labels(uuid_value, labels, 'queue')
 
         except pymysql.IntegrityError:
             # No further check here as an duplicate url / urlHash is
             # the only thing that can cause that error here.
             logging.info('URL already in queue. Not adding it again.')
 
-            # get the id in the queue
+            # Get the id in the queue. Now this must use the URL
+            # to obtain the UUID.
             self.cur.execute('SELECT id FROM queue ' +
                              'WHERE urlHash = SHA2(%s,256) ' +
                              'LIMIT 1;', url)
