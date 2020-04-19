@@ -148,6 +148,12 @@ class Exoskeleton:
                               "Create this directory or check permissions.")
 
         self.file_prefix = filename_prefix.strip()
+        # Limit the prefix length as on many systems the path must not be
+        # longer than 255 characters and it needs space for folders and the
+        # actual filename. 16 characters semms to be a reasonable limit.
+        if len(self.file_prefix) > 16:
+            raise ValueError('The file name prefix is limited to a ' +
+                             'maximum of 16 characters.')
 
         self.hash_method = 'sha256'
         if not userprovided.hash.hash_available(self.hash_method):
