@@ -2,6 +2,8 @@
 
 ## upcoming version 0.9.0 beta
 
+* Added an extensive documentation.
+
 Features:
 * Restore lost database connection after timeout.
 * Add Ability to store any webpage as PDF file using headless Chrome.
