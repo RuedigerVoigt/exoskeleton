@@ -6,9 +6,9 @@
 * [Create a Bot](create-a-bot.md)
 * [Dealing with result pages and avoiding duplicate downloads](parse-search-results.md)
 * [Downloading files / Saving the page code / Creating PDF](handling-pages.md)
-* Bot Behavior
+* [Bot Behavior](behavior-settings.md)
 * Progress Reports via Email
-* Labels
+* [Labels](labels.md)
 * Data Sequences
 
 
