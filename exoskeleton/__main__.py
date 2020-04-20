@@ -51,8 +51,8 @@ class Exoskeleton:
                  filename_prefix: str = '',
                  project_name: str = 'Bot',
                  bot_user_agent: str = 'Bot',
-                 bot_behavior: dict = None,
-                 mail_settings: dict = None,
+                 bot_behavior: Union[dict, None] = None,
+                 mail_settings: Union[dict, None] = None,
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
@@ -236,16 +236,18 @@ class Exoskeleton:
                                'stop_if_queue_empty',
                                'wait_min',
                                'wait_max')
-
-        try:
-            found_behavior_keys = behavior_settings.keys()
-            for key in found_behavior_keys:
-                if key not in known_behavior_keys:
-                    raise ValueError(f"Unknown key '{key}' " +
-                                     f"in behavior_settings")
-        except AttributeError:
-            raise AttributeError('The parameter behavior_settings must ' +
-                                 'be a dictionary!')
+        if behavior_settings:
+            try:
+                found_behavior_keys = behavior_settings.keys()
+                for key in found_behavior_keys:
+                    if key not in known_behavior_keys:
+                        raise ValueError(f"Unknown key '{key}' " +
+                                         f"in behavior_settings")
+            except AttributeError:
+                raise AttributeError('The parameter behavior_settings must ' +
+                                     'be a dictionary!')
+        else:
+            behavior_settings = dict()
 
         self.connection_timeout = behavior_settings.get('connection_timeout',
                                                         60.0)
