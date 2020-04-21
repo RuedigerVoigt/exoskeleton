@@ -9,3 +9,6 @@ Parameters:
 * **stop_if_queue_empty** (default: False)
 * **wait_min** (default: 5 seconds)
 * **wait_max** (default: 30 seconds)
+
+
+> :arrow_right: **[Send progress reports by email](progress-reports-via-email.md)**

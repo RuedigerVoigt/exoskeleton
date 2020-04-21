@@ -42,3 +42,6 @@ def add_page_to_pdf(url: str,
 This feature uses headless Chrome / Chromium to save a website as PDF. For it to work you need to set the path to the program.
 
 **BEWARE**: *This function is not reliable for every website. Chrome / Chromium does not remember web cookies in headless mode. As a result, some websites black out the whole page and only display a cookie / data privacy dialogue and only this gets stored.*
+
+
+> :arrow_right: **[Now learn how to steer the bot's behavior](behavior-settings.md)**

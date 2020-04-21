@@ -5,9 +5,9 @@
 * [Installation and Requirements](installation.md)
 * [Create a Bot](create-a-bot.md)
 * [Dealing with result pages and avoiding duplicate downloads](parse-search-results.md)
-* [Downloading files / Saving the page code / Creating PDF](handling-pages.md)
+* [The Queue: Downloading files / Saving the page code / Creating PDF](handling-pages.md)
 * [Bot Behavior](behavior-settings.md)
-* Progress Reports via Email
+* [Progress Reports via Email](progess-reports-via-email.md)
 * [Labels](labels.md)
 * Data Sequences
 
