@@ -328,7 +328,7 @@ class Exoskeleton:
         logging.info('This bot will send notications per mail if ' +
                      'should ever fail.')
 
-        self.send_start_msg = mail_settings.get('send_start_msg', False)
+        self.send_start_msg = mail_settings.get('send_start_msg', True)
         if not isinstance(self.send_start_msg, bool):
             raise ValueError('Value for send_start_msg must be boolean,' +
                              'i.e True / False (without quotation marks).')
