@@ -8,7 +8,7 @@
 * [The Queue: Downloading files / Saving the page code / Creating PDF](handling-pages.md)
 * [Bot Behavior](behavior-settings.md)
 * [Progress Reports via Email](progess-reports-via-email.md)
-* [Labels](labels.md)
+* [File Versions and Labels](versions-and-labels.md)
 * Data Sequences
 
 

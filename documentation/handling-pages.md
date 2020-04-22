@@ -24,7 +24,7 @@ Sometimes the URL does not contain the appropriate file ending. This is very oft
 
 Sometimes the code of a page is relevant. With `add_save_page_code()` this will not be saved in a file, but *stored in the database*.
 
-The option `prettify_html` uses lxml to fix broken HTML code. It should not be used with an XHTML or XML file.
+The option `prettify_html` uses lxml to fix broken HTML code. It should not be used with an XHTML or XML file. The function accepts a set of [labels](versions-and-labels.md "How to use labels").
 
 ```python
 def add_save_page_code(url: str,
@@ -38,6 +38,8 @@ def add_save_page_code(url: str,
 def add_page_to_pdf(url: str,
                     labels: set = None):
 ```
+
+You can add a set of [labels](versions-and-labels.md "How to use labels").
 
 This feature uses headless Chrome / Chromium to save a website as PDF. For it to work you need to set the path to the program.
 
