@@ -24,13 +24,75 @@ Sometimes the URL does not contain the appropriate file ending. This is very oft
 
 Sometimes the code of a page is relevant. With `add_save_page_code()` this will not be saved in a file, but *stored in the database*.
 
-The option `prettify_html` uses lxml to fix broken HTML code. It should not be used with an XHTML or XML file. The function accepts a set of [labels](versions-and-labels.md "How to use labels").
-
 ```python
 def add_save_page_code(url: str,
                        labels: set = None,
                        prettify_html: bool = False):
 ```
+
+The option `prettify_html` uses lxml to fix broken HTML code. *It should not be used with an XHTML or XML file.*
+
+Take for example this broken input:
+```html
+<h1>Test with broken and incomplete HTML</h1>
+
+<div>
+
+<p>HTML Entities instead of unicode: &auml;&uuml;&ouml;</p>
+
+<p><b>Paragraph and bold not closed
+
+</div>
+
+<div>
+
+<p>New Paragraph</p>
+
+</div>
+```
+
+If you save it with `prettify_html` set to True, the HTML is improved in a number of ways:
+
+* a html, and a body tag are added
+* HTML Entities are turned to unicode (`&uuml` into `ü`, ...)
+* Open tags are closed
+* the formatting is improved
+* ...
+
+
+```html
+<html>
+ <body>
+  <h1>
+   Test with broken and incomplete HTML
+  </h1>
+  <div>
+   <p>
+    HTML Entities instead of unicode: äüö
+   </p>
+   <p>
+    <b>
+     Paragraph and bold not closed
+    </b>
+   </p>
+  </div>
+  <div>
+   <p>
+    New Paragraph
+   </p>
+  </div>
+ </body>
+</html>
+```
+
+
+
+
+
+
+The function accepts a set of [labels](versions-and-labels.md "How to use labels").
+
+
 
 ## Saving a PDF version of a Web Site
 
