@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS queue (
     -- * This spares a roundtrip to the DBMS as for compatibility
     --   reasons this cannot use INSERT .. RETURN and the script
     --   would have to query for the id using the URL.
-    id CHAR(32) CHARACTER SET ASCII
+    id CHAR(32) CHARACTER SET ASCII NOT NULL
     ,action TINYINT UNSIGNED
     -- MySQL does not no the alias BOOLEAN, so stick to TINYINT:
     ,prettifyHtml TINYINT UNSIGNED DEFAULT 0
@@ -130,23 +130,9 @@ REFERENCES `errorType`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
--- ----------------------------------------------------------
--- DOWNLOADED FILES
--- ----------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS fileMaster (
-    id INT UNSIGNED NOT NULL AUTO_INCREMENT
-    ,url TEXT NOT NULL
-    ,urlHash CHAR(64) NOT NULL
-    ,numVersions_t INT DEFAULT 0
-    -- increment / decrement of version count via trigger in fileVersions
-    -- Default has to be 0 not NULL as increment otherwise does not work
-    ,PRIMARY KEY(`id`)
-    ,UNIQUE(urlHash)
-    ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------
--- FILE STORAGE
+-- FILE STORAGE TYPES
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS storageTypes (
@@ -164,9 +150,29 @@ INSERT INTO storageTypes (id, shortName, fullName) VALUES
 (5, 'Azure', 'Microsoft Azure'),
 (6, 'Alibaba', 'Alibaba');
 
-CREATE TABLE IF NOT EXISTS fileVersions (
+
+-- ----------------------------------------------------------
+-- FILE MASTER
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS fileMaster (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT
-    ,fileID INT UNSIGNED NOT NULL
+    ,url TEXT NOT NULL
+    ,urlHash CHAR(64) NOT NULL
+    ,numVersions_t INT DEFAULT 0
+    -- increment / decrement of version count via trigger in fileVersions
+    -- Default has to be 0 not NULL as increment otherwise does not work
+    ,PRIMARY KEY(`id`)
+    ,UNIQUE(urlHash)
+    ) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
+-- FILE VERSIONS
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS fileVersions (
+    id CHAR(32) CHARACTER SET ASCII NOT NULL -- the UUID
+    ,fileMasterID INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,storageTypeID INT UNSIGNED NOT NULL
     ,fileName VARCHAR(255) NULL
     ,mimeType VARCHAR(127) NULL
@@ -178,7 +184,7 @@ CREATE TABLE IF NOT EXISTS fileVersions (
     ,addedDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,comment VARCHAR(256) NULL
     ,PRIMARY KEY(`id`)
-    ,INDEX(`fileID`)
+    ,INDEX(`fileMasterID`)
     ,INDEX(`storageTypeID`)
     -- No index on fileName as too long for standard index
     ) ENGINE=InnoDB;
@@ -186,7 +192,7 @@ CREATE TABLE IF NOT EXISTS fileVersions (
 
 ALTER TABLE `fileVersions`
 ADD CONSTRAINT `link from version to master`
-FOREIGN KEY (`fileID`)
+FOREIGN KEY (`fileMasterID`)
 REFERENCES `fileMaster`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
@@ -203,7 +209,7 @@ AFTER INSERT ON fileVersions
 FOR EACH ROW
 UPDATE fileMaster
 SET fileMaster.numVersions_t = (fileMaster.numVersions_t + 1)
-WHERE fileMaster.id = NEW.fileID;
+WHERE fileMaster.id = NEW.fileMasterID;
 
 DELIMITER //
 
@@ -214,11 +220,11 @@ BEGIN
 
   UPDATE fileMaster
   SET fileMaster.numVersions_t = (fileMaster.numVersions_t - 1)
-  WHERE fileMaster.id = OLD.fileID;
+  WHERE fileMaster.id = OLD.fileMasterID;
 
   -- in case there is no version left: drop the file from the master table
   DElETE FROM fileMaster
-  WHERE fileMaster.id = OLD.fileID AND fileMaster.numVersions_t = 0;
+  WHERE fileMaster.id = OLD.fileMasterID AND fileMaster.numVersions_t = 0;
 
 END
 
@@ -227,17 +233,21 @@ END
 DELIMITER ;
 
 
--- distinct table in Case somebody uses SELECT *
+-- ----------------------------------------------------------
+-- FILE CONTENT
+--
+-- Aistinct table instead of a filed in fileVersions in case
+-- somebody uses "SELECT *".
+-- ----------------------------------------------------------
+
 CREATE TABLE IF NOT EXISTS fileContent (
-    id INT UNSIGNED NOT NULL AUTO_INCREMENT
-    ,versionID INT UNSIGNED NOT NULL
+    versionID CHAR(32) CHARACTER SET ASCII NOT NULL
     ,pageContent MEDIUMTEXT NOT NULL
-    ,PRIMARY KEY(`id`)
-    ,INDEX(`versionID`)
+    ,PRIMARY KEY(`versionID`)
 ) ENGINE=InnoDB;
 
 ALTER TABLE `fileContent`
-ADD CONSTRAINT `link from content to version in master`
+ADD CONSTRAINT `link from fileContent to fileVersions`
 FOREIGN KEY (`versionID`)
 REFERENCES `fileVersions`(`id`)
 ON DELETE RESTRICT
@@ -330,7 +340,7 @@ ON UPDATE RESTRICT;
 CREATE TABLE IF NOT EXISTS labelToVersion (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,labelID INT UNSIGNED NOT NULL
-    ,versionID INT UNSIGNED
+    ,versionID CHAR(32) CHARACTER SET ASCII NOT NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`labelID`)
     ,INDEX(`versionID`)
@@ -392,7 +402,7 @@ DECLARE EXIT HANDLER FOR sqlexception
         SELECT id FROM fileVersions WHERE fileID = filemasterID_p
         );
     -- now as the CONSTRAINT does not interfere, remove all versions:
-    DELETE FROM fileVersions WHERE fileID = fileMasterID_p;
+    DELETE FROM fileVersions WHERE fileMasterID = fileMasterID_p;
 
     -- remove all labels attached to the fileMaster:
     DELETE FROM labelToMaster WHERE masterID = fileMasterID_p;
@@ -480,9 +490,9 @@ DECLARE EXIT HANDLER FOR sqlexception
 
     SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
 
-    INSERT INTO fileVersions (fileID, storageTypeID, mimeType,
+    INSERT INTO fileVersions (id, fileMasterID, storageTypeID, mimeType,
                               pathOrBucket, fileName, size, hashMethod,
-                              hashValue) VALUES (@fileMasterID, 2, mimeType_p,
+                              hashValue) VALUES (queueID_p, @fileMasterID, 2, mimeType_p,
                               path_or_bucket_p, file_name_p, size_p,
                               hash_method_p, hash_value_p);
 
@@ -496,7 +506,8 @@ END $$
 
 -- --------------------------------------------------------
 -- insert_content_SP:
---
+-- Saves the content, transfers the labels from the queue,
+-- and removes the queue item.
 --
 -- --------------------------------------------------------
 DELIMITER $$
@@ -528,18 +539,11 @@ DECLARE EXIT HANDLER FOR sqlexception
     -- Until that version is in use, an extra roundtrip is justified:
     SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
 
-    INSERT INTO fileVersions (fileID, storageTypeID, mimeType)
-    VALUES (@fileMasterID, 1, mimeType_p);
-
-    -- https://mariadb.com/kb/en/last_insert_id/ :
-    -- 'Within the body of a stored routine (procedure or function)
-    -- or a trigger, the value of LAST_INSERT_ID() changes the same way
-    -- as for statements executed outside the body of these kinds of objects.'
-
-    SELECT LAST_INSERT_ID() INTO @newVersionID;
+    INSERT INTO fileVersions (id, fileMasterID, storageTypeID, mimeType)
+    VALUES (queueID_p, @fileMasterID, 1, mimeType_p);
 
     INSERT INTO fileContent (versionID, pageContent)
-    VALUES (@newVersionID, text_p);
+    VALUES (queueID_p, text_p);
 
     CALL transfer_labels_from_queue_to_master_SP(queueID_p, @fileMasterID);
 

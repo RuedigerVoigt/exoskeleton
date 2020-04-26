@@ -519,7 +519,7 @@ class Exoskeleton:
                         logging.error('Transaction failed: Could not add ' +
                                       'page code of queue item %s to ' +
                                       'the database!',
-                                      queue_id)
+                                      queue_id, exc_info=True)
 
                 self.cnt['processed'] += 1
                 self.__update_host_statistics(url, True)
@@ -623,7 +623,7 @@ class Exoskeleton:
                 self.cnt['transaction_fail'] += 1
                 logging.error('Transaction failed: Could not add already ' +
                               'downloaded file %s to the database!',
-                              filename)
+                              filename, exc_info=True)
             except Exception:
                 logging.error('Unknown exception', exc_info=True)
             self.cnt['processed'] += 1
