@@ -9,10 +9,11 @@
 * [Bot Behavior](behavior-settings.md)
 * [Progress Reports via Email](progess-reports-via-email.md)
 * [File Versions and Labels](versions-and-labels.md)
-* Data Sequences
+* [Data Sequences](data-sequences.md)
 
 
 
 ## Technical Documentation
 
+* [Contributing](contributing.md)
 * [Database Structure](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts)
