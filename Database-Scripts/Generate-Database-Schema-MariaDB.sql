@@ -181,7 +181,6 @@ CREATE TABLE IF NOT EXISTS fileVersions (
     ,size INT UNSIGNED NULL
     ,hashMethod VARCHAR(6) NULL
     ,hashValue VARCHAR(512) NULL
-    ,addedDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,comment VARCHAR(256) NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`fileMasterID`)
@@ -237,7 +236,8 @@ DELIMITER ;
 -- FILE CONTENT
 --
 -- Aistinct table instead of a filed in fileVersions in case
--- somebody uses "SELECT *".
+-- somebody uses "SELECT *". All version infos are
+-- stored in fileVersions.
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS fileContent (
