@@ -11,7 +11,6 @@ import pathlib
 
 # 3rd party libraries:
 from bs4 import BeautifulSoup
-import lxml
 
 
 def get_file_size(file_path: pathlib.Path) -> int:
@@ -89,10 +88,11 @@ def determine_file_extension(url: str,
             # text/plain is mapped to .bat in python 3.6.
             # Python 3.8 correctly guesses .txt as extension.
             return '.txt'
-        elif extension == '.htm':
+
+        if extension == '.htm':
             return '.html'
-        else:
-            return extension
+
+        return extension
     else:
         return '.unknown'
 
