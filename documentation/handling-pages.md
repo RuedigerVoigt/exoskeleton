@@ -1,14 +1,20 @@
 # Handling Pages
 
+## The Queue
+
 The Queue is the central concept behind exoskeleton. With the exception of `return_page_code()` for throwaway information, you always add tasks to the queue.
 
-Exoskeleton then processes that queue - sometimes slow but steady. If a server does not respond, it automatically picks another task and retries that failed one later.
+With the `process_queue()` command you tell exoskeleton to work through that queue. It tries to work on tasks in the order they were added. However, if a server does not respond or throws an error, it automatically picks another task and retries that failed one later.
+
+
 
 ## Downloading Files
 
 ```python
 def add_file_download(url: str,
-                      labels: set = None):
+                      labels_master: set = None,
+                      labels_version: set = None,
+                      force_new_version: bool = False):
 ```
 
 Then you [created the bot](create-a-bot.md) you set two parameters:
@@ -26,8 +32,10 @@ Sometimes the code of a page is relevant. With `add_save_page_code()` this will 
 
 ```python
 def add_save_page_code(url: str,
-                       labels: set = None,
-                       prettify_html: bool = False):
+                       labels_master: set = None,
+                       labels_version: set = None,
+                       prettify_html: bool = False,
+                       force_new_version: bool = False):
 ```
 
 The option `prettify_html` uses lxml to fix broken HTML code. *It should not be used with an XHTML or XML file.*
@@ -86,11 +94,7 @@ If you save it with `prettify_html` set to True, the HTML is improved in a numbe
 ```
 
 
-
-
-
-
-The function accepts a set of [labels](versions-and-labels.md "How to use labels").
+The function accepts sets of [labels](versions-and-labels.md "How to use labels").
 
 
 
@@ -98,7 +102,9 @@ The function accepts a set of [labels](versions-and-labels.md "How to use labels
 
 ```python
 def add_page_to_pdf(url: str,
-                    labels: set = None):
+                    labels_master: set = None,
+                    labels_version: set = None,
+                    force_new_version: bool = False):
 ```
 
 You can add a set of [labels](versions-and-labels.md "How to use labels").

@@ -66,7 +66,7 @@ def crawl(job: str,
             # leave the while loop
             break
 
-        # get the page content and parse it with lxml
+        # directly get the page content and parse it with lxml
         soup = BeautifulSoup(exo.return_page_code(page_to_crawl), 'lxml')
 
         # extract all relevant links to detail pages
@@ -78,8 +78,9 @@ def crawl(job: str,
             for i in urls:
                 full_url = (f"{url_base}{i['href']}")
                 print(full_url)
-                # we add the name of the job as a label
-                exo.add_save_page_code(full_url, {job})
+                # This function adds the task "download the file"
+                # to the queue. We add the name of the job as a label.
+                exo.add_file_download(full_url, {job})
 
         try:
             # check whether a next page is defined for the SERPs
@@ -110,16 +111,9 @@ exo.job_define_new('Example Job',
 # Actually start the crawl through the SERPs
 crawl('Example Job', 'https://www.example.com/)
 
-# now download all files
+# now that the crawling is done, proceed
+# and download all files in the queue:
 exo.process_queue()
-
 ```
 
-## Avoiding Duplicates on the Fly
-
-If you use the described method for multiple search terms it is possible that the results overlap. This might lead to you downloading the same files multiple times. You want to avoid this as it slows you down. Furthermore, it puts unnecessary stress on the server.
-
-**For this reason exoskeleton detects duplicates automatically.** If you try to download a file which is already in the queue or has been downloaded, exoskeleton will inform you with a logging message and will simply ignore the request.
-
-
-> :arrow_right: **[Now learn about the options for storing pages and files](handling-pages.md)**
+> :arrow_right: **[Learn how to avoid storing duplicates](avoiding-duplicates.md)**
