@@ -56,7 +56,7 @@ class Exoskeleton:
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.8.2 (beta / Feb 21, 2020)')
+        logging.info('You are using exoskeleton 0.9.0 (beta / April 27, 2020)')
 
         self.project = project_name.strip()
         self.user_agent = bot_user_agent.strip()
@@ -921,7 +921,7 @@ class Exoskeleton:
         # Ignore labels for the version at this point, as it might
         # not get processed.
         if labels_master:
-            self.assign_labels_to_master(url, labels_master)
+            self.__assign_labels_to_master(url, labels_master)
 
         if not force_new_version:
             # check if the URL has already been processed
@@ -972,7 +972,7 @@ class Exoskeleton:
 
         # link labels to version item
         if labels_version:
-            self.assign_labels_to_version(uuid_value, labels_version)
+            self.__assign_labels_to_version(uuid_value, labels_version)
 
     def delete_from_queue(self,
                           queue_id: int):
@@ -1169,9 +1169,9 @@ class Exoskeleton:
 # LABELS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def define_new_label(self,
-                         shortname: str,
-                         description: str = None):
+    def __define_new_label(self,
+                           shortname: str,
+                           description: str = None):
         u""" If the label is not already in use, define a new label
         and a description. """
         if len(shortname) > 31:
@@ -1191,7 +1191,7 @@ class Exoskeleton:
                                shortname: str,
                                description: str = None):
         u""" Insert a new label into the database or update it's
-        description in case it already exists. Use define_new_label
+        description in case it already exists. Use __define_new_label
         if an update has to be avoided. """
         if len(shortname) > 31:
             logging.error("Labelname exceeds max length of 31 " +
@@ -1222,9 +1222,9 @@ class Exoskeleton:
         logging.error('No labels provided to get_label_ids().')
         return None
 
-    def assign_labels_to_version(self,
-                                 uuid: str,
-                                 labels: Union[set, None]):
+    def __assign_labels_to_version(self,
+                                   uuid: str,
+                                   labels: Union[set, None]):
         u""" Assigns one or multiple labels either to a specific
         version of a file.
         Removes duplicates and adds new labels to the label list
@@ -1241,7 +1241,7 @@ class Exoskeleton:
                 # Make sure all labels are in the database table.
                 # -> If they already exist or malformed the command
                 # will be ignored by the dbms.
-                self.define_new_label(label)
+                self.__define_new_label(label)
 
             # Get all label-ids
             id_list = self.get_label_ids(label_set)
@@ -1262,9 +1262,9 @@ class Exoskeleton:
                                      '(labelID, versionUUID) ' +
                                      'VALUES (%s, %s);', insert_list)
 
-    def assign_labels_to_master(self,
-                                url: str,
-                                labels: Union[set, None]):
+    def __assign_labels_to_master(self,
+                                  url: str,
+                                  labels: Union[set, None]):
         u""" Assigns one or multiple labels to the *fileMaster* entry.
         Removes duplicates and adds new labels to the label list
         if necessary.."""
@@ -1280,7 +1280,7 @@ class Exoskeleton:
                 # Make sure all labels are in the database table.
                 # -> If they already exist or malformed the command
                 # will be ignored by the dbms.
-                self.define_new_label(label)
+                self.__define_new_label(label)
 
             # Get all label-ids
             id_list = self.get_label_ids(label_set)

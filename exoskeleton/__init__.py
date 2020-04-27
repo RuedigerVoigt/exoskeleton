@@ -4,5 +4,5 @@
 from exoskeleton.__main__ import Exoskeleton
 
 name = "exoskeleton"
-__version__ = "0.8.2"
+__version__ = "0.9.0"
 __author__ = "Rüdiger Voigt"
