@@ -52,7 +52,7 @@ exo = exoskeleton.Exoskeleton(
 This is the bare minimum. If you run this code it should output something like this:
 
 ```
-INFO:root:You are using exoskeleton 0.9.0 (beta / April 20, 2020)
+INFO:root:You are using exoskeleton 0.9.0 (beta / April 27, 2020)
 WARNING:root:No hostname provided. Will try localhost.
 INFO:root:No port number supplied. Will try standard port instead.
 DEBUG:root:Trying to connect to database.
@@ -66,7 +66,6 @@ DEBUG:root:Found table fileVersions
 DEBUG:root:Found table jobs
 DEBUG:root:Found table labels
 DEBUG:root:Found table labelToMaster
-DEBUG:root:Found table labelToQueue
 DEBUG:root:Found table labelToVersion
 DEBUG:root:Found table queue
 DEBUG:root:Found table statisticsHosts
@@ -78,7 +77,6 @@ DEBUG:root:Found stored procedure delete_from_queue_SP
 DEBUG:root:Found stored procedure insert_content_SP
 DEBUG:root:Found stored procedure insert_file_SP
 DEBUG:root:Found stored procedure next_queue_object_SP
-DEBUG:root:Found stored procedure transfer_labels_from_queue_to_master_SP
 INFO:root:Found all expected stored procedures.
 DEBUG:root:Set target directory to /home/exampleuser/TEST
 DEBUG:root:Hash method sha256 is available.
@@ -125,4 +123,4 @@ If you run this extended script exoskeleton downloads the first file, waits a bi
 
 Now look into the folder you specified with the `target_directory` parameter. The files are *not* named `examplefile.txt` and `README.md` but instead have the `filename_prefix` you specified followed by an alphanumeric id as name. The reason for such strange names is simple: if you download hundreds or thousands of files there will be many name collisions. That means you will have many files with the name `index.html` or similar which would overwrite each other. You would have to rename them into `index_a.html`, `index_b.html`, `index_c.html` and so on. *Here the alphanumeric id after the prefix is the id within the database. So, you can look up the source URL, the download date, and so on.*
 
-> :arrow_right: **[Now learn how to parse search results and avoid saving duplicates](parse-search-results.md)**
+> :arrow_right: **[Now learn how to parse search results](parse-search-results.md)**

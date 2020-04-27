@@ -30,4 +30,4 @@ Obviously `mail_admin` and `mail_sender` are required to send email.
 
 `send_start_msg` defaults to True, so the bot will right away send an email. This is a good way to check whether sending a mail does work. If the receiving mail server uses [greylisting](https://en.wikipedia.org/wiki/Greylisting "Wikipedia on this method to reduce spam by introducing wait time for unknown senders"), it may initially take some minutes to get this email.
 
-> :arrow_right: **[Work with labels](labels.md)**
+> :arrow_right: **[Work with versions and labels](versions-and-labels.md)**
