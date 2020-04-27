@@ -360,12 +360,16 @@ class Exoskeleton:
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
                            'errorType',
-                           'fileContent', 'fileMaster', 'fileVersions',
+                           'fileContent',
+                           'fileMaster',
+                           'fileVersions',
                            'jobs',
-                           'labels', 'labelToMaster', 'labelToQueue',
+                           'labels',
+                           'labelToMaster',
                            'labelToVersion',
                            'queue',
-                           'statisticsHosts', 'storageTypes']
+                           'statisticsHosts',
+                           'storageTypes']
         tables_count = 0
 
         self.cur.execute('SHOW TABLES;')
@@ -397,8 +401,7 @@ class Exoskeleton:
                                'delete_from_queue_SP',
                                'insert_content_SP',
                                'insert_file_SP',
-                               'next_queue_object_SP',
-                               'transfer_labels_from_queue_to_master_SP']
+                               'next_queue_object_SP']
 
         procedures_count = 0
         self.cur.execute('SELECT SPECIFIC_NAME ' +
@@ -853,30 +856,43 @@ class Exoskeleton:
 
     def add_file_download(self,
                           url: str,
-                          labels: set = None):
+                          labels_master: set = None,
+                          labels_version: set = None,
+                          force_new_version: bool = False):
         u"""Add a file download URL to the queue """
-        self.__add_to_queue(url, 1, labels)
+        self.__add_to_queue(url, 1, labels_master,
+                            labels_version, False,
+                            force_new_version)
 
     def add_save_page_code(self,
                            url: str,
-                           labels: set = None,
-                           prettify_html: bool = False):
+                           labels_master: set = None,
+                           labels_version: set = None,
+                           prettify_html: bool = False,
+                           force_new_version: bool = False):
         u"""Add an URL to the queue to save it's HTML code
             into the database."""
-        self.__add_to_queue(url, 2, labels, prettify_html)
+        self.__add_to_queue(url, 2, labels_master,
+                            labels_version, prettify_html,
+                            force_new_version)
 
     def add_page_to_pdf(self,
                         url: str,
-                        labels: set = None):
+                        labels_master: set = None,
+                        labels_version: set = None,
+                        force_new_version: bool = False):
         u"""Add an URL to the queue to print it to PDF
             with headless Chrome. """
-        self.__add_to_queue(url, 3, labels)
+        self.__add_to_queue(url, 3, labels_master, labels_version,
+                            False, force_new_version)
 
     def __add_to_queue(self,
                        url: str,
                        action: int,
-                       labels: set = None,
-                       prettify_html: bool = False):
+                       labels_master: set = None,
+                       labels_version: set = None,
+                       prettify_html: bool = False,
+                       force_new_version: bool = False):
         u""" More general function to add items to queue. Called by
         add_file_download, add_save_page_code and add_page_to_pdf."""
 
@@ -884,7 +900,7 @@ class Exoskeleton:
             logging.error('Invalid value for action!')
             return
 
-        prettify = 0
+        prettify = 0  # numeric because will be added to int database field
         if prettify_html and action != 2:
             logging.error('Option prettify_html not ' +
                           'supported for this action.')
@@ -894,55 +910,75 @@ class Exoskeleton:
         # Excess whitespace might be common (copy and paste)
         # and would change the hash:
         url = url.strip()
-
+        # check if it is an URL and if it is either http or https
+        # (other schemas are not supported by requests)
         if not userprovided.url.is_url(url, ('http', 'https')):
             logging.error('Could not add URL %s : invalid or unsupported',
                           url)
             return
 
-        # check if the file already has been processed
-        self.cur.execute('SElECT id FROM fileMaster ' +
-                         'WHERE urlHash = SHA2(%s,256);', url)
-        id_in_file_master = self.cur.fetchone()
-        if id_in_file_master is not None:
-            logging.info('The file has already been processed. Skipping it.')
-            # Add possibly new labels to fileMaster
-            self.assign_labels(id_in_file_master, labels, 'master')
-            return
+        # Add labels for the master entry.
+        # Ignore labels for the version at this point, as it might
+        # not get processed.
+        if labels_master:
+            self.assign_labels_to_master(url, labels_master)
 
-        # generate a random uuid
+        if not force_new_version:
+            # check if the URL has already been processed
+            self.cur.execute('SELECT id FROM fileMaster ' +
+                             'WHERE urlHash = SHA2(%s,256);',
+                             url)
+            id_in_file_master = self.cur.fetchone()
+
+            if id_in_file_master:
+                print('ID ist in file master')
+                # The URL has been processed in _some_ way.
+                # Check if was the _same_ as now requested.
+                self.cur.execute('SELECT id FROM fileVersions ' +
+                                 'WHERE fileMasterID = %s AND ' +
+                                 'storageTypeID = %s;',
+                                 (id_in_file_master[0], action))
+                version_id = self.cur.fetchone()
+                if version_id:
+                    logging.info('The file has already been processed ' +
+                                 'in the same way. Skipping it.')
+                    return
+                else:
+                    # log and simply go on
+                    logging.debug('The file has already been processed, ' +
+                                  'BUT not in this way. Therefore ' +
+                                  'adding task to the queue.')
+            else:
+                # File has not been processed yet.
+                # If the exact same task is *not* already in the queue,
+                # add it.
+                self.cur.execute('SELECT id FROM queue ' +
+                                 'WHERE urlHash = SHA2(%s,256) AND ' +
+                                 'action = %s;',
+                                 (url, action))
+                in_queue = self.cur.fetchone()
+                if in_queue:
+                    logging.info('Exact same task already in queue.')
+                    return
+
+        # generate a random uuid for the file version
         uuid_value = uuid.uuid4().hex
 
-        try:
-            # add the new element to the queue
-            self.cur.execute('INSERT INTO queue ' +
-                             '(id, action, url, urlHash, prettifyHtml) ' +
-                             'VALUES (%s, %s, %s, SHA2(%s,256), %s);',
-                             (uuid_value, action, url, url, prettify))
+        # add the new task to the queue
+        self.cur.execute('INSERT INTO queue ' +
+                         '(id, action, url, urlHash, prettifyHtml) ' +
+                         'VALUES (%s, %s, %s, SHA2(%s,256), %s);',
+                         (uuid_value, action, url, url, prettify))
 
-            # link labels to queue item
-            if labels:
-                self.assign_labels(uuid_value, labels, 'queue')
-
-        except pymysql.IntegrityError:
-            # No further check here as an duplicate url / urlHash is
-            # the only thing that can cause that error here.
-            logging.info('URL already in queue. Not adding it again.')
-
-            # Get the id in the queue. Now this must use the URL
-            # to obtain the UUID.
-            self.cur.execute('SELECT id FROM queue ' +
-                             'WHERE urlHash = SHA2(%s,256) ' +
-                             'LIMIT 1;', url)
-            queue_id = self.cur.fetchone()[0]  # type: ignore
-            # add possibly new labels
-            self.assign_labels(queue_id, labels, 'queue')
+        # link labels to version item
+        if labels_version:
+            self.assign_labels_to_version(uuid_value, labels_version)
 
     def delete_from_queue(self,
                           queue_id: int):
         u"""Remove all label links from a queue item
             and then delete it from the queue."""
-        # callproc expects a tuple. Do not remove the comma.
+        # callproc expects a tuple. Do not remove the comma:
         self.cur.callproc('delete_from_queue_SP', (queue_id, ))
 
     def add_crawl_delay_to_item(self,
@@ -1186,19 +1222,19 @@ class Exoskeleton:
         logging.error('No labels provided to get_label_ids().')
         return None
 
-    def assign_labels(self,
-                      object_id: int,
-                      labels: Union[set, None],
-                      target: str):
-        u""" Assigns one or multiple labels either to an item
-        in the master, the queue or a version.
+    def assign_labels_to_version(self,
+                                 uuid: str,
+                                 labels: Union[set, None]):
+        u""" Assigns one or multiple labels either to a specific
+        version of a file.
         Removes duplicates and adds new labels to the label list
         if necessary.."""
 
-        # Using a set to avoid duplicates. However, accept either
-        # a single string or a list type.
-
-        if labels:
+        if not labels:
+            return
+        else:
+            # Using a set to avoid duplicates. However, accept either
+            # a single string or a list type.
             label_set = utils.convert_to_set(labels)
 
             for label in label_set:
@@ -1211,44 +1247,58 @@ class Exoskeleton:
             id_list = self.get_label_ids(label_set)
 
             # Check if there are already labels assigned
-            if target == 'queue':
-                self.cur.execute('SELECT labelID FROM labelToQueue ' +
-                                 'WHERE queueID = %s;', object_id)
-                ids_associated = self.cur.fetchall()
+            self.cur.execute('SELECT labelID FROM labelToVersion ' +
+                             'WHERE versionUUID = %s;', uuid)
+            ids_associated = self.cur.fetchall()
 
-                # ignore all labels already associated
-                id_list = tuple(set(id_list) - set(ids_associated))
-            elif target == 'master':
-                self.cur.execute('SELECT labelID FROM labelToMaster ' +
-                                 'WHERE labelID = %s;', object_id)
-                ids_associated = self.cur.fetchall()
-
-                # ignore all labels already associated
-                id_list = tuple(set(id_list) - set(ids_associated))
+            # ignore all labels already associated
+            id_list = tuple(set(id_list) - set(ids_associated))
 
             if id_list:
                 # Case: there are new labels
                 # Convert into a format to INSERT with executemany
-                insert_list = [(id[0], object_id) for id in id_list]
-            else:
-                logging.debug('No labels to add.')
-                return
-
-            if target == 'queue':
-                self.cur.executemany('INSERT IGNORE INTO labelToQueue ' +
-                                     '(labelID, queueID) ' +
-                                     'VALUES (%s, %s);', insert_list)
-
-            elif target == 'master':
-                self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
-                                     '(labelID, masterID) ' +
-                                     'VALUES (%s, %s);', insert_list)
-
-            elif target == 'version':
+                insert_list = [(id[0], uuid) for id in id_list]
                 self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
-                                     '(labelID, versionID) ' +
+                                     '(labelID, versionUUID) ' +
                                      'VALUES (%s, %s);', insert_list)
 
-            else:
-                raise ValueError('The target parameter has to be ' +
-                                 'either master, queue, or version.')
+    def assign_labels_to_master(self,
+                                url: str,
+                                labels: Union[set, None]):
+        u""" Assigns one or multiple labels to the *fileMaster* entry.
+        Removes duplicates and adds new labels to the label list
+        if necessary.."""
+
+        if not labels:
+            return
+        else:
+            # Using a set to avoid duplicates. However, accept either
+            # a single string or a list type.
+            label_set = utils.convert_to_set(labels)
+
+            for label in label_set:
+                # Make sure all labels are in the database table.
+                # -> If they already exist or malformed the command
+                # will be ignored by the dbms.
+                self.define_new_label(label)
+
+            # Get all label-ids
+            id_list = self.get_label_ids(label_set)
+
+            # Check whether some labels are already associated
+            # with the fileMaster entry.
+            self.cur.execute('SELECT labelID FROM labelToMaster ' +
+                             'WHERE urlHash = SHA2(%s,256);', url)
+            ids_associated = self.cur.fetchall()
+
+            # ignore all labels already associated
+            id_list = tuple(set(id_list) - set(ids_associated))
+
+            if id_list:
+                # Case: there are new labels
+                # Convert into a format to INSERT with executemany
+                insert_list = [(id[0], url) for id in id_list]
+                # Add those associatons
+                self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
+                                     '(labelID, urlHash) ' +
+                                     'VALUES (%s, SHA2(%s,256));', insert_list)

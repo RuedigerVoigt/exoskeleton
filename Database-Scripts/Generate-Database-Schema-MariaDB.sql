@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS queue (
     ,delayUntil TIMESTAMP NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`action`)
-    ,UNIQUE(`urlHash`)
+    ,INDEX(`urlHash`)
     ,INDEX(`addedToQueue`)
     ,INDEX(`delayUntil`)
 ) ENGINE=InnoDB;
@@ -276,9 +276,27 @@ CREATE TABLE IF NOT EXISTS statisticsHosts (
 
 -- ----------------------------------------------------------
 -- LABELS
+--
+-- Labels can be attached to the master entry, or to a specific
+-- version of a file.
+--
+-- As long the queue item has not been processed, there is no
+-- entry in neither the filemaster nor the fileVersion table.
+-- However we need to be able to assign the labels.
+-- => The filemaster entry can be determined via the SHA-256 Hash
+-- of the URL. Each version of a file is identified through an UUID
+-- that is transfered from the queue.
+-- => This makes it possible to store those labels while the
+-- action is till on hold.
+-- => This require clean-up if an action is removed from the
+-- queue *without* having been executed, or if a version or
+-- a filemaster entry is removed. Foreign keys cannot be used,
+-- as the restraints would kick in while the item is only in
+-- the queue. So triggers will be used instead.
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS labels (
+    -- holds labels and their description
     id INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,shortName VARCHAR(63) NOT NULL
     ,description TEXT DEFAULT NULL
@@ -287,38 +305,14 @@ CREATE TABLE IF NOT EXISTS labels (
     ) ENGINE=InnoDB;
 
 
-CREATE TABLE IF NOT EXISTS labelToQueue (
-    id INT NOT NULL AUTO_INCREMENT
-    ,labelID INT UNSIGNED NOT NULL
-    ,queueID CHAR(32) CHARACTER SET ASCII NOT NULL
-    ,PRIMARY KEY(`id`)
-    ,INDEX(`labelID`)
-    ,INDEX(`queueID`)
-    ) ENGINE=InnoDB;
-
-ALTER TABLE `labelToQueue`
-ADD CONSTRAINT `l2q labelID to id in labels`
-FOREIGN KEY (`labelID`)
-REFERENCES `labels`(`id`)
-ON DELETE RESTRICT
-ON UPDATE RESTRICT;
-
-ALTER TABLE `labelToQueue`
-ADD CONSTRAINT `l2q queueID to id in queue`
-FOREIGN KEY (`queueID`)
-REFERENCES `queue`(`id`)
-ON DELETE RESTRICT
-ON UPDATE RESTRICT;
-
-
-
 CREATE TABLE IF NOT EXISTS labelToMaster (
+    -- links fileMaster entries to labels
     id INT NOT NULL AUTO_INCREMENT
     ,labelID INT UNSIGNED NOT NULL
-    ,masterID INT UNSIGNED NOT NULL
+    ,urlHash CHAR(64) NOT NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`labelID`)
-    ,INDEX(`masterID`)
+    ,INDEX(`urlHash`)
     ) ENGINE=InnoDB;
 
 ALTER TABLE `labelToMaster`
@@ -328,22 +322,14 @@ REFERENCES `labels`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
-ALTER TABLE `labelToMaster`
-ADD CONSTRAINT `l2m masterID to id in fileMaster`
-FOREIGN KEY (`masterID`)
-REFERENCES `fileMaster`(`id`)
-ON DELETE RESTRICT
-ON UPDATE RESTRICT;
-
-
-
 CREATE TABLE IF NOT EXISTS labelToVersion (
+    -- links versions of a file to labels
     id INT UNSIGNED NOT NULL AUTO_INCREMENT
     ,labelID INT UNSIGNED NOT NULL
-    ,versionID CHAR(32) CHARACTER SET ASCII NOT NULL
+    ,versionUUID CHAR(32) CHARACTER SET ASCII NOT NULL
     ,PRIMARY KEY(`id`)
     ,INDEX(`labelID`)
-    ,INDEX(`versionID`)
+    ,INDEX(`VersionUUID`)
     ) ENGINE=InnoDB;
 
 ALTER TABLE `labelToVersion`
@@ -353,12 +339,7 @@ REFERENCES `labels`(`id`)
 ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
-ALTER TABLE `labelToVersion`
-ADD CONSTRAINT `l2v versionID to id in fileVersions`
-FOREIGN KEY (`versionID`)
-REFERENCES `fileVersions`(`id`)
-ON DELETE RESTRICT
-ON UPDATE RESTRICT;
+
 
 -- ----------------------------------------------------------
 -- VIEWS
@@ -416,48 +397,15 @@ END $$
 
 
 DELIMITER $$
-CREATE PROCEDURE transfer_labels_from_queue_to_master_SP (IN queueID_p CHAR(32) CHARACTER SET ASCII,
-                                                          IN masterID_p INT)
-MODIFIES SQL DATA
-BEGIN
--- Not a transaction as designed to be called from within transactions.
-
-    CREATE TEMPORARY TABLE foundLabels_tmp (
-        SELECT labelID FROM labelToQueue WHERE queueID = queueID_p
-    );
-
-    -- Transfer labels if they exist:
-    SELECT COUNT(*) FROM foundLabels_tmp INTO @numLabels;
-    IF @numLabels > 0 THEN
-        INSERT IGNORE INTO labelToMaster (labelID, masterID)
-            SELECT labelID, masterID_p AS masterID FROM foundLabels_tmp;
-
-    END IF;
-
-    -- If there were labels attached to the queue item, remove them.
-    -- Then remove the queue-entry:
-    CALL delete_from_queue_SP (queueID_p);
-
-    -- Drop the temporary table as we sustain the db connection:
-    DROP TEMPORARY TABLE foundLabels_tmp;
-
-END $$
-
-
-
-DELIMITER $$
 CREATE PROCEDURE delete_from_queue_SP (IN queueID_p CHAR(32) CHARACTER SET ASCII)
 MODIFIES SQL DATA
 BEGIN
 -- Not a transaction as designed to be called from within transactions.
--- If there were labels attached to the queue item, remove them.
--- Then remove the queue-entry.
+-- Remove the queue-entry.
 
-
-    -- remove all labels attached to the queue item:
-    DELETE FROM labelToQueue WHERE queueID = queueID_p;
-    -- now as the constraint does not interfere, remove the queue-entry:
     DELETE FROM queue WHERE id = queueID_p;
+    -- TO DO: extend this so it cleans up labels if the URL ends up being
+    -- never processed and is not in the queue with another action!
 
 END $$
 
@@ -486,7 +434,7 @@ DECLARE EXIT HANDLER FOR sqlexception
 
     START TRANSACTION;
 
-    INSERT INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
+    INSERT IGNORE INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
 
     SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
 
@@ -496,7 +444,7 @@ DECLARE EXIT HANDLER FOR sqlexception
                               path_or_bucket_p, file_name_p, size_p,
                               hash_method_p, hash_value_p);
 
-    CALL transfer_labels_from_queue_to_master_SP(queueID_p, @fileMasterID);
+    CALL delete_from_queue_SP (queueID_p);
 
     COMMIT;
 
@@ -528,15 +476,9 @@ DECLARE EXIT HANDLER FOR sqlexception
 
     START TRANSACTION;
 
-    INSERT INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
-
-    -- LAST_INSERT_ID() in MySQL / MariaDB is on connection basis!
-    -- https://dev.mysql.com/doc/refman/8.0/en/getting-unique-id.html
-    -- However, it seems unreliable.
-    --
-    -- As of December 2019 "INSERT ... RETURNING" is a feature in the
-    -- current ALPHA version of MariaDB.
-    -- Until that version is in use, an extra roundtrip is justified:
+    INSERT IGNORE INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
+    -- Unclear if a new entry was generated, or it failed with a warning
+    -- as there already was one. So get the id via the Hash of the URL:
     SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
 
     INSERT INTO fileVersions (id, fileMasterID, storageTypeID, mimeType)
@@ -545,7 +487,7 @@ DECLARE EXIT HANDLER FOR sqlexception
     INSERT INTO fileContent (versionID, pageContent)
     VALUES (queueID_p, text_p);
 
-    CALL transfer_labels_from_queue_to_master_SP(queueID_p, @fileMasterID);
+    CALL delete_from_queue_SP (queueID_p);
 
     COMMIT;
 END $$
