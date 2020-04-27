@@ -15,4 +15,4 @@
 ## Technical Documentation
 
 * [Contributing](contributing.md)
-* [Database Structure](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts)
+* [Database Structure](database-schema.md)
