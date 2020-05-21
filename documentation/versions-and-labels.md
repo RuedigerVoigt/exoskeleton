@@ -57,4 +57,22 @@ add_file_download('https://www.example.com/example.pdf',
 ```
 You do not need to add the file size as it is already available in the `fileVersions` table.
 
+## Finding all files with a specific label
+
+Use `version_uuids_by_label` to get a list of all file versions, i.e. UUIDs, with a specific label.
+
+```python
+def version_uuids_by_label(self,
+                           single_label: str) -> list:
+```
+
+## Get all labels attached to a file
+
+Use `version_labels_by_uuid` to get a list of all label names attached to a specific version of a file. This does not return labels attached to the entry in `fileMaster`.
+
+```python
+def version_labels_by_uuid(self,
+                           version_uuid: str) -> list:
+```
+
 > :arrow_right: **[Learn about Data Sequences](data-sequences.md)**
