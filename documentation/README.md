@@ -14,5 +14,5 @@
 
 ## Technical Documentation
 
-* [Contributing](contributing.md)
+* [Contributing](../contributing.md)
 * [Database Structure](database-schema.md)
