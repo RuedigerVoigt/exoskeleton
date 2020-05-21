@@ -268,7 +268,8 @@ class Exoskeleton:
         if type(self.wait_max) not in (int, float):
             raise ValueError('The value for wait_max must be numeric.')
 
-        self.queue_max_retries = behavior_settings.get('queue_max_retries', 3)  # NOT YET IMPLEMENTET
+        # max retries NOT YET IMPLEMENTED:
+        self.queue_max_retries = behavior_settings.get('queue_max_retries', 3)
         if type(self.queue_max_retries) != int:
             raise ValueError('The value for queue_max_retries ' +
                              'must be an integer.')
@@ -1208,6 +1209,7 @@ class Exoskeleton:
         u""" Given a set of labels, this returns the corresponding ids
         in the labels table. """
         if label_set:
+            label_set = utils.convert_to_set(label_set)
             # The IN-Operator makes it necessary to construct the command
             # every time, so input gets escaped. See the accepted answer here:
             # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
@@ -1221,6 +1223,40 @@ class Exoskeleton:
             return None if label_id is None else label_id
         logging.error('No labels provided to get_label_ids().')
         return None
+
+    def version_uuids_by_label(self,
+                               single_label: str) -> list:
+        u"""Get a list of UUIDs (in this context file versions)
+            which have *one* specific label attached to them."""
+        label_id = self.get_label_ids(single_label)
+        if label_id:
+            label_id = label_id[0]
+        else:
+            logging.error('Unknown label. Check for typo.')
+        self.cur.execute("SELECT versionUUID " +
+                         "FROM labelToVersion " +
+                         "WHERE labelID = %s;",
+                         label_id)
+        version_ids = self.cur.fetchall()
+        version_ids = [(uuid[0]) for uuid in version_ids]
+        return None if version_ids is None else version_ids
+
+    def version_labels_by_uuid(self,
+                               version_uuid: str) -> list:
+        u"""Get a list of label names (not id numbers!) attached
+            to a specific version of a file. Does not include
+            labels attached to the filemaster entry."""
+        self.cur.execute('SELECT shortName ' +
+                         'FROM labels ' +
+                         'WHERE ID IN (' +
+                         '  SELECT labelID ' +
+                         '  FROM labelToVersion ' +
+                         '  WHERE versionUUID = %s' +
+                         ');',
+                         version_uuid)
+        labels = self.cur.fetchall()
+        labels = [(label[0]) for label in labels]
+        return labels
 
     def __assign_labels_to_version(self,
                                    uuid: str,
@@ -1251,7 +1287,7 @@ class Exoskeleton:
                              'WHERE versionUUID = %s;', uuid)
             ids_associated = self.cur.fetchall()
 
-            # ignore all labels already associated
+            # ignore all labels already associated:
             id_list = tuple(set(id_list) - set(ids_associated))
 
             if id_list:
