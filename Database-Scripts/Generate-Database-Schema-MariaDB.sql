@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 0.9.0 beta of exoskeleton
+-- for version 0.9.1 beta of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -17,8 +17,8 @@
 -- ----------------------------------------------------------
 
 -- DO NOT FORGET TO CHANGE:
-CREATE DATABASE `nameOfYourDatabase` DEFAULT CHARACTER SET utf8mb4;
-USE `nameOfYourDatabase`;
+CREATE DATABASE IF NOT EXISTS `exoskeleton` DEFAULT CHARACTER SET utf8mb4;
+USE `exoskeleton`;
 
 -- ----------------------------------------------------------
 -- QUEUE
