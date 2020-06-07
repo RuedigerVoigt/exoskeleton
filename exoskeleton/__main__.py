@@ -555,9 +555,12 @@ class Exoskeleton:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
             self.__update_host_statistics(url, False)
-            if self.wait_min < 10.0:
-                self.wait_min = self.wait_min + 1.0
-                self.wait_max = self.wait_max + 1.0
+            # Suppressing mypy errors as defaultdict and some checks
+            # makes ensure self.wait_min and self.wait_max will be
+            # float or int:
+            if self.wait_min < 10.0:  # type: ignore
+                self.wait_min = self.wait_min + 1.0  # type: ignore
+                self.wait_max = self.wait_max + 1.0  # type: ignore
                 logging.info('Increased min and max wait by 1 second each.')
 
         except requests.exceptions.MissingSchema:
