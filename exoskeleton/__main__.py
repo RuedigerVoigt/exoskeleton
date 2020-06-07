@@ -983,7 +983,7 @@ class Exoskeleton:
         self.cur.callproc('delete_from_queue_SP', (queue_id, ))
 
     def add_crawl_delay_to_item(self,
-                                queue_id: int,
+                                queue_id: str,
                                 delay_seconds: int = None):
         u"""In case of timeout or temporary error add a delay until
         the same URL is queried again. """
@@ -997,7 +997,7 @@ class Exoskeleton:
                          'WHERE id = %s', (waittime, queue_id))
 
     def mark_error(self,
-                   queue_id: int,
+                   queue_id: str,
                    error: int):
         u""" Mark item in queue that causes permant error.
 
