@@ -1,5 +1,9 @@
 # Changelog / History
 
+## upcoming
+
+* Signal compliance with [PEP 561](https://www.python.org/dev/peps/pep-0561/): If you type-check code that imports this package, tools like mypy now know that `userprovided` has type-hints and extend their checks to calls of these functions.
+
 ## version 0.9.0 beta (2020-04-27)
 
 Breaking Changes:
