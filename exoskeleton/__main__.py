@@ -16,16 +16,16 @@ import queue
 import random
 import subprocess
 import time
-from typing import Union
+from typing import Union, List, Optional
 from urllib.parse import urlparse
 import uuid
 
 
 # 3rd party libraries:
 import pymysql
-import urllib3
+import urllib3  # type: ignore
 import requests
-import userprovided  # sister-project
+import userprovided
 
 # import other modules of this framework
 import exoskeleton.communication as communication
@@ -65,11 +65,11 @@ class Exoskeleton:
         # Database Setup / Establish a Database Connection
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.db_host = None
-        self.db_port = None
-        self.db_name = None
-        self.db_username = None
-        self.db_passphrase = None
+        self.db_host: Optional[str] = None
+        self.db_port: Optional[int] = None
+        self.db_name: str = None  # type: ignore
+        self.db_username: str = None  # type: ignore
+        self.db_passphrase: str = None  # type: ignore
 
         if database_settings is None:
             raise ValueError('You must supply database credentials for' +
@@ -80,7 +80,9 @@ class Exoskeleton:
         # Establish the connection:
         self.connection = None
         self.establish_db_connection()
-        self.cur = self.connection.cursor()
+        # Add ignore for mypy as it cannot be None at this point, because
+        # establish_db_connection would have failed before:
+        self.cur = self.connection.cursor()  # type: ignore
 
         # Check the schema:
         self.__check_table_existence()
@@ -110,19 +112,19 @@ class Exoskeleton:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         # Seconds until a connection times out:
-        self.connection_timeout = None
+        self.connection_timeout: Optional[int] = None
 
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries = None
         # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit = None
+        self.queue_revisit: Optional[int] = None
 
         self.wait_min = None
         self.wait_max = None
 
         self.stop_if_queue_empty = None
 
-        self.__check_behavior_settings(bot_behavior)
+        self.__check_behavior_settings()
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # File Handling
@@ -204,6 +206,7 @@ class Exoskeleton:
         self.db_host = database_settings.get('host', None)
         if not self.db_host:
             logging.warning('No hostname provided. Will try localhost.')
+            self.db_host = 'localhost'
 
         self.db_port = database_settings.get('port', None)
         if not self.db_port:
@@ -226,9 +229,10 @@ class Exoskeleton:
             logging.warning('No database passphrase provided. ' +
                             'Will try to connect without.')
 
-    def __check_behavior_settings(self,
-                                  behavior_settings: dict):
+    def __check_behavior_settings(self):
         u"""Check the settings for bot behavior. """
+
+        behavior_settings = self.bot_behavior
 
         known_behavior_keys = ('connection_timeout',
                                'queue_max_retries',
@@ -1208,7 +1212,7 @@ class Exoskeleton:
                          (shortname, description, description))
 
     def get_label_ids(self,
-                      label_set: set):
+                      label_set: Union[set, str]):
         u""" Given a set of labels, this returns the corresponding ids
         in the labels table. """
         if label_set:
@@ -1228,7 +1232,7 @@ class Exoskeleton:
         return None
 
     def version_uuids_by_label(self,
-                               single_label: str) -> list:
+                               single_label: str) -> Optional[List[str]]:
         u"""Get a list of UUIDs (in this context file versions)
             which have *one* specific label attached to them."""
         label_id = self.get_label_ids(single_label)

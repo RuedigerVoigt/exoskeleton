@@ -8,9 +8,10 @@ import hashlib
 import logging
 import mimetypes
 import pathlib
+from typing import Union
 
 # 3rd party libraries:
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup  # type: ignore
 
 
 def get_file_size(file_path: pathlib.Path) -> int:
@@ -61,8 +62,9 @@ def determine_file_extension(url: str,
     (like https://www.example.com/), or it is ambiguous.
     So the mime type acts as a fallback. In case the correct
     extension cannot be determined at all it is set to 'unknown'."""
+    if provided_mime_type == '':
+        provided_mime_type = None
     type_by_url = mimetypes.guess_type(url)[0]
-    provided_mime_type = None if provided_mime_type == '' else provided_mime_type.strip()
     extension = None
     if type_by_url is not None and type_by_url == provided_mime_type:
         # Best case: URL and server header suggest the same filetype.
@@ -97,7 +99,7 @@ def determine_file_extension(url: str,
         return '.unknown'
 
 
-def convert_to_set(convert_this: list) -> set:
+def convert_to_set(convert_this: Union[list, set, str, tuple]) -> set:
     u""" Convert a string, a tuple, or a list into a set
     (i.e. no duplicates, unordered)"""
 
