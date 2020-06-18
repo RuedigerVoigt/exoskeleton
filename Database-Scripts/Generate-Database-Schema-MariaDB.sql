@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS queue (
 -- JOBS
 -- ----------------------------------------------------------
 
-CREATE TABLE jobs (
+CREATE TABLE IF NOT EXISTS jobs (
     jobName VARCHAR(127) NOT NULL
     ,created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,finished TIMESTAMP NULL
@@ -85,10 +85,14 @@ CREATE TABLE IF NOT EXISTS actions (
 ) ENGINE=InnoDB;
 
 INSERT INTO actions (id, description) VALUES
+(0, 'custom'),
 (1, 'download file to disk'),
 (2, 'save page code into database'),
-(3, 'save as PDF using headless Chrome');
-
+(3, 'save as PDF using headless Chrome'),
+(4, 'reserved for future use'),
+(5, 'reserved for future use'),
+(6, 'reserved for future use'),
+(7, 'reserved for future use');
 
 ALTER TABLE `queue`
 ADD CONSTRAINT `actions`
@@ -515,7 +519,8 @@ BEGIN
     ,prettifyHtml
     FROM queue
     WHERE causesError IS NULL AND
-    (delayUntil IS NULL OR delayUntil < NOW())
+    (delayUntil IS NULL OR delayUntil < NOW()) AND
+    action IN (1, 2, 3)
     ORDER BY addedToQueue ASC
     LIMIT 1;
 
