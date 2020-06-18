@@ -8,7 +8,7 @@ import hashlib
 import logging
 import mimetypes
 import pathlib
-from typing import Union
+from typing import Optional, Union
 
 # 3rd party libraries:
 from bs4 import BeautifulSoup  # type: ignore
@@ -55,7 +55,7 @@ def get_file_hash(file_path: pathlib.Path,
 
 
 def determine_file_extension(url: str,
-                             provided_mime_type: str) -> str:
+                             provided_mime_type: Optional[str] = None) -> str:
     u"""Guess the correct filename extension from an URL and / or
     the mime-type returned by the server.
     Sometimes a valid URL does not contain a file extension
