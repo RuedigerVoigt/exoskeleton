@@ -1,0 +1,33 @@
+# This workflow runs Unit-Tests for exoskeleton on MacOS
+# with the two latest python versions.
+# Flake8 and mypy will be run with the Ubuntu Workflow.
+# There is no need to repeat this here.
+
+name: MacOS Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run Unittests
+      run: python tests.py
