@@ -94,6 +94,9 @@ class Exoskeleton:
 
         self.send_mails = False
         self.mail_server = None
+        self.mail_server_port = None
+        self.mail_username = None
+        self.mail_passphrase = None
         self.mail_admin = None
         self.mail_sender = None
         self.send_start_msg = None
@@ -297,8 +300,12 @@ class Exoskeleton:
         try:
             # Check whether it is a dict and if there are unknown keys:
             known_mail_keys = ('mail_server',
-                               'mail_admin', 'mail_sender',
-                               'send_start_msg', 'send_finish_msg',
+                               'mail_username',
+                               'mail_passphrase',
+                               'mail_admin',
+                               'mail_sender',
+                               'send_start_msg',
+                               'send_finish_msg',
                                'milestone_num')
             found_keys = mail_settings.keys()
             for key in found_keys:
@@ -311,6 +318,13 @@ class Exoskeleton:
         # default values for those missing!
 
         self.mail_server = mail_settings.get('mail_server', 'localhost')
+        self.mail_server_port = mail_settings.get('mail_server_port', None)
+        if self.mail_server_port:
+            if not userprovided.port.port_in_range(self.mail_server_port):
+                raise ValueError('Port must be integer (0 to 65536)')
+
+        self.mail_username = mail_settings.get('mail_username', None)
+        self.mail_passphrase = mail_settings.get('mail_passphrase', None)
 
         self.mail_admin = mail_settings.get('mail_admin', None)
         if self.mail_admin:
