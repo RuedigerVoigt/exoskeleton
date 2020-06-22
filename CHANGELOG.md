@@ -5,6 +5,7 @@
 Breaking Changes:
 * There is a new parameter `mail_behavior` that contains the already existing settings `send_start_msg`, `send_finish_msg`, and `milestone_num`.
 * The prefix `mail_` was removed in settings as all mail related settings are within the `mail_settings` dictionary. `mail_admin` was renamed to `recipient`.
+* Move `utils.convert_to_set()` into the `userprovided` library.
 
 New Features / Improvements:
 * New function `version_uuids_by_label`: returns all UUIDs which have this label attached.

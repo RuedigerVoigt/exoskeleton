@@ -99,26 +99,6 @@ def determine_file_extension(url: str,
         return '.unknown'
 
 
-def convert_to_set(convert_this: Union[list, set, str, tuple]) -> set:
-    u""" Convert a string, a tuple, or a list into a set
-    (i.e. no duplicates, unordered)"""
-
-    if isinstance(convert_this, set):
-        # functions using this expect a set, so everything
-        # else just captures bad input by users
-        new_set = convert_this
-    elif isinstance(convert_this, str):
-        new_set = {convert_this}
-    elif isinstance(convert_this, list):
-        new_set = set(convert_this)
-    elif isinstance(convert_this, tuple):
-        new_set = set(convert_this)
-    else:
-        raise TypeError('The function calling this expects a set.')
-
-    return new_set
-
-
 def prettify_html(content: str) -> str:
     u"""Parse the HTML => add a document structure if needed
         => Encode HTML-entities and the document as Unicode (UTF-8).

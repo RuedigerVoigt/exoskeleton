@@ -30,25 +30,6 @@ class BotTest(unittest.TestCase):
         self.assertEqual(utils.determine_file_extension(
             'https://www.example.com/test.txt', 'text/plain'), '.txt')
 
-    def test_convert_to_set(self):
-        # single string with multiple characters
-        # (wrong would be making each character into an element)
-        self.assertEqual(utils.convert_to_set('abc'), {'abc'})
-        # list with duplicates to set
-        self.assertEqual(utils.convert_to_set(
-                         ['a', 'a', 'b', 'c']),
-                         {'a', 'b', 'c'})
-        # tuple with duplicates
-        self.assertEqual(utils.convert_to_set(
-                         ('a', 'a', 'b', 'c')),
-                         {'a', 'b', 'c'})
-        # set should return unchanged
-        self.assertEqual(utils.convert_to_set(
-                         {'a', 'b', 'c'}),
-                         {'a', 'b', 'c'})
-        # unsupported data type integer
-        self.assertRaises(TypeError, utils.convert_to_set, 3)
-
 
 if __name__ == "__main__":
     unittest.main()
