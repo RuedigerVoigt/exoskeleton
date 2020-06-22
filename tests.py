@@ -3,7 +3,6 @@
 
 import unittest
 
-from exoskeleton import communication as communication
 from exoskeleton import utils as utils
 
 
@@ -49,39 +48,6 @@ class BotTest(unittest.TestCase):
                          {'a', 'b', 'c'})
         # unsupported data type integer
         self.assertRaises(TypeError, utils.convert_to_set, 3)
-
-    def test_send_mail(self):
-        # wrong values for recipient
-        self.assertRaises(ValueError, communication.send_mail, '',
-                          'sender@example.com', 'subject', 'messageText')
-        self.assertRaises(ValueError, communication.send_mail, None,
-                          'sender@example.com', 'subject', 'messageText')
-        self.assertRaises(ValueError, communication.send_mail, 'invalid',
-                          'sender@example.com', 'subject', 'messageText')
-        # wrong values for sender
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', '',
-                          'subject', 'messageText')
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', None,
-                          'subject', 'messageText')
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', 'invalid',
-                          'subject', 'messageText')
-        # missing subject
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', 'sender@example.com',
-                          '', 'messageText')
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', 'sender@example.com',
-                          None, 'messageText')
-        # missing mail text
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', 'sender@example.com',
-                          'subject', '')
-        self.assertRaises(ValueError, communication.send_mail,
-                          'recipient@example.com', 'sender@example.com',
-                          'subject', None)
 
 
 if __name__ == "__main__":

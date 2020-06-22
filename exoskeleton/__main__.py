@@ -25,10 +25,11 @@ import uuid
 import pymysql
 import urllib3  # type: ignore
 import requests
+# Sister projects:
 import userprovided
+import bote
 
 # import other modules of this framework
-import exoskeleton.communication as communication
 import exoskeleton.utils as utils
 
 
@@ -53,10 +54,11 @@ class Exoskeleton:
                  bot_user_agent: str = 'Bot',
                  bot_behavior: Union[dict, None] = None,
                  mail_settings: Union[dict, None] = None,
+                 mail_behavior: Union[dict, None] = None,
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.9.0 (beta / April 27, 2020)')
+        logging.info('You are using exoskeleton 0.9.1 (beta / June 21, 2020)')
 
         self.project = project_name.strip()
         self.user_agent = bot_user_agent.strip()
@@ -92,42 +94,70 @@ class Exoskeleton:
         # Mail / Notification Setup
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.send_mails = False
-        self.mail_server = None
-        self.mail_server_port = None
-        self.mail_username = None
-        self.mail_passphrase = None
-        self.mail_admin = None
-        self.mail_sender = None
-        self.send_start_msg = None
-        self.send_finish_msg = None
-        self.milestone = None
+        self.send_mails: bool = False
+        self.send_start_msg: bool = False
+        self.send_finish_msg: bool = False
+        self.milestone: Optional[int] = None
+        self.mailer: Optional[bote.Mailer] = None
 
         if mail_settings is None:
             logging.info("Will not send any notification emails " +
-                         "as there are no settings.")
+                         "as there are no mail-settings.")
         else:
-            # Check if notifications *can* be send:
-            self.__check_mail_settings(mail_settings)
+            self.mailer = bote.Mailer(mail_settings)
+            # The constructur would have failed with exceptions,
+            # if the settings were inplausible:
+            self.send_mails = True
+            logging.info('This bot will try to send notications per mail ' +
+                         'in case it fails and cannot recover. ')
+
+            if mail_settings and not mail_behavior:
+                mail_behavior = dict()
+
+            self.send_start_msg = mail_behavior.get('send_start_msg', True)  # type: ignore
+            if not isinstance(self.send_start_msg, bool):
+                raise ValueError('Value for send_start_msg must be boolean,' +
+                                 'i.e True / False (without quotation marks).')
+            if self.send_start_msg:
+                self.mailer.send_mail(f"{self.project}: bot just started.",
+                                      "This is a notification to check " +
+                                      "the mail settings.")
+                logging.info("Just send a notification email. If the " +
+                             "receiving server uses greylisting, " +
+                             "this may take some minutes.")
+
+            self.send_finish_msg = mail_behavior.get('send_finish_msg', False)  # type: ignore
+            if not isinstance(self.send_finish_msg, bool):
+                raise ValueError('Value for send_finish_msg must be boolean,' +
+                                 'i.e True / False (without quotation marks).')
+            if self.send_finish_msg:
+                logging.info('Will send notification email as soon as ' +
+                             'the bot is done.')
+
+            self.milestone = mail_behavior.get('milestone_num', None)  # type: ignore
+            if self.milestone is not None:
+                if not isinstance(self.milestone, int):
+                    raise ValueError('milestone_num must be integer!')
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Bot Behavior
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         # Seconds until a connection times out:
-        self.connection_timeout: Optional[int] = None
+        self.connection_timeout: int = 60
 
         # Maximum number of retries if downloading a page/file failed:
-        self.queue_max_retries = None
+        self.queue_max_retries: int = 3
         # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit: Optional[int] = None
+        self.queue_revisit: int = 60
 
         self.wait_min = None
         self.wait_max = None
 
-        self.stop_if_queue_empty = None
+        self.stop_if_queue_empty: bool = False
 
-        self.__check_behavior_settings()
+        if bot_behavior:
+            self.__check_behavior_settings(bot_behavior)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # File Handling
@@ -232,10 +262,9 @@ class Exoskeleton:
             logging.warning('No database passphrase provided. ' +
                             'Will try to connect without.')
 
-    def __check_behavior_settings(self):
+    def __check_behavior_settings(self,
+                                  behavior_settings: dict):
         u"""Check the settings for bot behavior. """
-
-        behavior_settings = self.bot_behavior
 
         known_behavior_keys = ('connection_timeout',
                                'queue_max_retries',
@@ -257,14 +286,14 @@ class Exoskeleton:
             behavior_settings = dict()
 
         self.connection_timeout = behavior_settings.get('connection_timeout',
-                                                        60.0)
-        if type(self.connection_timeout) not in (int, float):
+                                                        60)
+        if type(self.connection_timeout) != int:
             raise ValueError('The value for connection_timeout ' +
                              'must be numeric.')
         if self.connection_timeout <= 0:
             logging.error('Negative or zero value for timeout. ' +
                           'Fallback to 60 seconds.')
-            self.connection_timeout = 60.0
+            self.connection_timeout = 60
         elif self.connection_timeout > 120:
             logging.info('Very high value for connection_timeout')
 
@@ -293,86 +322,6 @@ class Exoskeleton:
         if type(self.stop_if_queue_empty) != bool:
             raise ValueError('The value for "stop_if_queue_empty" ' +
                              'must be a boolean (True / False).')
-
-    def __check_mail_settings(self,
-                              mail_settings: dict):
-        u"""Check the mail settings for plausibility. """
-        try:
-            # Check whether it is a dict and if there are unknown keys:
-            known_mail_keys = ('mail_server',
-                               'mail_username',
-                               'mail_passphrase',
-                               'mail_admin',
-                               'mail_sender',
-                               'send_start_msg',
-                               'send_finish_msg',
-                               'milestone_num')
-            found_keys = mail_settings.keys()
-            for key in found_keys:
-                if key not in known_mail_keys:
-                    raise ValueError('Unknown key in mail_settings: %s', key)
-        except AttributeError:
-            raise AttributeError('mail_settings must be a dictionary!')
-
-        # Not all keys must be there. defaultdict lets us provide
-        # default values for those missing!
-
-        self.mail_server = mail_settings.get('mail_server', 'localhost')
-        self.mail_server_port = mail_settings.get('mail_server_port', None)
-        if self.mail_server_port:
-            if not userprovided.port.port_in_range(self.mail_server_port):
-                raise ValueError('Port must be integer (0 to 65536)')
-
-        self.mail_username = mail_settings.get('mail_username', None)
-        self.mail_passphrase = mail_settings.get('mail_passphrase', None)
-
-        self.mail_admin = mail_settings.get('mail_admin', None)
-        if self.mail_admin:
-            if not userprovided.mail.is_email(self.mail_admin):
-                raise ValueError('mail_admin is not a valid email!')
-        else:
-            raise ValueError('Need mail_admin in mail_settings ' +
-                             'to send notification mails!')
-
-        self.mail_sender = mail_settings.get('mail_sender', None)
-        if self.mail_sender:
-            if not userprovided.mail.is_email(self.mail_sender):
-                raise ValueError('mail_sender is not a valid email!')
-        else:
-            raise ValueError('Need mail_sender in mail_settings ' +
-                             'to send notification mails!')
-
-        # At this point it should be technically possible to send mails.
-        self.send_mails = True
-        logging.info('This bot will send notications per mail if ' +
-                     'should ever fail.')
-
-        self.send_start_msg = mail_settings.get('send_start_msg', True)
-        if not isinstance(self.send_start_msg, bool):
-            raise ValueError('Value for send_start_msg must be boolean,' +
-                             'i.e True / False (without quotation marks).')
-        if self.send_start_msg:
-            communication.send_mail(self.mail_admin,
-                                    self.mail_sender,
-                                    f"{self.project}: bot just started.",
-                                    "This is a notification to check " +
-                                    "the mail settings.")
-            logging.info("Just send a notification email. If the " +
-                         "receiving server uses greylisting, " +
-                         "this may take some minutes.")
-
-        self.send_finish_msg = mail_settings.get('send_finish_msg', False)
-        if not isinstance(self.send_finish_msg, bool):
-            raise ValueError('Value for send_finish_msg must be boolean,' +
-                             'i.e True / False (without quotation marks).')
-        if self.send_finish_msg:
-            logging.info('Will send notification email as soon as ' +
-                         'the bot is done.')
-
-        self.milestone = mail_settings.get('milestone_num', None)
-        if self.milestone is not None:
-            if not isinstance(self.milestone, int):
-                raise ValueError('milestone_num must be integer!')
 
     def __check_table_existence(self) -> bool:
         u"""Check if all expected tables exist."""
@@ -596,8 +545,8 @@ class Exoskeleton:
     def __page_to_pdf(self,
                       url: str,
                       url_hash: str,
-                      queue_id: int):
-        u""" Uses the Google Chrome browser in headless mode
+                      queue_id: str):
+        u""" Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
         Beware: some cookie-popups blank out the page and
         all what is stored is the dialogue."""
@@ -655,13 +604,18 @@ class Exoskeleton:
             self.__update_host_statistics(url, True)
         except subprocess.TimeoutExpired:
             logging.error('Cannot create PDF due to timeout.')
+            self.add_crawl_delay_to_item(queue_id)
             self.__update_host_statistics(url, False)
         except subprocess.CalledProcessError:
             logging.error('Cannot create PDF due to process error.',
                           exc_info=True)
+            self.add_crawl_delay_to_item(queue_id)
+            self.__update_host_statistics(url, False)
         except Exception:
             logging.error('Exception.',
                           exc_info=True)
+            self.add_crawl_delay_to_item(queue_id)
+            self.__update_host_statistics(url, False)
             pass
 
     def return_page_code(self,
@@ -863,14 +817,14 @@ class Exoskeleton:
         u"""Return execution time since init"""
         return time.process_time() - self.process_time_start
 
-    def estimate_remaining_time(self) -> float:
-        u"""estimate remaining seconds to finish crawl."""
+    def estimate_remaining_time(self) -> int:
+        u"""Estimate remaining seconds to finish crawl."""
         time_so_far = self.absolute_run_time()
         num_remaining = self.num_items_in_queue()
 
         if self.cnt['processed'] > 0:
             time_each = time_so_far / self.cnt['processed']
-            return num_remaining * time_each
+            return round(num_remaining * time_each)
 
         logging.warning('Cannot estimate remaining time ' +
                         'as there are no data so far.')
@@ -1005,11 +959,11 @@ class Exoskeleton:
 
     def add_crawl_delay_to_item(self,
                                 queue_id: str,
-                                delay_seconds: int = None):
+                                delay_seconds: Optional[int] = None):
         u"""In case of timeout or temporary error add a delay until
         the same URL is queried again. """
         logging.debug('Adding crawl delay to queue item %s', queue_id)
-        waittime = 30
+        waittime = 900  # 15 minutes default
         if delay_seconds:
             waittime = delay_seconds
 
@@ -1061,9 +1015,7 @@ class Exoskeleton:
                             subject = f"{self.project}: bot ABORTED"
                             content = ("The bot lost the database " +
                                        "connection and could not restore it.")
-                            communication.send_mail(self.mail_admin,
-                                                    self.mail_sender,
-                                                    subject, content)
+                            self.mailer.send_mail(subject, content)
                         raise ConnectionError('Lost DB connection and ' +
                                               'could not restore it.')
                 else:
@@ -1100,9 +1052,7 @@ class Exoskeleton:
                         content = (f"The queue is empty. The bot " +
                                    f"{self.project} stopped as configured. " +
                                    f"{num_permanent_errors} errors.")
-                        communication.send_mail(self.mail_admin,
-                                                self.mail_sender,
-                                                subject, content)
+                        self.mailer.send_mail(subject, content)
                     break
                 else:
                     logging.debug("No actionable task: waiting %s seconds " +
@@ -1140,7 +1090,10 @@ class Exoskeleton:
     def __update_host_statistics(self,
                                  url: str,
                                  success: bool = True):
-        u""" Updates the host based statistics"""
+        u""" Updates the host based statistics. The URL
+        gets shortened to the hostname. If success is True
+        the success counter is incremented / if not the
+        problem counter."""
 
         fqdn = urlparse(url).hostname
         if success:
@@ -1159,14 +1112,14 @@ class Exoskeleton:
                           successful, problems))
 
     def check_milestone(self):
-        u""" Check if milestone is reached. In case,
-        send mail (if configured so)."""
+        u""" Check if milestone is reached. If that is the case,
+        send a mail (if configured to do so)."""
         processed = self.cnt['processed']
-        if isinstance(self.milestone, int):
-            if processed % self.milestone == 0:
-                logging.info("Milestone reached: %s processed",
-                             str(processed))
-
+        # Have to check >0 in case the bot starts
+        # failing with the first item.
+        if processed > 0 and (processed % self.milestone) == 0:
+            logging.info("Milestone reached: %s processed",
+                         str(processed))
             if self.send_mails:
                 subject = (f"{self.project} Milestone reached: " +
                            f"{self.cnt['processed']} processed")
@@ -1175,17 +1128,7 @@ class Exoskeleton:
                            f"remaining in the queue.\n" +
                            f"Estimated time to complete queue: " +
                            f"{self.estimate_remaining_time()} seconds.\n")
-                communication.send_mail(self.mail_admin,
-                                        self.mail_sender,
-                                        subject, content)
-
-            return True
-
-        elif isinstance(self.milestone, list):
-            logging.error("Feature not yet implemented")
-            return False
-        else:
-            raise TypeError('Milestone has either be int or list')
+                self.mailer.send_mail(subject, content)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # LABELS

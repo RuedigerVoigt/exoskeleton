@@ -1,8 +1,18 @@
 # Changelog / History
 
-## upcoming
+## version 0.9.1 beta (2020-06-22)
 
+Breaking Changes:
+* There is a new parameter `mail_behavior` that contains the already existing settings `send_start_msg`, `send_finish_msg`, and `milestone_num`.
+* The prefix `mail_` was removed in settings as all mail related settings are within the `mail_settings` dictionary. `mail_admin` was renamed to `recipient`.
+
+New Features / Improvements:
+* New function `version_uuids_by_label`: returns all UUIDs which have this label attached.
+* New function `version_labels_by_uuid`: return all labels attached to a specific version / UUID, but not the filemaster entry.
+* The functionality to send mails has been externalized into the [`bote` library](https://github.com/RuedigerVoigt/bote "Homepage of the bote project"). As it has the same maintainer, compatibility is ensured.
+* It is now possible to send mail with another server than localhost.
 * Signal compliance with [PEP 561](https://www.python.org/dev/peps/pep-0561/): If you type-check code that imports this package, tools like mypy now know that `userprovided` has type-hints and extend their checks to calls of these functions.
+* The automatic tests now also cover Windows and MacOS.
 
 ## version 0.9.0 beta (2020-04-27)
 
