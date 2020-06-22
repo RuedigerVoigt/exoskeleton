@@ -1173,7 +1173,7 @@ class Exoskeleton:
         u""" Given a set of labels, this returns the corresponding ids
         in the labels table. """
         if label_set:
-            label_set = userprovided.convert_to_set(label_set)
+            label_set = userprovided.parameters.convert_to_set(label_set)
             # The IN-Operator makes it necessary to construct the command
             # every time, so input gets escaped. See the accepted answer here:
             # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
@@ -1235,7 +1235,7 @@ class Exoskeleton:
         else:
             # Using a set to avoid duplicates. However, accept either
             # a single string or a list type.
-            label_set = userprovided.convert_to_set(labels)
+            label_set = userprovided.parameters.convert_to_set(labels)
 
             for label in label_set:
                 # Make sure all labels are in the database table.
@@ -1274,7 +1274,7 @@ class Exoskeleton:
         else:
             # Using a set to avoid duplicates. However, accept either
             # a single string or a list type.
-            label_set = userprovided.convert_to_set(labels)
+            label_set = userprovided.parameters.convert_to_set(labels)
 
             for label in label_set:
                 # Make sure all labels are in the database table.

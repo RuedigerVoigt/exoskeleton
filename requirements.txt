@@ -4,4 +4,4 @@ lxml
 pymysql
 requests
 urllib3
-userprovided>=0.5.5
+userprovided>=0.6.0
