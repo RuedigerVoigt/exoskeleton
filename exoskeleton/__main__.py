@@ -223,18 +223,11 @@ class Exoskeleton:
                                   database_settings: dict):
         u"""Check the database settings for plausibility. """
 
-        known_db_keys = ('host', 'port',
-                         'database',
-                         'username', 'passphrase')
-
-        try:
-            found_db_keys = database_settings.keys()
-            for key in found_db_keys:
-                if key not in known_db_keys:
-                    raise ValueError('Unknown key %s in database_settings',
-                                     key)
-        except AttributeError:
-            raise AttributeError('database_settings must be a dictionary!')
+        userprovided.parameters.validate_dict_keys(
+            database_settings,
+            {'host', 'port', 'database', 'username', 'passphrase'},
+            {'database'},
+            'database_settings')
 
         self.db_host = database_settings.get('host', None)
         if not self.db_host:
@@ -266,22 +259,18 @@ class Exoskeleton:
                                   behavior_settings: dict):
         u"""Check the settings for bot behavior. """
 
-        known_behavior_keys = ('connection_timeout',
+        known_behavior_keys = {'connection_timeout',
                                'queue_max_retries',
                                'queue_revisit',
                                'stop_if_queue_empty',
                                'wait_min',
-                               'wait_max')
+                               'wait_max'}
         if behavior_settings:
-            try:
-                found_behavior_keys = behavior_settings.keys()
-                for key in found_behavior_keys:
-                    if key not in known_behavior_keys:
-                        raise ValueError(f"Unknown key '{key}' " +
-                                         f"in behavior_settings")
-            except AttributeError:
-                raise AttributeError('The parameter behavior_settings must ' +
-                                     'be a dictionary!')
+            userprovided.parameters.validate_dict_keys(
+                behavior_settings,
+                known_behavior_keys,
+                None,
+                'behavior_settings')
         else:
             behavior_settings = dict()
 

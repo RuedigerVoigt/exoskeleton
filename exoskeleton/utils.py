@@ -8,7 +8,7 @@ import hashlib
 import logging
 import mimetypes
 import pathlib
-from typing import Optional, Union
+from typing import Optional
 
 # 3rd party libraries:
 from bs4 import BeautifulSoup  # type: ignore
