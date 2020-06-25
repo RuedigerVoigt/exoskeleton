@@ -58,7 +58,7 @@ class Exoskeleton:
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.9.1 (beta / June 21, 2020)')
+        logging.info('You are using exoskeleton 0.9.2 (beta / June 25, 2020)')
 
         self.project = project_name.strip()
         self.user_agent = bot_user_agent.strip()
@@ -122,7 +122,7 @@ class Exoskeleton:
                 self.mailer.send_mail(f"{self.project}: bot just started.",
                                       "This is a notification to check " +
                                       "the mail settings.")
-                logging.info("Just send a notification email. If the " +
+                logging.info("Just sent a notification email. If the " +
                              "receiving server uses greylisting, " +
                              "this may take some minutes.")
 
@@ -441,8 +441,9 @@ class Exoskeleton:
                         logging.debug('file written')
                         hash_value = None
                         if self.hash_method:
-                            hash_value = utils.get_file_hash(target_path,
-                                                             self.hash_method)
+                            hash_value = userprovided.hash.calculate_file_hash(
+                                target_path,
+                                self.hash_method)
 
                     logging.debug('file written to disk')
                     try:
