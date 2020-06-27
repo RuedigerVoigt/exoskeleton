@@ -1256,6 +1256,29 @@ class Exoskeleton:
         else:
             return set()
 
+    def filemaster_labels_by_url(self,
+                                 url: str) -> set:
+        u"""MIGHT GET REMOVED IN FUTURE RELEASE =>
+            Primary use for automatic test: Get a list of label names
+            (not id numbers!) attached to a specific filemaster entry
+            via its URL instead of the id. The reason for this is that
+            the association with the URl predates the filemaster entry /
+            the id."""
+        self.cur.execute('SELECT DISTINCT shortName ' +
+                         'FROM labels ' +
+                         'WHERE ID IN (' +
+                         '  SELECT labelID ' +
+                         '  FROM labelToMaster ' +
+                         '  WHERE urlHash = SHA2(%s,256)' +
+                         ');',
+                         url)
+        labels = self.cur.fetchall()
+        if labels:
+            labels_set = {(label[0]) for label in labels}
+            return labels_set
+        else:
+            return set()
+
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
         u"""Get a set of ALL label names (not id numbers!) attached
