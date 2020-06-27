@@ -58,7 +58,7 @@ class Exoskeleton:
                  chrome_name: str = 'chromium-browser'):
         u"""Sets defaults"""
 
-        logging.info('You are using exoskeleton 0.9.2 (beta / June 25, 2020)')
+        logging.info('You are using exoskeleton 0.9.2 (beta / June 27, 2020)')
 
         self.project = project_name.strip()
         self.user_agent = bot_user_agent.strip()
@@ -574,8 +574,8 @@ class Exoskeleton:
 
             hash_value = None
             if self.hash_method:
-                hash_value = utils.get_file_hash(path,
-                                                 self.hash_method)
+                hash_value = userprovided.hash.calculate_file_hash(
+                    path, self.hash_method)
             logging.debug('PDF of page saved to disk')
             try:
                 self.cur.callproc('insert_file_SP',
@@ -824,33 +824,37 @@ class Exoskeleton:
                           url: str,
                           labels_master: set = None,
                           labels_version: set = None,
-                          force_new_version: bool = False):
+                          force_new_version: bool = False) -> Optional[str]:
         u"""Add a file download URL to the queue """
-        self.__add_to_queue(url, 1, labels_master,
-                            labels_version, False,
-                            force_new_version)
+        uuid = self.__add_to_queue(url, 1, labels_master,
+                                   labels_version, False,
+                                   force_new_version)
+        return uuid
 
     def add_save_page_code(self,
                            url: str,
                            labels_master: set = None,
                            labels_version: set = None,
                            prettify_html: bool = False,
-                           force_new_version: bool = False):
+                           force_new_version: bool = False) -> Optional[str]:
         u"""Add an URL to the queue to save it's HTML code
             into the database."""
-        self.__add_to_queue(url, 2, labels_master,
-                            labels_version, prettify_html,
-                            force_new_version)
+        uuid = self.__add_to_queue(url, 2, labels_master,
+                                   labels_version, prettify_html,
+                                   force_new_version)
+        return uuid
 
     def add_page_to_pdf(self,
                         url: str,
                         labels_master: set = None,
                         labels_version: set = None,
-                        force_new_version: bool = False):
+                        force_new_version: bool = False) -> Optional[str]:
         u"""Add an URL to the queue to print it to PDF
             with headless Chrome. """
-        self.__add_to_queue(url, 3, labels_master, labels_version,
-                            False, force_new_version)
+        uuid = self.__add_to_queue(url, 3, labels_master,
+                                   labels_version, False,
+                                   force_new_version)
+        return uuid
 
     def __add_to_queue(self,
                        url: str,
@@ -858,13 +862,13 @@ class Exoskeleton:
                        labels_master: set = None,
                        labels_version: set = None,
                        prettify_html: bool = False,
-                       force_new_version: bool = False):
+                       force_new_version: bool = False) -> Optional[str]:
         u""" More general function to add items to queue. Called by
         add_file_download, add_save_page_code and add_page_to_pdf."""
 
         if action not in (1, 2, 3):
             logging.error('Invalid value for action!')
-            return
+            return None
 
         prettify = 0  # numeric because will be added to int database field
         if prettify_html and action != 2:
@@ -881,7 +885,7 @@ class Exoskeleton:
         if not userprovided.url.is_url(url, ('http', 'https')):
             logging.error('Could not add URL %s : invalid or unsupported',
                           url)
-            return
+            return None
 
         # Add labels for the master entry.
         # Ignore labels for the version at this point, as it might
@@ -908,7 +912,7 @@ class Exoskeleton:
                 if version_id:
                     logging.info('The file has already been processed ' +
                                  'in the same way. Skipping it.')
-                    return
+                    return None
                 else:
                     # log and simply go on
                     logging.debug('The file has already been processed, ' +
@@ -925,7 +929,7 @@ class Exoskeleton:
                 in_queue = self.cur.fetchone()
                 if in_queue:
                     logging.info('Exact same task already in queue.')
-                    return
+                    return None
 
         # generate a random uuid for the file version
         uuid_value = uuid.uuid4().hex
@@ -939,6 +943,8 @@ class Exoskeleton:
         # link labels to version item
         if labels_version:
             self.__assign_labels_to_version(uuid_value, labels_version)
+
+        return uuid_value
 
     def delete_from_queue(self,
                           queue_id: int):
@@ -1211,6 +1217,43 @@ class Exoskeleton:
         labels = self.cur.fetchall()
         labels = [(label[0]) for label in labels]
         return labels
+
+    def get_filemaster_id(self,
+                          version_uuid: str) -> str:
+        u"""Get the id of the filemaster entry associated with
+            a specific version identified by its UUID."""
+        self.cur.execute('SELECT fileMasterID ' +
+                         'FROM exoskeleton.fileVersions ' +
+                         'WHERE id = %s;',
+                         version_uuid)
+        filemaster_id = self.cur.fetchone()[0]
+        return filemaster_id
+
+    def filemaster_labels_by_id(self,
+                                filemaster_id: str) -> list:
+        u"""Get a list of label names (not id numbers!) attached
+            to a specific filemaster entry."""
+        self.cur.execute('SELECT shortName ' +
+                         'FROM labels ' +
+                         'WHERE ID IN (' +
+                         '  SELECT labelID ' +
+                         '  FROM labelToMaster ' +
+                         '  WHERE labelID = %s' +
+                         ');',
+                         filemaster_id)
+        labels = self.cur.fetchall()
+        labels = [(label[0]) for label in labels]
+        return labels
+
+    def all_labels_by_uuid(self,
+                           version_uuid: str) -> set:
+        u"""Get a set of ALL label names (not id numbers!) attached
+            to a specific version of a file AND its filemaster entry."""
+        version_labels = self.version_labels_by_uuid(version_uuid)
+        filemaster_id = self.get_filemaster_id(version_uuid)
+        filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
+        joined_list = version_labels + filemaster_labels
+        return userprovided.parameters.convert_to_set(joined_list)
 
     def __assign_labels_to_version(self,
                                    uuid: str,
