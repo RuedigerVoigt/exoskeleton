@@ -16,7 +16,7 @@ import queue
 import random
 import subprocess
 import time
-from typing import Union, List, Optional
+from typing import Union, Optional
 from urllib.parse import urlparse
 import uuid
 
@@ -901,7 +901,6 @@ class Exoskeleton:
             id_in_file_master = self.cur.fetchone()
 
             if id_in_file_master:
-                print('ID ist in file master')
                 # The URL has been processed in _some_ way.
                 # Check if was the _same_ as now requested.
                 self.cur.execute('SELECT id FROM fileVersions ' +
@@ -1165,7 +1164,7 @@ class Exoskeleton:
                          (shortname, description, description))
 
     def get_label_ids(self,
-                      label_set: Union[set, str]):
+                      label_set: Union[set, str]) -> set:
         u""" Given a set of labels, this returns the corresponding ids
         in the labels table. """
         if label_set:
@@ -1179,34 +1178,37 @@ class Exoskeleton:
                      "IN ({0});".format(', '.join(['%s'] * len(label_set))))
             self.cur.execute(query, tuple(label_set))
             label_id = self.cur.fetchall()
+            label_set = set()
+            if label_id:
+                label_set = {(id[0]) for id in label_id}
 
-            return None if label_id is None else label_id
+            return set() if label_id is None else label_set
         logging.error('No labels provided to get_label_ids().')
-        return None
+        return set()
 
     def version_uuids_by_label(self,
-                               single_label: str) -> Optional[List[str]]:
+                               single_label: str) -> set:
         u"""Get a list of UUIDs (in this context file versions)
             which have *one* specific label attached to them."""
-        label_id = self.get_label_ids(single_label)
-        if label_id:
-            label_id = label_id[0]
+        returned_set = self.get_label_ids(single_label)
+        if returned_set == set():
+            raise ValueError('Unknown label. Check for typo.')
         else:
-            logging.error('Unknown label. Check for typo.')
-        self.cur.execute("SELECT versionUUID " +
-                         "FROM labelToVersion " +
-                         "WHERE labelID = %s;",
-                         label_id)
-        version_ids = self.cur.fetchall()
-        version_ids = [(uuid[0]) for uuid in version_ids]
-        return None if version_ids is None else version_ids
+            label_id: str = returned_set.pop()
+            self.cur.execute("SELECT versionUUID " +
+                             "FROM labelToVersion " +
+                             "WHERE labelID = %s;",
+                             label_id)
+            version_ids = self.cur.fetchall()
+            version_ids = {(uuid[0]) for uuid in version_ids}
+            return set() if version_ids is None else version_ids
 
     def version_labels_by_uuid(self,
-                               version_uuid: str) -> list:
+                               version_uuid: str) -> set:
         u"""Get a list of label names (not id numbers!) attached
             to a specific version of a file. Does not include
             labels attached to the filemaster entry."""
-        self.cur.execute('SELECT shortName ' +
+        self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
                          '  SELECT labelID ' +
@@ -1215,8 +1217,11 @@ class Exoskeleton:
                          ');',
                          version_uuid)
         labels = self.cur.fetchall()
-        labels = [(label[0]) for label in labels]
-        return labels
+        if not labels:
+            return set()
+        else:
+            labels_set = {(label[0]) for label in labels}
+            return labels_set
 
     def get_filemaster_id(self,
                           version_uuid: str) -> str:
@@ -1226,14 +1231,17 @@ class Exoskeleton:
                          'FROM exoskeleton.fileVersions ' +
                          'WHERE id = %s;',
                          version_uuid)
-        filemaster_id = self.cur.fetchone()[0]
-        return filemaster_id
+        filemaster_id = self.cur.fetchone()
+        if not filemaster_id:
+            raise ValueError("Invalid filemaster ID")
+        else:
+            return filemaster_id[0]
 
     def filemaster_labels_by_id(self,
-                                filemaster_id: str) -> list:
+                                filemaster_id: str) -> set:
         u"""Get a list of label names (not id numbers!) attached
             to a specific filemaster entry."""
-        self.cur.execute('SELECT shortName ' +
+        self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
                          '  SELECT labelID ' +
@@ -1242,8 +1250,11 @@ class Exoskeleton:
                          ');',
                          filemaster_id)
         labels = self.cur.fetchall()
-        labels = [(label[0]) for label in labels]
-        return labels
+        if labels:
+            labels_set = {(label[0]) for label in labels}
+            return labels_set
+        else:
+            return set()
 
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
@@ -1252,8 +1263,8 @@ class Exoskeleton:
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
         filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
-        joined_list = version_labels + filemaster_labels
-        return userprovided.parameters.convert_to_set(joined_list)
+        joined_set = version_labels | filemaster_labels
+        return joined_set
 
     def __assign_labels_to_version(self,
                                    uuid: str,
@@ -1279,18 +1290,21 @@ class Exoskeleton:
             # Get all label-ids
             id_list = self.get_label_ids(label_set)
 
-            # Check if there are already labels assigned
-            self.cur.execute('SELECT labelID FROM labelToVersion ' +
+            # Check if there are already labels assigned with the version
+            self.cur.execute('SELECT labelID ' +
+                             'FROM labelToVersion ' +
                              'WHERE versionUUID = %s;', uuid)
-            ids_associated = self.cur.fetchall()
-
+            ids_found = self.cur.fetchall()
+            ids_associated = set()
+            if ids_found:
+                ids_associated = set(ids_found)
             # ignore all labels already associated:
-            id_list = tuple(set(id_list) - set(ids_associated))
+            remaining_ids = tuple(id_list - ids_associated)
 
-            if id_list:
+            if len(remaining_ids) > 0:
                 # Case: there are new labels
                 # Convert into a format to INSERT with executemany
-                insert_list = [(id[0], uuid) for id in id_list]
+                insert_list = [(id, uuid) for id in remaining_ids]
                 self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
                                      '(labelID, versionUUID) ' +
                                      'VALUES (%s, %s);', insert_list)
@@ -1320,18 +1334,23 @@ class Exoskeleton:
 
             # Check whether some labels are already associated
             # with the fileMaster entry.
-            self.cur.execute('SELECT labelID FROM labelToMaster ' +
+            self.cur.execute('SELECT labelID ' +
+                             'FROM labelToMaster ' +
                              'WHERE urlHash = SHA2(%s,256);', url)
-            ids_associated = self.cur.fetchall()
+            ids_found: Optional[tuple] = self.cur.fetchall()
+            ids_associated = set()
+            if ids_found:
+                ids_associated = set(ids_found)
 
-            # ignore all labels already associated
-            id_list = tuple(set(id_list) - set(ids_associated))
+            # ignore all labels already associated:
+            remaining_ids = tuple(id_list - ids_associated)
 
-            if id_list:
+            if len(remaining_ids) > 0:
                 # Case: there are new labels
                 # Convert into a format to INSERT with executemany
-                insert_list = [(id[0], url) for id in id_list]
+                insert_list = [(id, url) for id in remaining_ids]
                 # Add those associatons
                 self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
                                      '(labelID, urlHash) ' +
-                                     'VALUES (%s, SHA2(%s,256));', insert_list)
+                                     'VALUES (%s, SHA2(%s,256));',
+                                     insert_list)
