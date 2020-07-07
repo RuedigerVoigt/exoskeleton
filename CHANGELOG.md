@@ -1,9 +1,16 @@
 # Changelog / History
 
+## upcoming 1.0.0
+
+* Sequences
+* Integration test
+* Experimental Docker image
+
+
 ## version 0.9.2 beta (2020-07-07)
 
 Breaking Changes:
-* Add a blocklist
+* Add a [blocklist](documentation/blocklist.md "How to use the blocklist"): requires changes to the database.
 * Moved function `utils.get_file_hash()` into the userpovided library.
 * Harmonized all functions that either return labels associated with ids or that return ids associated with labels to return the datatype `set`. If no associations are found the return value is an empty set.
 * Issue #17 / Bugfix: The duplicate prevention did not work as expected for already processed files / pages. Had to extend the table `fileVersions` and the stored procedures.
