@@ -883,8 +883,8 @@ class Exoskeleton:
         # check if it is an URL and if it is either http or https
         # (other schemas are not supported by requests)
         if not userprovided.url.is_url(url, ('http', 'https')):
-            logging.error('Could not add URL %s : invalid or unsupported',
-                          url)
+            logging.error('Could not add URL %s : invalid or unsupported ' +
+                          'scheme', url)
             return None
 
         # Add labels for the master entry.
@@ -895,10 +895,7 @@ class Exoskeleton:
 
         if not force_new_version:
             # check if the URL has already been processed
-            self.cur.execute('SELECT id FROM fileMaster ' +
-                             'WHERE urlHash = SHA2(%s,256);',
-                             url)
-            id_in_file_master = self.cur.fetchone()
+            id_in_file_master = self.get_filemaster_id_by_url(url)
 
             if id_in_file_master:
                 # The URL has been processed in _some_ way.
@@ -906,27 +903,23 @@ class Exoskeleton:
                 self.cur.execute('SELECT id FROM fileVersions ' +
                                  'WHERE fileMasterID = %s AND ' +
                                  'storageTypeID = %s;',
-                                 (id_in_file_master[0], action))
+                                 (id_in_file_master, action))
                 version_id = self.cur.fetchone()
                 if version_id:
-                    logging.info('The file has already been processed ' +
+                    logging.info('File has already been processed ' +
                                  'in the same way. Skipping it.')
                     return None
                 else:
                     # log and simply go on
                     logging.debug('The file has already been processed, ' +
-                                  'BUT not in this way. Therefore ' +
-                                  'adding task to the queue.')
+                                  'BUT not in this way. ' +
+                                  'Adding task to the queue.')
+                    # BUG! hier muss queue gecheckt werden !!!
             else:
                 # File has not been processed yet.
                 # If the exact same task is *not* already in the queue,
                 # add it.
-                self.cur.execute('SELECT id FROM queue ' +
-                                 'WHERE urlHash = SHA2(%s,256) AND ' +
-                                 'action = %s;',
-                                 (url, action))
-                in_queue = self.cur.fetchone()
-                if in_queue:
+                if self.get_queue_id(url, action):
                     logging.info('Exact same task already in queue.')
                     return None
 
@@ -944,6 +937,32 @@ class Exoskeleton:
             self.__assign_labels_to_version(uuid_value, labels_version)
 
         return uuid_value
+
+    def get_filemaster_id_by_url(self,
+                                 url: str) -> Optional[str]:
+        self.cur.execute('SELECT id FROM fileMaster ' +
+                         'WHERE urlHash = SHA2(%s,256);',
+                         url)
+        id_in_file_master = self.cur.fetchone()
+        if id_in_file_master:
+            return id_in_file_master[0]
+        else:
+            return None
+
+    def get_queue_id(self,
+                     url: str,
+                     action: int) -> Optional[str]:
+        u"""Get the id in the queue based on the URL and action ID.
+        Returns None if such combination is not in the queue."""
+        self.cur.execute('SELECT id FROM queue ' +
+                         'WHERE urlHash = SHA2(%s,256) AND ' +
+                         'action = %s;',
+                         (url, action))
+        uuid = self.cur.fetchone()
+        if uuid:
+            return uuid[0]
+        else:
+            return None
 
     def delete_from_queue(self,
                           queue_id: int):
@@ -982,7 +1001,7 @@ class Exoskeleton:
             self.add_crawl_delay_to_item(queue_id, 600)
 
     def __get_next_task(self):
-        u""" get the next suitable task"""
+        u""" Get the next suitable task"""
         self.cur.execute('CALL next_queue_object_SP();')
         return self.cur.fetchone()
 
