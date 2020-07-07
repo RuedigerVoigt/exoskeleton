@@ -11,6 +11,7 @@
 * [Progress Reports via Email](progess-reports-via-email.md)
 * [File Versions and Labels](versions-and-labels.md)
 * [Data Sequences](data-sequences.md)
+* [Using the Blocklist](blocklist.md)
 
 ## Technical Documentation
 
