@@ -10,6 +10,7 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 # python standard library:
 from collections import Counter
 from collections import defaultdict
+import errno
 import logging
 import pathlib
 import queue
@@ -316,6 +317,7 @@ class Exoskeleton:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
+                           'blocklist',
                            'errorType',
                            'fileContent',
                            'fileMaster',
@@ -870,6 +872,11 @@ class Exoskeleton:
             logging.error('Invalid value for action!')
             return None
 
+        # Check if the FQDN of the URL is on the blocklist
+        if self.check_blocklist(urlparse(url).hostname):
+            logging.error('Cannot add URL to queue: FQDN is on blocklist.')
+            return
+
         prettify = 0  # numeric because will be added to int database field
         if prettify_html and action != 2:
             logging.error('Option prettify_html not ' +
@@ -1081,25 +1088,34 @@ class Exoskeleton:
                 url_hash = next_in_queue[3]
                 prettify_html = 1 if next_in_queue[4] == 1 else 0
 
-                if action == 1:
-                    # download file to disk
-                    self.__get_object(queue_id, 'file', url, url_hash)
-                elif action == 2:
-                    # save page code into database
-                    self.__get_object(queue_id, 'content',
-                                      url, url_hash,
-                                      prettify_html)
-                elif action == 3:
-                    # headless Chrome to create PDF
-                    self.__page_to_pdf(url, url_hash, queue_id)
+                # The FQDN might have been added to the blocklist *after*
+                # the task entered into the queue:
+                if self.check_blocklist(urlparse(url).hostname):
+                    logging.error('Cannot process queue item as the ' +
+                                  'the FQDN has meanwhile been added to ' +
+                                  'the blocklist!')
+                    self.delete_from_queue(queue_id)
+                    logging.info('Removed item fron queue: FQDN on blocklist.')
                 else:
-                    logging.error('Unknown action id!')
+                    if action == 1:
+                        # download file to disk
+                        self.__get_object(queue_id, 'file', url, url_hash)
+                    elif action == 2:
+                        # save page code into database
+                        self.__get_object(queue_id, 'content',
+                                          url, url_hash,
+                                          prettify_html)
+                    elif action == 3:
+                        # headless Chrome to create PDF
+                        self.__page_to_pdf(url, url_hash, queue_id)
+                    else:
+                        logging.error('Unknown action id!')
 
-                if self.milestone:
-                    self.check_milestone()
+                    if self.milestone:
+                        self.check_milestone()
 
-                # wait some interval to avoid overloading the server
-                self.random_wait()
+                    # wait some interval to avoid overloading the server
+                    self.random_wait()
 
     def __update_host_statistics(self,
                                  url: str,
@@ -1144,6 +1160,47 @@ class Exoskeleton:
                            f"{self.estimate_remaining_time()} seconds.\n")
                 self.mailer.send_mail(subject, content)
 
+    def check_blocklist(self,
+                        fqdn: str) -> bool:
+        u"""Check if a specific fqdn is on the blocklist."""
+
+        self.cur.execute('SELECT COUNT(*) FROM blocklist ' +
+                         'WHERE fqdnhash = SHA2(%s,256);',
+                         fqdn.strip())
+        count = (self.cur.fetchone())[0]
+        if count > 0:
+            return True
+        return False
+
+    def block_fqdn(self,
+                   fqdn: str,
+                   comment: Optional[str] = None):
+        u"""Add a specific fully qualified domain name (fqdn)
+            - like www.example.com - to the blocklist."""
+        if len(fqdn) > 255:
+            raise ValueError('No valid FQDN can be longer ' +
+                             'than 255 characters. Exoskeleton can only block ' +
+                             'a FQDN but not URLs.')
+        else:
+            try:
+                self.cur.execute('INSERT INTO blocklist ' +
+                                 '(fqdn, fqdnHash, comment) ' +
+                                 'VALUES (%s, SHA2(%s,256), %s);',
+                                 (fqdn.strip(), fqdn.strip(), comment))
+            except pymysql.err.IntegrityError:
+                logging.info('FQDN already on blocklist.')
+
+    def unblock_fqdn(self,
+                     fqdn: str):
+        u"""Remove a specific fqdn from the blocklist."""
+        self.cur.execute('DELETE FROM blocklist ' +
+                         'WHERE fqdnHash = SHA2(%s,256);',
+                         fqdn.strip())
+
+    def truncate_blocklist(self):
+        u"""Remove *all* entries from the blocklist."""
+        self.cur.execute('TRUNCATE TABLE blocklist;')
+        pass
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # LABELS
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -352,6 +352,16 @@ ON DELETE RESTRICT
 ON UPDATE RESTRICT;
 
 
+-- ----------------------------------------------------------
+-- BLOCKLIST
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS blocklist (
+    fqdnHash CHAR(64) NOT NULL
+    ,fqdn VARCHAR(255) NOT NULL
+    ,comment Text NULL
+    ,UNIQUE(fqdnHash)
+) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------
 -- VIEWS
