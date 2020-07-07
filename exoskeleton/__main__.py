@@ -451,7 +451,7 @@ class Exoskeleton:
                                           (url, url_hash, queue_id, mime_type,
                                            str(self.target_dir), new_filename,
                                            utils.get_file_size(target_path),
-                                           self.hash_method, hash_value))
+                                           self.hash_method, hash_value, 1))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
                         logging.error('Transaction failed: Could not add ' +
@@ -474,7 +474,7 @@ class Exoskeleton:
                         # and removes the queue item:
                         self.cur.callproc('insert_content_SP',
                                           (url, url_hash, queue_id,
-                                           mime_type, page_content))
+                                           mime_type, page_content, 2))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
                         logging.error('Transaction failed: Could not add ' +
@@ -582,7 +582,7 @@ class Exoskeleton:
                                   (url, url_hash, queue_id, 'application/pdf',
                                    str(self.target_dir), filename,
                                    utils.get_file_size(path),
-                                   self.hash_method, hash_value))
+                                   self.hash_method, hash_value, 3))
             except pymysql.DatabaseError:
                 self.cnt['transaction_fail'] += 1
                 logging.error('Transaction failed: Could not add already ' +
@@ -902,7 +902,7 @@ class Exoskeleton:
                 # Check if was the _same_ as now requested.
                 self.cur.execute('SELECT id FROM fileVersions ' +
                                  'WHERE fileMasterID = %s AND ' +
-                                 'storageTypeID = %s;',
+                                 'actionAppliedID = %s;',
                                  (id_in_file_master, action))
                 version_id = self.cur.fetchone()
                 if version_id:

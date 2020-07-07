@@ -1,5 +1,20 @@
 # Changelog / History
 
+## version 0.9.2 beta (2020-07-07)
+
+Breaking Changes:
+* Moved function `utils.get_file_hash()` into the userpovided library.
+* Harmonized all functions that either return labels associated with ids or that return ids associated with labels to return the datatype `set`. If no associations are found the return value is an empty set.
+* Issue #17 / Bugfix: The duplicate prevention did not work as expected for already processed files / pages. Had to extend the table `fileVersions` and the stored procedures.
+
+New features:
+* Adding to queue returns the UUID for the new queue item: The functions `add_page_to_pdf`, `add_save_page_code`, and `add_file_download` return the UUID *if* the task was added. In case the task was not added (for example because it is already in the queue or the host is in the blocklist) the return value is None. This functionality is needed for automatic tests, but it might also be useful to create some bots.
+* Introduce new functions to organize files with labels:
+    + `filemaster_labels_by_id`: Get a list of label names (not id numbers!) attached to a specific filemaster entry.
+    + `get_filemaster_id`: Get the id of the filemaster entry associated with a specific version identified by its UUID.
+    + `all_labels_by_uuid`: Get a set of ALL label names (not id numbers!) attached to a specific version of a file AND its filemaster entry.
+
+
 ## version 0.9.1 beta (2020-06-22)
 
 Breaking Changes:
