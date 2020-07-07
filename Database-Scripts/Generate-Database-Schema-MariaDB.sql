@@ -315,7 +315,13 @@ CREATE TABLE IF NOT EXISTS labels (
     ,PRIMARY KEY(`id`)
     ,UNIQUE(`shortName`)
     ) ENGINE=InnoDB;
-
+-- INSERT IGNORE increases the autoincrement value even if nothing
+-- is inserted. The gaps in values can become large.
+-- A workaround would require to change innodb settings,
+-- or more complicated queries. See:
+-- https://www.percona.com/blog/2011/11/29/avoiding-auto-increment-holes-on-innodb-with-insert-ignore/
+-- However, as unsigned int has a range from 0 to 4,294,967,295
+-- this should not be a problem.
 
 CREATE TABLE IF NOT EXISTS labelToMaster (
     -- links fileMaster entries to labels
