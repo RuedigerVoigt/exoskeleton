@@ -873,9 +873,10 @@ class Exoskeleton:
             return None
 
         # Check if the FQDN of the URL is on the blocklist
-        if self.check_blocklist(urlparse(url).hostname):
+        hostname = urlparse(url).hostname
+        if hostname and self.check_blocklist(hostname):
             logging.error('Cannot add URL to queue: FQDN is on blocklist.')
-            return
+            return None
 
         prettify = 0  # numeric because will be added to int database field
         if prettify_html and action != 2:
