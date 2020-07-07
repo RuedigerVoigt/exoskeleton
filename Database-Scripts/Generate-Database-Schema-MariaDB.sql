@@ -553,12 +553,12 @@ CREATE FUNCTION num_items_with_temporary_errors ()
 -- those have to be counted.
 RETURNS INTEGER
 RETURN(SELECT COUNT(*) FROM queue WHERE causesError IN (
-    SELECT id FROM exo.errorType WHERE permanent = 0)
+    SELECT id FROM errorType WHERE permanent = 0)
     );
 
 CREATE FUNCTION num_items_with_permanent_error ()
 -- Count the number of errors the bot cannot resolve.
 RETURNS INTEGER
 RETURN(SELECT COUNT(*) FROM queue WHERE causesError IN (
-    SELECT id FROM exo.errorType WHERE permanent = 1)
+    SELECT id FROM errorType WHERE permanent = 1)
     );
