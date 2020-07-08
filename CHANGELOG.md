@@ -6,6 +6,15 @@
 * Integration test
 * Experimental Docker image
 
+Breaking Changes:
+* `__assign_labels_to_version` is now `assign_labels_to_uuid`
+* `__assign_labels_to_master` is now `__assign_labels_to_master`
+
+New features:
+* `version_uuids_by_label` gets the new option `processed_only`: if that is set to `True` it returns only UUIDs from files / content / ... that has been processed. Otherwise the returned set might include queue items with that label.
+* New function `remove_labels_from_uuid` allows to remove one or more labels from an UUId / version.
+
+
 
 ## version 0.9.2 beta (2020-07-07)
 

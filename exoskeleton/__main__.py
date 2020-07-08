@@ -1379,8 +1379,8 @@ class Exoskeleton:
         return joined_set
 
     def assign_labels_to_uuid(self,
-                                 uuid: str,
-                                 labels: Union[set, None]):
+                              uuid: str,
+                              labels: Union[set, None]):
         u""" Assigns one or multiple labels either to a specific
         version of a file.
         Removes duplicates and adds new labels to the label list
@@ -1420,6 +1420,24 @@ class Exoskeleton:
                 self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
                                      '(labelID, versionUUID) ' +
                                      'VALUES (%s, %s);', insert_list)
+
+    def remove_labels_from_uuid(self,
+                                uuid: str,
+                                labels_to_remove: set):
+        u"""Detaches a label from a UUID / version."""
+
+        # Using a set to avoid duplicates. However, accept either
+        # a single string or a list type.
+        labels_to_remove = userprovided.parameters.convert_to_set(
+            labels_to_remove)
+
+        # Get all label-ids
+        id_list = self.get_label_ids(labels_to_remove)
+
+        for label_id in id_list:
+            self.cur.execute("DELETE FROM labelToVersion " +
+                             "WHERE labelID = %s and versionUUID = %s;",
+                             (label_id, uuid))
 
     def assign_labels_to_master(self,
                                 url: str,
