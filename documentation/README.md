@@ -8,10 +8,14 @@
 * [Avoiding duplicates](avoiding-duplicates.md)
 * [The Queue: Downloading files / Saving the page code / Creating PDF](handling-pages.md)
 * [Bot Behavior](behavior-settings.md)
-* [Progress Reports via Email](progess-reports-via-email.md)
+* [Progress Reports via Email](progress-reports-via-email.md)
 * [File Versions and Labels](versions-and-labels.md)
 * [Data Sequences](data-sequences.md)
 * [Using the Blocklist](blocklist.md)
+
+## Example Uses
+
+* [Downloading an Archive](https://www.ruediger-voigt.eu/exoskeleton-download-an-archive.html) : A quite complex use case requiring some custom SQL. This is the actual project that triggered the development of exoskeleton.
 
 ## Technical Documentation
 
