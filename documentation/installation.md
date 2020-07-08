@@ -2,14 +2,14 @@
 
 ## The Database Backend
 
-Exoskeleton uses MariaDB as a database backend. The library was developed using MariaDB 10.1.44. This or any newer version of MariaDB should be fine.
+Exoskeleton uses MariaDB as a database backend. The library was developed using MariaDB 10.1.44. This or any newer version of MariaDB should be fine. Check the version installled with the command `mysql --version`.
 
-MariaDB claims to be a drop-in replacement for MySQL. They share a large part of their codebase. However, there are subtle differences like slightly different commands or different bugs. It was an explicit development aim to avoid those. So, using MySQL instead of MariaDB should work, but is untested at this point of time.
+MariaDB claims to be a drop-in replacement for MySQL. They share a large part of their codebase. However, there are subtle differences like slightly different commands or different bugs. It was an explicit development aim to avoid those. So, using MySQL instead of MariaDB should work, but is untested.
 
 
 1. Create a separate, empty database for your project.
 1. Create a database user with all rights for this database. The crawler will use it to access and manage the queue. That account needs no permissions on other databases and therefore should not have them.
-1. Now you need to create tables, views, stored procedures, triggers and more. Use the appropriate [Database-Script](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts), but do not forget to change the database name in the first two SQL commands.
+1. Now you need to create tables, views, stored procedures, triggers and more. Use the [Database-Script](https://github.com/RuedigerVoigt/exoskeleton/tree/master/Database-Scripts), but *do not forget to change the database name in the first two SQL commands*.
 1. Exoskeleton cursory checks the database setup once a bot is created.
 
 
@@ -24,11 +24,11 @@ Exoskeleton needs at least Python 3.6. To check your python version, open a comm
 python --version
 
 # if python 2 and 3 are installed in parallel
-# (for example current Ubuntu systems):
+# (for example Debian 10 or Ubuntu 19 systems):
 python3 --version
 ```
 
-Newer versions than 3.6 like 3.7 or 3.8 are just equally fine.
+Newer versions than 3.6 like 3.7 or 3.8 are just equally fine and tested.
 
 ### Installing with Pip
 
@@ -51,7 +51,7 @@ These are:
 * [pymysql](https://github.com/PyMySQL/PyMySQL): needed to connect to the MariaDB database.
 * [requests](https://requests.readthedocs.io/en/master/): a high-level library to send and download data
 * [urllib3](https://urllib3.readthedocs.io/en/latest/)
-* [userprovided](): a sister package of exoskeleton which checks user input for plausibility.
+* [userprovided](https://github.com/RuedigerVoigt/userprovided): a sister package of exoskeleton which checks user input for plausibility.
 
 ### Updating Exoskeleton with Pip
 
