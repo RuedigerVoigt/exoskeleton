@@ -21,3 +21,4 @@
 
 * [Contributing](../contributing.md)
 * [Database Structure](database-schema.md)
+* [Testing](testing-exoskeleton.md)
