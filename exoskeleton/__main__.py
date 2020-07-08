@@ -10,7 +10,6 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 # python standard library:
 from collections import Counter
 from collections import defaultdict
-import errno
 import logging
 import pathlib
 import queue
@@ -1264,21 +1263,34 @@ class Exoskeleton:
         return set()
 
     def version_uuids_by_label(self,
-                               single_label: str) -> set:
+                               single_label: str,
+                               processed_only: bool = False) -> set:
         u"""Get a list of UUIDs (in this context file versions)
-            which have *one* specific label attached to them."""
+            which have *one* specific label attached to them.
+            If processed_only is set to True only UUIDs of
+            already downloaded items are returned.
+            Otherwise it contains queue objects with that label."""
         returned_set = self.get_label_ids(single_label)
         if returned_set == set():
             raise ValueError('Unknown label. Check for typo.')
+
+        label_id: str = returned_set.pop()
+        if processed_only:
+            self.cur.execute("SELECT versionUUID " +
+                             "FROM labelToVersion AS lv " +
+                             "WHERE labelID = %s AND " +
+                             "EXISTS ( " +
+                             "    SELECT fv.id FROM fileVersions AS fv " +
+                             "    WHERE fv.id = lv.versionUUID);",
+                             label_id)
         else:
-            label_id: str = returned_set.pop()
             self.cur.execute("SELECT versionUUID " +
                              "FROM labelToVersion " +
                              "WHERE labelID = %s;",
                              label_id)
-            version_ids = self.cur.fetchall()
-            version_ids = {(uuid[0]) for uuid in version_ids}
-            return set() if version_ids is None else version_ids
+        version_ids = self.cur.fetchall()
+        version_ids = {(uuid[0]) for uuid in version_ids}
+        return set() if version_ids is None else version_ids
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
