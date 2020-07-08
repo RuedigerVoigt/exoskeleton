@@ -152,8 +152,8 @@ class Exoskeleton:
         # Time to wait after the queue is empty to check for new elements:
         self.queue_revisit: int = 60
 
-        self.wait_min = None
-        self.wait_max = None
+        self.wait_min: int = 5
+        self.wait_max: int = 30
 
         self.stop_if_queue_empty: bool = False
 
@@ -287,10 +287,10 @@ class Exoskeleton:
         elif self.connection_timeout > 120:
             logging.info('Very high value for connection_timeout')
 
-        self.wait_min = behavior_settings.get('wait_min', 5.0)
+        self.wait_min = behavior_settings.get('wait_min', 5)
         if type(self.wait_min) not in (int, float):
             raise ValueError('The value for wait_min must be numeric.')
-        self.wait_max = behavior_settings.get('wait_max', 30.0)
+        self.wait_max = behavior_settings.get('wait_max', 30)
         if type(self.wait_max) not in (int, float):
             raise ValueError('The value for wait_max must be numeric.')
 
