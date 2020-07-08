@@ -109,7 +109,7 @@ exo.job_define_new('Example Job',
                    'https://www.example.com?keyword=example')
 
 # Actually start the crawl through the SERPs
-crawl('Example Job', 'https://www.example.com/)
+crawl('Example Job', 'https://www.example.com/')
 
 # now that the crawling is done, proceed
 # and download all files in the queue:
