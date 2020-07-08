@@ -898,7 +898,7 @@ class Exoskeleton:
         # Ignore labels for the version at this point, as it might
         # not get processed.
         if labels_master:
-            self.__assign_labels_to_master(url, labels_master)
+            self.assign_labels_to_master(url, labels_master)
 
         if not force_new_version:
             # check if the URL has already been processed
@@ -941,7 +941,7 @@ class Exoskeleton:
 
         # link labels to version item
         if labels_version:
-            self.__assign_labels_to_version(uuid_value, labels_version)
+            self.assign_labels_to_uuid(uuid_value, labels_version)
 
         return uuid_value
 
@@ -1378,9 +1378,9 @@ class Exoskeleton:
         joined_set = version_labels | filemaster_labels
         return joined_set
 
-    def __assign_labels_to_version(self,
-                                   uuid: str,
-                                   labels: Union[set, None]):
+    def assign_labels_to_uuid(self,
+                                 uuid: str,
+                                 labels: Union[set, None]):
         u""" Assigns one or multiple labels either to a specific
         version of a file.
         Removes duplicates and adds new labels to the label list
@@ -1421,9 +1421,9 @@ class Exoskeleton:
                                      '(labelID, versionUUID) ' +
                                      'VALUES (%s, %s);', insert_list)
 
-    def __assign_labels_to_master(self,
-                                  url: str,
-                                  labels: Union[set, None]):
+    def assign_labels_to_master(self,
+                                url: str,
+                                labels: Union[set, None]):
         u""" Assigns one or multiple labels to the *fileMaster* entry.
         Removes duplicates and adds new labels to the label list
         if necessary.."""
