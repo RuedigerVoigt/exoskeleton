@@ -756,7 +756,6 @@ class Exoskeleton:
                     logging.debug('The file has already been processed, ' +
                                   'BUT not in this way. ' +
                                   'Adding task to the queue.')
-                    # BUG! hier muss queue gecheckt werden !!!
             else:
                 # File has not been processed yet.
                 # If the exact same task is *not* already in the queue,
