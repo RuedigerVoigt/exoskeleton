@@ -208,9 +208,9 @@ class Exoskeleton:
         # Create Objects
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.cnt = Counter()  # type: Counter
+        self.cnt: Counter = Counter()
 
-        self.local_download_queue = queue.Queue()  # type: queue.Queue
+        self.local_download_queue: queue.Queue = queue.Queue()
 
         self.chrome_process = chrome_name.strip()
 
@@ -513,12 +513,9 @@ class Exoskeleton:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
             self.__update_host_statistics(url, False)
-            # Suppressing mypy errors as defaultdict and some checks
-            # makes ensure self.wait_min and self.wait_max will be
-            # float or int:
-            if self.wait_min < 10.0:  # type: ignore
-                self.wait_min = self.wait_min + 1.0  # type: ignore
-                self.wait_max = self.wait_max + 1.0  # type: ignore
+            if self.wait_min < 10:
+                self.wait_min = self.wait_min + 1
+                self.wait_max = self.wait_max + 1
                 logging.info('Increased min and max wait by 1 second each.')
 
         except requests.exceptions.MissingSchema:
@@ -1048,7 +1045,7 @@ class Exoskeleton:
                 # no actionable item in the queue
                 if self.stop_if_queue_empty:
                     # Bot is configured to stop if queue is empty
-                    # => check if that is omnly temporary or everything is done
+                    # => check if that is only temporary or everything is done
                     self.cur.execute('SELECT num_items_with_temporary_errors();')
                     num_temp_errors = self.cur.fetchone()[0]
                     if num_temp_errors > 0:
