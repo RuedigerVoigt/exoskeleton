@@ -4,7 +4,8 @@
 """
 Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
-A Python framework to build a basic crawler / scraper with a MariaDB backend.
+A Python framework to build a basic crawler / scraper
+with a MariaDB backend.
 """
 
 # python standard library:
@@ -37,8 +38,6 @@ class Exoskeleton:
     # The class is complex which leads pylint3 to complain a lot.
     # As the complexity is needed, disable some warnings:
     # pylint: disable=too-many-statements
-    # pylint: disable=too-many-arguments
-    # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-branches
