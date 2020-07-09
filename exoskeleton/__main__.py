@@ -432,7 +432,7 @@ class Exoskeleton:
                     mime_type = (r.headers.get('content-type')).split(';')[0]  # type: ignore
 
                 if action_type == 'file':
-                    extension = utils.determine_file_extension(url, mime_type)
+                    extension = userprovided.url.determine_file_extension(url, mime_type)
                     new_filename = f"{self.file_prefix}{queue_id}{extension}"
                     target_path = self.target_dir.joinpath(new_filename)
 
