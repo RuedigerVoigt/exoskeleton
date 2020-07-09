@@ -8,7 +8,7 @@ Integrating `beautifulsoup4`, `requests`, and `urllib3` was inevitable. Those ho
 
 `pymysql` and `lxml` have shown me their worth in other projects which unfortunately are closed source. They could be replaced quite easily if ever necessary.
 
-The libraries `userprovided` and `bote` are new and have a small userbase. Yet they are sister projects of `exoskeleton` and are jointly developed. The [userprovided library](https://github.com/RuedigerVoigt/userprovided "GitHub page for userprovided") contains most utility functions developed for exoskeleton and has 100% test coverage with unit tests.
+The libraries `userprovided` and `bote` are new and have a small user-base. Yet they are sister projects of `exoskeleton` and are jointly developed. The [userprovided library](https://github.com/RuedigerVoigt/userprovided "GitHub page for userprovided") contains most utility functions developed for exoskeleton and has 100% test coverage with unit tests.
 
 The database backend is fixed to MariaDB. It would be nice to support multiple backends, but doing so would require another layer of software.
 

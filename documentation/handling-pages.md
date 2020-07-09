@@ -62,7 +62,7 @@ Take for example this broken input:
 If you save it with `prettify_html` set to True, the HTML is improved in a number of ways:
 
 * a html, and a body tag are added
-* HTML Entities are turned to unicode (`&uuml` into `ü`, ...)
+* HTML Entities are turned to Unicode (`&uuml` into `ü`, ...)
 * Open tags are closed
 * the formatting is improved
 * ...
@@ -76,7 +76,7 @@ If you save it with `prettify_html` set to True, the HTML is improved in a numbe
   </h1>
   <div>
    <p>
-    HTML Entities instead of unicode: äüö
+    HTML Entities instead of Unicode: äüö
    </p>
    <p>
     <b>

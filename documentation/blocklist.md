@@ -4,7 +4,7 @@ Exoskeleton automatically helps you to [avoid duplicates](avoiding-duplicates.md
 
 The blocklist is based on the fully qualified domain name (FQDN). The FQDN for `https://www.example.com/foo.html?id=1` would be `www.example.com`.
 
-If `www.example.com` is on the blocklist, exoskelton will not add any URL to the queue whose FQDN matches that. If the URL is already in the queue, the task will not be executed if the FQDN has been added to the blocklist in the meantime. Exoskelton checks again while processing the queue.
+If `www.example.com` is on the blocklist, exoskeleton will not add any URL to the queue whose FQDN matches that. If the URL is already in the queue, the task will not be executed if the FQDN has been added to the blocklist in the meantime. Exoskeleton checks again while processing the queue.
 
 However `example.com` (missing 'www') is a different FQDN and `https://example.com/foo.html?id=1` (missing 'www') would be processed with `www.example.com` on the blocklist even if it has the same content. Be aware that some browsers blend out the 'www' until you click on the URL. Exoskeleton's blocklist does not support wildcards or regular expressions.
 

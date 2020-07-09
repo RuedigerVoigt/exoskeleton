@@ -4,7 +4,7 @@
 
 Exoskeleton uses MariaDB as a database backend. The library was developed using MariaDB 10.1.44. This or any newer version of MariaDB should be fine. Check the version installed with the command `mysql --version`.
 
-MariaDB claims to be a drop-in replacement for MySQL. They share a large part of their codebase. However, there are subtle differences like slightly different commands or different bugs. It was an explicit development aim to avoid those. So, using MySQL instead of MariaDB should work, but is untested.
+MariaDB claims to be a drop-in replacement for MySQL. They share a large part of their code-base. However, there are subtle differences like slightly different commands or different bugs. It was an explicit development aim to avoid those. So, using MySQL instead of MariaDB should work, but is untested.
 
 
 1. Create a separate, empty database for your project.
