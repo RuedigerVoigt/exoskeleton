@@ -9,6 +9,8 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 # python standard library:
 from collections import Counter
+# noinspection PyUnresolvedReferences
+from collections import defaultdict
 import logging
 import pathlib
 import queue
