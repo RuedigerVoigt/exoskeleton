@@ -67,17 +67,41 @@ class Exoskeleton:
         # Database Setup / Establish a Database Connection
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.db_host: Optional[str] = None
-        self.db_port: Optional[int] = None
-        self.db_name: str = None  # type: ignore
-        self.db_username: str = None  # type: ignore
-        self.db_passphrase: str = None  # type: ignore
-
         if database_settings is None:
             raise ValueError('You must supply database credentials for' +
                              'exoskeleton to work.')
-        else:
-            self.__check_database_settings(database_settings)
+
+        userprovided.parameters.validate_dict_keys(
+            database_settings,
+            {'host', 'port', 'database', 'username', 'passphrase'},
+            {'database'},
+            'database_settings')
+
+        self.db_host: str = database_settings.get('host', None)
+        if not self.db_host:
+            logging.warning('No hostname provided. Will try localhost.')
+            self.db_host = 'localhost'
+
+        self.db_port: int = database_settings.get('port', None)
+        if not self.db_port:
+            logging.info('No port number supplied. ' +
+                         'Will try standard port 3306 instead.')
+            self.db_port = 3306
+        elif not userprovided.port.port_in_range(self.db_port):
+            raise ValueError('Port outside valid range!')
+
+        self.db_name: str = database_settings.get('database', None)
+        if not self.db_name:
+            raise ValueError('You must provide the name of the database.')
+
+        self.db_username: str = database_settings.get('username', None)
+        if not self.db_username:
+            raise ValueError('You must provide a database user.')
+
+        self.db_passphrase: str = database_settings.get('passphrase', '')
+        if self.db_passphrase == '':
+            logging.warning('No database passphrase provided. ' +
+                            'Will try to connect without.')
 
         # Establish the connection:
         self.connection = None
@@ -210,42 +234,6 @@ class Exoskeleton:
     # SETUP
     # Functions called from __init__ but outside of it for easier testing.
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def __check_database_settings(self,
-                                  database_settings: dict):
-        u"""Check the database settings for plausibility. """
-
-        userprovided.parameters.validate_dict_keys(
-            database_settings,
-            {'host', 'port', 'database', 'username', 'passphrase'},
-            {'database'},
-            'database_settings')
-
-        self.db_host = database_settings.get('host', None)
-        if not self.db_host:
-            logging.warning('No hostname provided. Will try localhost.')
-            self.db_host = 'localhost'
-
-        self.db_port = database_settings.get('port', None)
-        if not self.db_port:
-            logging.info('No port number supplied. ' +
-                         'Will try standard port instead.')
-            self.db_port = 3306
-        elif not userprovided.port.port_in_range(self.db_port):
-            raise ValueError('Port outside valid range!')
-
-        self.db_name = database_settings.get('database', None)
-        if not self.db_name:
-            raise ValueError('You must provide the name of the database.')
-
-        self.db_username = database_settings.get('username', None)
-        if not self.db_username:
-            raise ValueError('You must provide a database user.')
-
-        self.db_passphrase = database_settings.get('passphrase', '')
-        if self.db_passphrase == '':
-            logging.warning('No database passphrase provided. ' +
-                            'Will try to connect without.')
 
     def __check_behavior_settings(self,
                                   behavior_settings: Optional[dict]):
