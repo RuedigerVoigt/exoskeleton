@@ -827,12 +827,10 @@ class Exoskeleton:
             logging.error('Cannot add URL to queue: FQDN is on blocklist.')
             return None
 
-        prettify = 0  # numeric because will be added to int database field
         if prettify_html and action != 2:
-            logging.error('Option prettify_html not ' +
-                          'supported for this action.')
-        elif prettify_html:
-            prettify = 1
+            logging.error('Option prettify_html not supported for ' +
+                          'this action. Will be ignored.')
+            prettify_html = False
 
         # Excess whitespace might be common (copy and paste)
         # and would change the hash:
@@ -887,7 +885,7 @@ class Exoskeleton:
         self.cur.execute('INSERT INTO queue ' +
                          '(id, action, url, urlHash, prettifyHtml) ' +
                          'VALUES (%s, %s, %s, SHA2(%s,256), %s);',
-                         (uuid_value, action, url, url, prettify))
+                         (uuid_value, action, url, url, prettify_html))
 
         # link labels to version item
         if labels_version:
@@ -1036,7 +1034,7 @@ class Exoskeleton:
                 action = next_in_queue[1]
                 url = next_in_queue[2]
                 url_hash = next_in_queue[3]
-                prettify_html = 1 if next_in_queue[4] == 1 else 0
+                prettify_html = True if next_in_queue[4] == 1 else False
 
                 # The FQDN might have been added to the blocklist *after*
                 # the task entered into the queue:
@@ -1054,7 +1052,7 @@ class Exoskeleton:
                         # save page code into database
                         self.__get_object(queue_id, 'content',
                                           url, url_hash,
-                                          prettify_html)  # TODO: Type Check int to bool
+                                          prettify_html)
                     elif action == 3:
                         # headless Chrome to create PDF
                         self.__page_to_pdf(url, url_hash, queue_id)
