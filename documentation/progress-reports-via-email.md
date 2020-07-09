@@ -12,7 +12,7 @@ Note, that it usually does not work to send email from a system with a dynamic I
 
 Even if you send from a machine with static IP, many things might go wrong. For example, there might be a [SPF setting](https://en.wikipedia.org/wiki/Sender_Policy_Framework "Wikipedia explaining the Sender Policy Framework") for the sending domain that limits sending mails to a server specified in the MX record of your DNS entry.
 
-However, exoskeleton can connect to a regular mailserver and send mails via that.
+However, exoskeleton can connect to a regular mail server and send mails via that.
 
 ## Activating Mails
 
@@ -34,7 +34,7 @@ If `mail_settings` are given, the parameter `mail_behavior` (must be a dictionar
 
 * **send_start_msg** (bool / default: True): whether to send a start message
 * **send_finish_msg** (bool / default: False): send a message when the bot finishes (requires that is set up to finish once the queue is empty).
-* **milestone_num** (int / default: None): Send a mail everytime a certain number of tasks has been handled. Setting it to 1000 means, that you get an email after each 1,000 queue items are handeled.
+* **milestone_num** (int / default: None): Send a mail every time a certain number of tasks has been handled. Setting it to 1000 means, that you get an email after each 1,000 queue items are handled.
 
 `send_start_msg` defaults to True, so the bot will right away send an email. This is a good way to check whether sending a mail does work. If the receiving mail server uses [greylisting](https://en.wikipedia.org/wiki/Greylisting "Wikipedia on this method to reduce spam by introducing wait time for unknown senders"), it may initially take some minutes to get this email.
 

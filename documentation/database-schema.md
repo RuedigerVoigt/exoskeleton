@@ -2,7 +2,7 @@
 
 ## The Queue
 
-![EER Diagram: Queue Management in the Exoskelleton Database](EER-diagrams/EER-Queue-Management.png)
+![EER Diagram: Queue Management in the Exoskeleton Database](EER-diagrams/EER-Queue-Management.png)
 
 Exoskeleton works through the queue following the "first in - first out" principle. As soon an item has been downloaded, it is removed from the queue. In case of a temporary error (like a timeout) a crawling delay is added to the item and exoskeleton will try to download it later.
 
@@ -10,7 +10,7 @@ In case of a permanent error, the item stays in the queue, but gets marked. It i
 
 ## File and Data Management
 
-![EER Diagram File Management in the Exoskelleton Database](EER-diagrams/EER-File-Management.png)
+![EER Diagram File Management in the Exoskeleton Database](EER-diagrams/EER-File-Management.png)
 
 Exoskeleton is able to handle multiple versions of the same file. A case for this might be keeping the original copy, but uploading a version with OCR applied to a Cloud.
 
@@ -22,7 +22,7 @@ The relations between those tables are assured via foreign key constraints. On t
 
 ## Labels
 
-![EER Diagram Labels in the Exoskelleton Database](EER-diagrams/EER-Labels.png)
+![EER Diagram Labels in the Exoskeleton Database](EER-diagrams/EER-Labels.png)
 
 A central feature of exoskeleton is to add labels. The table `labels` manages those. Labels can be assigned to the entry in `fileMaster` or to specific versions of a file. Aptly named tables map these relationships.
 

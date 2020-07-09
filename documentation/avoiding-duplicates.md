@@ -6,6 +6,6 @@ If you [parse search results](parse-search-results.md), it is likely that some d
 
 **There are two exceptions:**:
 * If you perform different tasks on the same file (like downloading its source code *and* storing a PDF version), then each task will create a version entry under the same entry in the `fileMaster` table.
-* You can force exoskeleton with setting the `force_new_version` parameter to `True` to create another [version](versions-and-labels.md "File versions and labels") under the same master entry. This is especially useful if you want to build a history of a page. An example would be a news frontpage which you want to store daily to analyze topics in the log run.
+* You can force exoskeleton with setting the `force_new_version` parameter to `True` to create another [version](versions-and-labels.md "File versions and labels") under the same master entry. This is especially useful if you want to build a history of a page. An example would be a news front page which you want to store daily to analyze topics in the log run.
 
 > :arrow_right: **[Now learn about the options for storing pages and files](handling-pages.md)**

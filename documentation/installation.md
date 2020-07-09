@@ -2,7 +2,7 @@
 
 ## The Database Backend
 
-Exoskeleton uses MariaDB as a database backend. The library was developed using MariaDB 10.1.44. This or any newer version of MariaDB should be fine. Check the version installled with the command `mysql --version`.
+Exoskeleton uses MariaDB as a database backend. The library was developed using MariaDB 10.1.44. This or any newer version of MariaDB should be fine. Check the version installed with the command `mysql --version`.
 
 MariaDB claims to be a drop-in replacement for MySQL. They share a large part of their codebase. However, there are subtle differences like slightly different commands or different bugs. It was an explicit development aim to avoid those. So, using MySQL instead of MariaDB should work, but is untested.
 
@@ -46,12 +46,12 @@ You may consider using a [virtualenv](https://virtualenv.pypa.io/en/latest/userg
 
 These are:
 
-* [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/ "beautiful soup project homepage"): a very useful package to analyze a webpage's code.
-* [lxml](https://lxml.de/): a parser used to repair broken HTML code
-* [pymysql](https://github.com/PyMySQL/PyMySQL): needed to connect to the MariaDB database.
-* [requests](https://requests.readthedocs.io/en/master/): a high-level library to send and download data
+* [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/ "beautiful soup project homepage"): A very useful package to analyze a webpage's code.
+* [lxml](https://lxml.de/): A parser used to repair broken HTML code
+* [pymysql](https://github.com/PyMySQL/PyMySQL): Needed to connect to the MariaDB database.
+* [requests](https://requests.readthedocs.io/en/master/): A high-level library to send and download data
 * [urllib3](https://urllib3.readthedocs.io/en/latest/)
-* [userprovided](https://github.com/RuedigerVoigt/userprovided): a sister package of exoskeleton which checks user input for plausibility.
+* [userprovided](https://github.com/RuedigerVoigt/userprovided): A sister package of exoskeleton which checks user input for plausibility.
 
 ### Updating Exoskeleton with Pip
 
