@@ -149,7 +149,7 @@ class Exoskeleton:
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = 3
         # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit: int = 60
+        self.queue_revisit: int = 50
 
         self.stop_if_queue_empty: bool = False
         self.wait_main = 5
@@ -268,30 +268,20 @@ class Exoskeleton:
 
         self.connection_timeout = behavior_settings.get('connection_timeout',
                                                         60)
-        if type(self.connection_timeout) != int:
-            raise ValueError('The value for connection_timeout ' +
-                             'must be numeric.')
-        if self.connection_timeout <= 0:
-            logging.error('Negative or zero value for timeout. ' +
-                          'Fallback to 60 seconds.')
-            self.connection_timeout = 60
-        elif self.connection_timeout > 120:
-            logging.info('Very high value for connection_timeout')
+        self.connection_timeout = userprovided.parameters.int_in_range(
+            "self.connection.timeout", self.connection_timeout, 1, 60, 50)
 
         self.wait_min = behavior_settings.get('wait_min', 5)
         self.wait_max = behavior_settings.get('wait_max', 30)
 
         # max retries NOT YET IMPLEMENTED:
         self.queue_max_retries = behavior_settings.get('queue_max_retries', 3)
-        if type(self.queue_max_retries) != int:
-            raise ValueError('The value for queue_max_retries ' +
-                             'must be an integer.')
+        self.queue_max_retries = userprovided.parameters.int_in_range(
+            "queue_max_retries", self.queue_max_retries, 0, 10, 3)
 
         self.queue_revisit = behavior_settings.get('queue_revisit', 50)
-        try:
-            self.queue_revisit = int(self.queue_revisit)
-        except ValueError:
-            raise ValueError('The value for queue_revisit must be numeric.')
+        self.queue_revisit = userprovided.parameters.int_in_range(
+            "queue_revisit", self.queue_revisit, 10, 50, 50)
 
         self.stop_if_queue_empty = behavior_settings.get(
             'stop_if_queue_empty',
