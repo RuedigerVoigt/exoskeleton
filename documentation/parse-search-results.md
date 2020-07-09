@@ -76,7 +76,7 @@ def crawl(job: str,
             # loop over all URLs and add the base
             # # then add them to the queue
             for i in urls:
-                full_url = (f"{url_base}{i['href']}")
+                full_url = f"{url_base}{i['href']}"
                 print(full_url)
                 # This function adds the task "download the file"
                 # to the queue. We add the name of the job as a label.
@@ -86,7 +86,7 @@ def crawl(job: str,
             # check whether a next page is defined for the SERPs
             next_page = soup.select("a.next")
 
-            if next_page != []:
+            if next_page:
                 # next_page is definied, get first element:
                 next_page = next_page[0]
 

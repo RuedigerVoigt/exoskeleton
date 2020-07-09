@@ -9,7 +9,6 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 # python standard library:
 from collections import Counter
-from collections import defaultdict
 import logging
 import pathlib
 import queue
@@ -315,7 +314,7 @@ class Exoskeleton:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
-                           'blocklist',
+                           'blocklist',  # TODO: Shouldn't that be `blockList`?
                            'errorType',
                            'fileContent',
                            'fileMaster',
@@ -1103,7 +1102,7 @@ class Exoskeleton:
                         # save page code into database
                         self.__get_object(queue_id, 'content',
                                           url, url_hash,
-                                          prettify_html)
+                                          prettify_html) # TODO: Type Check int to bool
                     elif action == 3:
                         # headless Chrome to create PDF
                         self.__page_to_pdf(url, url_hash, queue_id)
