@@ -362,7 +362,7 @@ ON UPDATE RESTRICT;
 -- BLOCKLIST
 -- ----------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS blocklist (
+CREATE TABLE IF NOT EXISTS blockList (
     fqdnHash CHAR(64) NOT NULL
     ,fqdn VARCHAR(255) NOT NULL
     ,comment Text NULL

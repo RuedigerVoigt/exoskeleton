@@ -2,14 +2,14 @@
 
 ## upcoming 1.0.0
 
-* Sequences
-* Integration test
+* System test
 * Experimental Docker image
 
 Breaking Changes:
 * `__assign_labels_to_version` is now `assign_labels_to_uuid`
 * `__assign_labels_to_master` is now `__assign_labels_to_master`
 * Moved `utils.determine_file_extension()` into the `userprovided` project. Now it has to be called via `userprovided.url.determine_file_extension()`.
+* Renamed database table `blocklist`to `blockList`: could be a breaking change depending on your systems settings.
 
 New features:
 * `version_uuids_by_label` gets the new option `processed_only`: if that is set to `True` it returns only UUIDs from files / content / ... that has been processed. Otherwise the returned set might include queue items with that label.

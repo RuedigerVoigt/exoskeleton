@@ -304,7 +304,7 @@ class Exoskeleton:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
-                           'blocklist',  # TODO: Shouldn't that be `blockList`?
+                           'blockList',
                            'errorType',
                            'fileContent',
                            'fileMaster',
@@ -1116,7 +1116,7 @@ class Exoskeleton:
                         fqdn: str) -> bool:
         u"""Check if a specific FQDN is on the blocklist."""
 
-        self.cur.execute('SELECT COUNT(*) FROM blocklist ' +
+        self.cur.execute('SELECT COUNT(*) FROM blockList ' +
                          'WHERE fqdnhash = SHA2(%s,256);',
                          fqdn.strip())
         count = (self.cur.fetchone())[0]
@@ -1135,7 +1135,7 @@ class Exoskeleton:
                              'a FQDN but not URLs.')
         else:
             try:
-                self.cur.execute('INSERT INTO blocklist ' +
+                self.cur.execute('INSERT INTO blockList ' +
                                  '(fqdn, fqdnHash, comment) ' +
                                  'VALUES (%s, SHA2(%s,256), %s);',
                                  (fqdn.strip(), fqdn.strip(), comment))
@@ -1145,13 +1145,13 @@ class Exoskeleton:
     def unblock_fqdn(self,
                      fqdn: str):
         u"""Remove a specific fqdn from the blocklist."""
-        self.cur.execute('DELETE FROM blocklist ' +
+        self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn.strip())
 
     def truncate_blocklist(self):
         u"""Remove *all* entries from the blocklist."""
-        self.cur.execute('TRUNCATE TABLE blocklist;')
+        self.cur.execute('TRUNCATE TABLE blockList;')
         pass
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
