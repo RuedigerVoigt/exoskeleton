@@ -63,7 +63,7 @@ class Exoskeleton:
         self.user_agent = bot_user_agent.strip()
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Database Setup / Establish a Database Connection
+        # INIT: Database Setup / Establish a Database Connection
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         if database_settings is None:
@@ -114,7 +114,7 @@ class Exoskeleton:
         db_check.check_stored_procedures(self.cur, self.db_name)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Mail / Notification Setup
+        # INIT: Mail / Notification Setup
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.send_mails: bool = False
@@ -163,7 +163,7 @@ class Exoskeleton:
                     raise ValueError('milestone_num must be integer!')
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Bot Behavior
+        # INIT: Bot Behavior
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         known_behavior_keys = {'connection_timeout',
@@ -211,7 +211,7 @@ class Exoskeleton:
         self.tm = TimeManager(self.wait_min, self.wait_max)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # File Handling
+        # INIT: File Handling
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.target_dir = pathlib.Path.cwd()
@@ -248,7 +248,7 @@ class Exoskeleton:
                              'your system.')
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Create Objects
+        # INIT: Create Objects
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.cnt: Counter = Counter()
@@ -258,6 +258,10 @@ class Exoskeleton:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ACTIONS
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    # make random_wait() accessible from outside
+    def random_wait(self):
+        self.tm.random_wait()
 
     def __get_object(self,
                      queue_id: str,
