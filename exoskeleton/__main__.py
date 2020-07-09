@@ -14,7 +14,6 @@ from collections import defaultdict
 import logging
 import pathlib
 import queue
-import random
 import subprocess
 import time
 from typing import Union, Optional
@@ -31,6 +30,7 @@ import bote
 
 # import other modules of this framework
 import exoskeleton.utils as utils
+from .TimeManager import TimeManager
 
 
 class Exoskeleton:
@@ -151,13 +151,13 @@ class Exoskeleton:
         # Time to wait after the queue is empty to check for new elements:
         self.queue_revisit: int = 60
 
-        self.wait_min: int = 5
-        self.wait_max: int = 30
-
         self.stop_if_queue_empty: bool = False
+        self.wait_main = 5
+        self.wait_max = 30
+        self.__check_behavior_settings(bot_behavior)
 
-        if bot_behavior:
-            self.__check_behavior_settings(bot_behavior)
+        # Init time management
+        self.tm = TimeManager(self.wait_min, self.wait_max)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # File Handling
@@ -195,14 +195,6 @@ class Exoskeleton:
         if not userprovided.hash.hash_available(self.hash_method):
             raise ValueError('The hash method SHA256 is not available on ' +
                              'your system.')
-
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # Init Timers
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        self.bot_start = time.monotonic()
-        self.process_time_start = time.process_time()
-        logging.debug('started timers')
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # Create Objects
@@ -256,7 +248,7 @@ class Exoskeleton:
                             'Will try to connect without.')
 
     def __check_behavior_settings(self,
-                                  behavior_settings: dict):
+                                  behavior_settings: Optional[dict]):
         u"""Check the settings for bot behavior. """
 
         known_behavior_keys = {'connection_timeout',
@@ -287,11 +279,7 @@ class Exoskeleton:
             logging.info('Very high value for connection_timeout')
 
         self.wait_min = behavior_settings.get('wait_min', 5)
-        if type(self.wait_min) not in (int, float):
-            raise ValueError('The value for wait_min must be numeric.')
         self.wait_max = behavior_settings.get('wait_max', 30)
-        if type(self.wait_max) not in (int, float):
-            raise ValueError('The value for wait_max must be numeric.')
 
         # max retries NOT YET IMPLEMENTED:
         self.queue_max_retries = behavior_settings.get('queue_max_retries', 3)
@@ -299,7 +287,7 @@ class Exoskeleton:
             raise ValueError('The value for queue_max_retries ' +
                              'must be an integer.')
 
-        self.queue_revisit = behavior_settings.get('queue_revisit', 60)
+        self.queue_revisit = behavior_settings.get('queue_revisit', 50)
         try:
             self.queue_revisit = int(self.queue_revisit)
         except ValueError:
@@ -513,10 +501,7 @@ class Exoskeleton:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
             self.__update_host_statistics(url, False)
-            if self.wait_min < 10:
-                self.wait_min = self.wait_min + 1
-                self.wait_max = self.wait_max + 1
-                logging.info('Increased min and max wait by 1 second each.')
+            self.tm.increase_wait()
 
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain ' +
@@ -779,44 +764,12 @@ class Exoskeleton:
     # QUEUE MANAGEMENT
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def random_wait(self):
-        u"""Waits for a random time between actions
-        (within the interval preset at initialization).
-        This is done to avoid to accidentally overload
-        the queried host. Some host actually enforce
-        limits through IP blocking."""
-        query_delay = random.randint(self.wait_min, self.wait_max)  # nosec
-        logging.debug("%s seconds delay until next action", query_delay)
-        time.sleep(query_delay)
-        return
-
     def num_items_in_queue(self) -> int:
         u"""Number of items left in the queue. """
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
         return int(self.cur.fetchone()[0])  # type: ignore
-
-    def absolute_run_time(self) -> float:
-        u"""Return seconds since init. """
-        return time.monotonic() - self.bot_start
-
-    def get_process_time(self) -> float:
-        u"""Return execution time since init"""
-        return time.process_time() - self.process_time_start
-
-    def estimate_remaining_time(self) -> int:
-        u"""Estimate remaining seconds to finish crawl."""
-        time_so_far = self.absolute_run_time()
-        num_remaining = self.num_items_in_queue()
-
-        if self.cnt['processed'] > 0:
-            time_each = time_so_far / self.cnt['processed']
-            return round(num_remaining * time_each)
-
-        logging.warning('Cannot estimate remaining time ' +
-                        'as there are no data so far.')
-        return -1
 
     def add_file_download(self,
                           url: str,
@@ -1101,7 +1054,7 @@ class Exoskeleton:
                         # save page code into database
                         self.__get_object(queue_id, 'content',
                                           url, url_hash,
-                                          prettify_html) # TODO: Type Check int to bool
+                                          prettify_html)  # TODO: Type Check int to bool
                     elif action == 3:
                         # headless Chrome to create PDF
                         self.__page_to_pdf(url, url_hash, queue_id)
@@ -1112,7 +1065,7 @@ class Exoskeleton:
                         self.check_milestone()
 
                     # wait some interval to avoid overloading the server
-                    self.random_wait()
+                    self.tm.random_wait()
 
     def __update_host_statistics(self,
                                  url: str,
@@ -1148,18 +1101,22 @@ class Exoskeleton:
             logging.info("Milestone reached: %s processed",
                          str(processed))
             if self.send_mails:
+                estimate = self.tm.estimate_remaining_time(
+                    self.cnt['processed'],
+                    self.num_items_in_queue()
+                )
                 subject = (f"{self.project} Milestone reached: " +
                            f"{self.cnt['processed']} processed")
                 content = (f"{self.cnt['processed']} processed.\n" +
                            f"{self.num_items_in_queue()} items " +
                            f"remaining in the queue.\n" +
                            f"Estimated time to complete queue: " +
-                           f"{self.estimate_remaining_time()} seconds.\n")
+                           f"{estimate} seconds.\n")
                 self.mailer.send_mail(subject, content)
 
     def check_blocklist(self,
                         fqdn: str) -> bool:
-        u"""Check if a specific fqdn is on the blocklist."""
+        u"""Check if a specific FQDN is on the blocklist."""
 
         self.cur.execute('SELECT COUNT(*) FROM blocklist ' +
                          'WHERE fqdnhash = SHA2(%s,256);',
@@ -1345,8 +1302,7 @@ class Exoskeleton:
 
     def filemaster_labels_by_url(self,
                                  url: str) -> set:
-        u"""MIGHT GET REMOVED IN FUTURE RELEASE =>
-            Primary use for automatic test: Get a list of label names
+        u"""Primary use for automatic test: Get a list of label names
             (not id numbers!) attached to a specific filemaster entry
             via its URL instead of the id. The reason for this is that
             the association with the URl predates the filemaster entry /
