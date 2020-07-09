@@ -38,7 +38,7 @@ import exoskeleton
 logging.basicConfig(level=logging.DEBUG)
 
 # Create a bot
-# exoskeleton makes reasonable asumptions about
+# exoskeleton makes reasonable assumptions about
 # parameters left out, like:
 # - host = localhost
 # - port = 3306 (MariaDB standard)

@@ -33,7 +33,6 @@ def determine_file_extension(url: str,
     if provided_mime_type == '':
         provided_mime_type = None
     type_by_url = mimetypes.guess_type(url)[0]
-    extension = None
     if type_by_url is not None and type_by_url == provided_mime_type:
         # Best case: URL and server header suggest the same filetype.
         extension = mimetypes.guess_extension(provided_mime_type)

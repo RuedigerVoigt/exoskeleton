@@ -56,7 +56,7 @@ Breaking Changes:
 New Features / Improvements:
 * Added an extensive [documentation](documentation/README.md).
 * Restore lost database connection after timeout.
-* Add Ability to store any webpage as PDF file using headless Chrome.
+* Add Ability to store any web page as PDF file using headless Chrome.
 * Prettify HTML before storing it.
 * The content header is used to determine the file extension.
 * Build process improved: with GitHub-Actions syntax checks and unit-tests are run for each build in Python 3.6, 3.7 and 3.8.

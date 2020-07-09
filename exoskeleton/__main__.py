@@ -9,6 +9,7 @@ A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 # python standard library:
 from collections import Counter
+# noinspection PyUnresolvedReferences
 from collections import defaultdict
 import logging
 import pathlib
@@ -19,7 +20,6 @@ import time
 from typing import Union, Optional
 from urllib.parse import urlparse
 import uuid
-
 
 # 3rd party libraries:
 import pymysql
@@ -105,10 +105,10 @@ class Exoskeleton:
                          "as there are no mail-settings.")
         else:
             self.mailer = bote.Mailer(mail_settings)
-            # The constructur would have failed with exceptions,
-            # if the settings were inplausible:
+            # The constructor would have failed with exceptions,
+            # if the settings were implausible:
             self.send_mails = True
-            logging.info('This bot will try to send notications per mail ' +
+            logging.info('This bot will try to send notifications via mail ' +
                          'in case it fails and cannot recover. ')
 
             if mail_settings and not mail_behavior:
@@ -186,7 +186,7 @@ class Exoskeleton:
         self.file_prefix = filename_prefix.strip()
         # Limit the prefix length as on many systems the path must not be
         # longer than 255 characters and it needs space for folders and the
-        # actual filename. 16 characters semms to be a reasonable limit.
+        # actual filename. 16 characters seems to be a reasonable limit.
         if len(self.file_prefix) > 16:
             raise ValueError('The file name prefix is limited to a ' +
                              'maximum of 16 characters.')
@@ -214,10 +214,10 @@ class Exoskeleton:
 
         self.chrome_process = chrome_name.strip()
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# SETUP
-# Functions called from __init__ but outside of it for easier testing.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # SETUP
+    # Functions called from __init__ but outside of it for easier testing.
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __check_database_settings(self,
                                   database_settings: dict):
@@ -316,7 +316,7 @@ class Exoskeleton:
         u"""Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
-                           'blocklist',
+                           'blocklist',  # TODO: Shouldn't that be `blockList`?
                            'errorType',
                            'fileContent',
                            'fileMaster',
@@ -384,9 +384,9 @@ class Exoskeleton:
         logging.info("Found all expected stored procedures.")
         return True
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ACTIONS
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ACTIONS
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __get_object(self,
                      queue_id: str,
@@ -495,7 +495,7 @@ class Exoskeleton:
                 self.add_crawl_delay_to_item(queue_id)
                 self.__update_host_statistics(url, False)
             elif r.status_code not in (200, 402, 403, 404, 405, 410, 429, 451):
-                logging.error('Unhandeled return code %s', r.status_code)
+                logging.error('Unhandled return code %s', r.status_code)
                 self.__update_host_statistics(url, False)
 
         except TimeoutError:
@@ -640,9 +640,9 @@ class Exoskeleton:
             logging.exception('Exception while trying to get page-code',
                               exc_info=True)
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# DATABASE MANAGEMENT
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # DATABASE MANAGEMENT
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def establish_db_connection(self):
         u"""Establish a connection to MariaDB """
@@ -671,9 +671,9 @@ class Exoskeleton:
                               exc_info=True)
             raise
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# JOB MANAGEMENT
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # JOB MANAGEMENT
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def job_define_new(self,
                        job_name: str,
@@ -775,14 +775,14 @@ class Exoskeleton:
             raise ValueError('A job with this name is not known.')
         logging.debug('Marked job %s as finished.', job_name)
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# QUEUE MANAGEMENT
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # QUEUE MANAGEMENT
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def random_wait(self):
         u"""Waits for a random time between actions
         (within the interval preset at initialization).
-        This is done to avoid to accidentially overload
+        This is done to avoid to accidentally overload
         the queried host. Some host actually enforce
         limits through IP blocking."""
         query_delay = random.randint(self.wait_min, self.wait_max)  # nosec
@@ -973,7 +973,7 @@ class Exoskeleton:
         u"""Remove all label links from a queue item
             and then delete it from the queue."""
         # callproc expects a tuple. Do not remove the comma:
-        self.cur.callproc('delete_from_queue_SP', (queue_id, ))
+        self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
     def add_crawl_delay_to_item(self,
                                 queue_id: str,
@@ -1101,7 +1101,7 @@ class Exoskeleton:
                         # save page code into database
                         self.__get_object(queue_id, 'content',
                                           url, url_hash,
-                                          prettify_html)
+                                          prettify_html) # TODO: Type Check int to bool
                     elif action == 3:
                         # headless Chrome to create PDF
                         self.__page_to_pdf(url, url_hash, queue_id)
@@ -1198,9 +1198,10 @@ class Exoskeleton:
         u"""Remove *all* entries from the blocklist."""
         self.cur.execute('TRUNCATE TABLE blocklist;')
         pass
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# LABELS
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # LABELS
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __define_new_label(self,
                            shortname: str,
