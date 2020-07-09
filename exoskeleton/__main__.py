@@ -167,18 +167,46 @@ class Exoskeleton:
         # Bot Behavior
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+        known_behavior_keys = {'connection_timeout',
+                               'queue_max_retries',
+                               'queue_revisit',
+                               'stop_if_queue_empty',
+                               'wait_min',
+                               'wait_max'}
+        if bot_behavior:
+            userprovided.parameters.validate_dict_keys(
+                bot_behavior,
+                known_behavior_keys,
+                None,
+                'bot_behavior')
+        else:
+            bot_behavior = dict()
+
         # Seconds until a connection times out:
-        self.connection_timeout: int = 60
+        self.connection_timeout: int = bot_behavior.get(
+            'connection_timeout', 60)
+        self.connection_timeout = userprovided.parameters.int_in_range(
+            "self.connection.timeout", self.connection_timeout, 1, 60, 50)
 
+        self.wait_min: int = bot_behavior.get('wait_min', 5)
+        self.wait_max: int = bot_behavior.get('wait_max', 30)
+
+        # max retries NOT YET IMPLEMENTED:
         # Maximum number of retries if downloading a page/file failed:
-        self.queue_max_retries: int = 3
-        # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit: int = 50
+        self.queue_max_retries: int = bot_behavior.get('queue_max_retries', 3)
+        self.queue_max_retries = userprovided.parameters.int_in_range(
+            "queue_max_retries", self.queue_max_retries, 0, 10, 3)
 
-        self.stop_if_queue_empty: bool = False
-        self.wait_main = 5
-        self.wait_max = 30
-        self.__check_behavior_settings(bot_behavior)
+        # Time to wait after the queue is empty to check for new elements:
+        self.queue_revisit: int = bot_behavior.get('queue_revisit', 50)
+        self.queue_revisit = userprovided.parameters.int_in_range(
+            "queue_revisit", self.queue_revisit, 10, 50, 50)
+
+        self.stop_if_queue_empty: bool = bot_behavior.get(
+            'stop_if_queue_empty', False)
+        if type(self.stop_if_queue_empty) != bool:
+            raise ValueError('The value for "stop_if_queue_empty" ' +
+                             'must be a boolean (True / False).')
 
         # Init time management
         self.tm = TimeManager(self.wait_min, self.wait_max)
@@ -234,49 +262,6 @@ class Exoskeleton:
     # SETUP
     # Functions called from __init__ but outside of it for easier testing.
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def __check_behavior_settings(self,
-                                  behavior_settings: Optional[dict]):
-        u"""Check the settings for bot behavior. """
-
-        known_behavior_keys = {'connection_timeout',
-                               'queue_max_retries',
-                               'queue_revisit',
-                               'stop_if_queue_empty',
-                               'wait_min',
-                               'wait_max'}
-        if behavior_settings:
-            userprovided.parameters.validate_dict_keys(
-                behavior_settings,
-                known_behavior_keys,
-                None,
-                'behavior_settings')
-        else:
-            behavior_settings = dict()
-
-        self.connection_timeout = behavior_settings.get('connection_timeout',
-                                                        60)
-        self.connection_timeout = userprovided.parameters.int_in_range(
-            "self.connection.timeout", self.connection_timeout, 1, 60, 50)
-
-        self.wait_min = behavior_settings.get('wait_min', 5)
-        self.wait_max = behavior_settings.get('wait_max', 30)
-
-        # max retries NOT YET IMPLEMENTED:
-        self.queue_max_retries = behavior_settings.get('queue_max_retries', 3)
-        self.queue_max_retries = userprovided.parameters.int_in_range(
-            "queue_max_retries", self.queue_max_retries, 0, 10, 3)
-
-        self.queue_revisit = behavior_settings.get('queue_revisit', 50)
-        self.queue_revisit = userprovided.parameters.int_in_range(
-            "queue_revisit", self.queue_revisit, 10, 50, 50)
-
-        self.stop_if_queue_empty = behavior_settings.get(
-            'stop_if_queue_empty',
-            False)
-        if type(self.stop_if_queue_empty) != bool:
-            raise ValueError('The value for "stop_if_queue_empty" ' +
-                             'must be a boolean (True / False).')
 
     def __check_table_existence(self) -> bool:
         u"""Check if all expected tables exist."""
