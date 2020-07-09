@@ -13,7 +13,6 @@ from collections import Counter
 from collections import defaultdict
 import logging
 import pathlib
-import queue
 import subprocess
 import time
 from typing import Union, Optional
@@ -253,8 +252,6 @@ class Exoskeleton:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.cnt: Counter = Counter()
-
-        self.local_download_queue: queue.Queue = queue.Queue()
 
         self.chrome_process = chrome_name.strip()
 
