@@ -22,6 +22,7 @@ import uuid
 
 # 3rd party libraries:
 import pymysql
+from requests.models import Response
 import urllib3  # type: ignore
 import requests
 # Sister projects:
@@ -59,8 +60,8 @@ class Exoskeleton:
 
         logging.info('You are using exoskeleton 0.9.2 (beta / July 7, 2020)')
 
-        self.project = project_name.strip()
-        self.user_agent = bot_user_agent.strip()
+        self.project: str = project_name.strip()
+        self.user_agent: str = bot_user_agent.strip()
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Database Setup / Establish a Database Connection
@@ -123,6 +124,9 @@ class Exoskeleton:
         self.milestone: Optional[int] = None
         self.mailer: Optional[bote.Mailer] = None
 
+        # make sure mail-behavior exists for defaultdict to work
+        mail_behavior = dict() if not mail_behavior else mail_behavior
+
         if mail_settings is None:
             logging.info("Will not send any notification emails " +
                          "as there are no mail-settings.")
@@ -134,10 +138,7 @@ class Exoskeleton:
             logging.info('This bot will try to send notifications via mail ' +
                          'in case it fails and cannot recover. ')
 
-            if mail_settings and not mail_behavior:
-                mail_behavior = dict()
-
-            self.send_start_msg = mail_behavior.get('send_start_msg', True)  # type: ignore
+            self.send_start_msg = mail_behavior.get('send_start_msg', True)
             if not isinstance(self.send_start_msg, bool):
                 raise ValueError('Value for send_start_msg must be boolean,' +
                                  'i.e True / False (without quotation marks).')
@@ -149,7 +150,7 @@ class Exoskeleton:
                              "receiving server uses greylisting, " +
                              "this may take some minutes.")
 
-            self.send_finish_msg = mail_behavior.get('send_finish_msg', False)  # type: ignore
+            self.send_finish_msg = mail_behavior.get('send_finish_msg', False)
             if not isinstance(self.send_finish_msg, bool):
                 raise ValueError('Value for send_finish_msg must be boolean,' +
                                  'i.e True / False (without quotation marks).')
@@ -157,7 +158,7 @@ class Exoskeleton:
                 logging.info('Will send notification email as soon as ' +
                              'the bot is done.')
 
-            self.milestone = mail_behavior.get('milestone_num', None)  # type: ignore
+            self.milestone = mail_behavior.get('milestone_num', None)
             if self.milestone is not None:
                 if not isinstance(self.milestone, int):
                     raise ValueError('milestone_num must be integer!')
@@ -182,10 +183,10 @@ class Exoskeleton:
             bot_behavior = dict()
 
         # Seconds until a connection times out:
-        self.connection_timeout: int = bot_behavior.get(
-            'connection_timeout', 60)
-        self.connection_timeout = userprovided.parameters.int_in_range(
-            "self.connection.timeout", self.connection_timeout, 1, 60, 50)
+        self.connection_timeout: int = userprovided.parameters.int_in_range(
+            "self.connection.timeout",
+            bot_behavior.get('connection_timeout', 60),
+            1, 60, 50)
 
         self.wait_min: int = bot_behavior.get('wait_min', 5)
         self.wait_max: int = bot_behavior.get('wait_max', 30)
@@ -283,20 +284,20 @@ class Exoskeleton:
             raise ValueError('Missing url_hash')
 
         if action_type != 'content' and prettify_html:
-            logging.error('Parameter prettify_html ignored ' +
-                          'because of wrong action_type.')
+            logging.error('Wrong action_type: prettify_html ignored.')
 
+        r: Response = Response()
         try:
             if action_type == 'file':
                 logging.debug('starting download of queue id %s', queue_id)
                 r = requests.get(url,
-                                 headers={"User-agent": str(self.user_agent)},
+                                 headers={"User-agent": self.user_agent},
                                  timeout=self.connection_timeout,
                                  stream=True)
             elif action_type == 'content':
                 logging.debug('retrieving content of queue id %s', queue_id)
                 r = requests.get(url,
-                                 headers={"User-agent": str(self.user_agent)},
+                                 headers={"User-agent": self.user_agent},
                                  timeout=self.connection_timeout,
                                  stream=False
                                  )
@@ -307,7 +308,8 @@ class Exoskeleton:
                     mime_type = (r.headers.get('content-type')).split(';')[0]  # type: ignore
 
                 if action_type == 'file':
-                    extension = userprovided.url.determine_file_extension(url, mime_type)
+                    extension = userprovided.url.determine_file_extension(
+                        url, mime_type)
                     new_filename = f"{self.file_prefix}{queue_id}{extension}"
                     target_path = self.target_dir.joinpath(new_filename)
 
@@ -656,7 +658,7 @@ class Exoskeleton:
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
-        return int(self.cur.fetchone()[0])  # type: ignore
+        return int(self.cur.fetchone()[0])
 
     def add_file_download(self,
                           url: str,
@@ -883,7 +885,8 @@ class Exoskeleton:
                 if self.stop_if_queue_empty:
                     # Bot is configured to stop if queue is empty
                     # => check if that is only temporary or everything is done
-                    self.cur.execute('SELECT num_items_with_temporary_errors();')
+                    self.cur.execute(
+                        'SELECT num_items_with_temporary_errors();')
                     num_temp_errors = self.cur.fetchone()[0]
                     if num_temp_errors > 0:
                         # there are still tasks, but they have to wait
@@ -896,7 +899,8 @@ class Exoskeleton:
                         # Nothing left
                         logging.info('Queue empty. Bot stops as configured.')
 
-                        self.cur.execute('SELECT num_items_with_permanent_error();')
+                        self.cur.execute(
+                            'SELECT num_items_with_permanent_error();')
                         num_permanent_errors = self.cur.fetchone()[0]
                         if num_permanent_errors > 0:
                             logging.error("%s permanent errors!",
@@ -1016,8 +1020,8 @@ class Exoskeleton:
         u"""Add a specific fully qualified domain name (fqdn)
             - like www.example.com - to the blocklist."""
         if len(fqdn) > 255:
-            raise ValueError('No valid FQDN can be longer ' +
-                             'than 255 characters. Exoskeleton can only block ' +
+            raise ValueError('No valid FQDN can be longer than 255 ' +
+                             'characters. Exoskeleton can only block ' +
                              'a FQDN but not URLs.')
         else:
             try:
