@@ -27,12 +27,12 @@ import urllib3  # type: ignore
 import requests
 # Sister projects:
 import userprovided
-import bote
 
 # import other modules of this framework
 import exoskeleton.database_check as db_check
 import exoskeleton.utils as utils
 from .TimeManager import TimeManager
+from .NotificationManager import NotificationManager
 
 
 class Exoskeleton:
@@ -118,50 +118,17 @@ class Exoskeleton:
         # INIT: Mail / Notification Setup
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        self.send_mails: bool = False
-        self.send_start_msg: bool = False
-        self.send_finish_msg: bool = False
-        self.milestone: Optional[int] = None
-        self.mailer: Optional[bote.Mailer] = None
-
-        # make sure mail-behavior exists for defaultdict to work
+        mail_settings = dict() if not mail_settings else mail_settings
         mail_behavior = dict() if not mail_behavior else mail_behavior
 
-        if mail_settings is None:
-            logging.info("Will not send any notification emails " +
-                         "as there are no mail-settings.")
-        else:
-            self.mailer = bote.Mailer(mail_settings)
-            # The constructor would have failed with exceptions,
-            # if the settings were implausible:
-            self.send_mails = True
-            logging.info('This bot will try to send notifications via mail ' +
-                         'in case it fails and cannot recover. ')
+        self.milestone: Optional[int] = mail_behavior.get('milestone_num',
+                                                          None)
+        if self.milestone:
+            if not isinstance(self.milestone, int):
+                raise ValueError('milestone_num must be integer!')
 
-            self.send_start_msg = mail_behavior.get('send_start_msg', True)
-            if not isinstance(self.send_start_msg, bool):
-                raise ValueError('Value for send_start_msg must be boolean,' +
-                                 'i.e True / False (without quotation marks).')
-            if self.send_start_msg:
-                self.mailer.send_mail(f"{self.project}: bot just started.",
-                                      "This is a notification to check " +
-                                      "the mail settings.")
-                logging.info("Just sent a notification email. If the " +
-                             "receiving server uses greylisting, " +
-                             "this may take some minutes.")
-
-            self.send_finish_msg = mail_behavior.get('send_finish_msg', False)
-            if not isinstance(self.send_finish_msg, bool):
-                raise ValueError('Value for send_finish_msg must be boolean,' +
-                                 'i.e True / False (without quotation marks).')
-            if self.send_finish_msg:
-                logging.info('Will send notification email as soon as ' +
-                             'the bot is done.')
-
-            self.milestone = mail_behavior.get('milestone_num', None)
-            if self.milestone is not None:
-                if not isinstance(self.milestone, int):
-                    raise ValueError('milestone_num must be integer!')
+        self.notify = NotificationManager(
+            self.project, mail_settings, mail_behavior)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Bot Behavior
@@ -868,11 +835,7 @@ class Exoskeleton:
                     except Exception:
                         logging.error('Could not reestablish database ' +
                                       'server connection!', exc_info=True)
-                        if self.send_mails:
-                            subject = f"{self.project}: bot ABORTED"
-                            content = ("The bot lost the database " +
-                                       "connection and could not restore it.")
-                            self.mailer.send_mail(subject, content)
+                        self.notify.send_msg('abort_lost_db')
                         raise ConnectionError('Lost DB connection and ' +
                                               'could not restore it.')
                 else:
@@ -905,13 +868,7 @@ class Exoskeleton:
                         if num_permanent_errors > 0:
                             logging.error("%s permanent errors!",
                                           num_permanent_errors)
-
-                    if self.send_mails:
-                        subject = f"{self.project}: queue empty / bot stopped"
-                        content = (f"The queue is empty. The bot " +
-                                   f"{self.project} stopped as configured. " +
-                                   f"{num_permanent_errors} errors.")
-                        self.mailer.send_mail(subject, content)
+                        self.notify.send_finish_msg(num_permanent_errors)
                     break
                 else:
                     logging.debug("No actionable task: waiting %s seconds " +
@@ -981,26 +938,19 @@ class Exoskeleton:
 
     def check_milestone(self):
         u""" Check if milestone is reached. If that is the case,
-        send a mail (if configured to do so)."""
+        send a notification (if configured to do so)."""
         processed = self.cnt['processed']
         # Have to check >0 in case the bot starts
         # failing with the first item.
         if processed > 0 and (processed % self.milestone) == 0:
-            logging.info("Milestone reached: %s processed",
-                         str(processed))
-            if self.send_mails:
-                estimate = self.tm.estimate_remaining_time(
+            logging.info("Milestone reached: %s processed", str(processed))
+            self.notify.send_milestone_msg(
+                self.cnt['processed'],
+                self.num_items_in_queue(),
+                self.tm.estimate_remaining_time(
                     self.cnt['processed'],
                     self.num_items_in_queue()
-                )
-                subject = (f"{self.project} Milestone reached: " +
-                           f"{self.cnt['processed']} processed")
-                content = (f"{self.cnt['processed']} processed.\n" +
-                           f"{self.num_items_in_queue()} items " +
-                           f"remaining in the queue.\n" +
-                           f"Estimated time to complete queue: " +
-                           f"{estimate} seconds.\n")
-                self.mailer.send_mail(subject, content)
+                ))
 
     def check_blocklist(self,
                         fqdn: str) -> bool:

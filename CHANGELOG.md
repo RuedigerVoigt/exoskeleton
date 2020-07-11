@@ -5,7 +5,7 @@
 * System test
 * Experimental Docker image
 
-## 0.9.3 beta (2020-07-18)
+## version 0.9.3 beta (2020-07-18)
 
 Breaking Changes:
 * `__assign_labels_to_version` is now `assign_labels_to_uuid`
@@ -15,7 +15,7 @@ Breaking Changes:
 
 New features:
 * `version_uuids_by_label` gets the new option `processed_only`: if that is set to `True` it returns only UUIDs from files / content / ... that has been processed. Otherwise the returned set might include queue items with that label.
-* New function `remove_labels_from_uuid` allows to remove one or more labels from an UUId / version.
+* New function `remove_labels_from_uuid` allows to remove one or more labels from an UUID / version.
 
 
 
@@ -23,7 +23,7 @@ New features:
 
 Breaking Changes:
 * Add a [blocklist](documentation/blocklist.md "How to use the blocklist"): requires changes to the database.
-* Moved function `utils.get_file_hash()` into the userpovided library.
+* Moved function `utils.get_file_hash()` into the userprovided library.
 * Harmonized all functions that either return labels associated with ids or that return ids associated with labels to return the datatype `set`. If no associations are found the return value is an empty set.
 * Issue #17 / Bugfix: The duplicate prevention did not work as expected for already processed files / pages. Had to extend the table `fileVersions` and the stored procedures.
 
