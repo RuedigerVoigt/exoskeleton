@@ -54,7 +54,7 @@ jobs:
           mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'       
 
       - name: Run Systemtest
-        run: python3 syste-test.py
+        run: python3 system-test.py
   
       - name: List downloaded files
         run: ls -l ./fileDownloads
