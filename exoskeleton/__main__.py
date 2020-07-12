@@ -775,7 +775,7 @@ class Exoskeleton:
             return None
 
     def delete_from_queue(self,
-                          queue_id: int):
+                          queue_id: str):
         u"""Remove all label links from a queue item
             and then delete it from the queue."""
         # callproc expects a tuple. Do not remove the comma:
