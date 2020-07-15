@@ -51,7 +51,11 @@ exo = exoskeleton.Exoskeleton(
                        'database': 'exoskeleton',
                        'username': 'exoskeleton',
                        'passphrase': 'exoskeleton'},
-    bot_behavior={'stop_if_queue_empty': True},
+    bot_behavior={'queue_max_retries': 5,
+                  'wait_min': 1,
+                  'wait_max': 10,
+                  'connection_timeout': 30,
+                  'stop_if_queue_empty': True},
     filename_prefix='EXO_',
     chrome_name='chromium-browser',
     target_directory='./fileDownloads'
@@ -67,6 +71,18 @@ num_expected_labels = 0
 logging.info('Check if database is empty...')
 check_queue_count(0)
 check_label_count(0)
+
+# ############################################
+# Change constant for automatic test
+# ############################################
+
+# If there is a temporary error, there are delays up
+# to 6 hours between new tries. To test this without
+# astronomical runtimes, change that:
+
+exo.DELAY_TRIES = (1, 1, 1, 1, 1)
+delay_steps = f"DELAY_TRIES: {exo.DELAY_TRIES}"
+logging.info(delay_steps)
 
 # ############################################
 # Test 1: Adding to the queue
@@ -204,39 +220,6 @@ num_expected_labels += 0
 check_queue_count(num_expected_queue_items)
 
 # ################## TEST 1: TASK 7 ##################
-# Check if the blocklist works before adding
-# an item to the queue
-
-logging.info('Test 1: Task 7')
-
-# Add host to blocklist
-exo.block_fqdn('www.google.com')
-
-# try to add URL with blocked FQDN
-uuid_t1_7 = exo.add_page_to_pdf(
-    'https://www.google.com/search?q=exoskeleton+python',
-    {'label_that_should-be_ignored'},
-    {'another_label_to_ignore'})
-num_expected_queue_items += 0
-num_expected_labels += 0
-
-check_queue_count(num_expected_queue_items)
-check_label_count(num_expected_labels)
-
-# Remove the fqdn from the blocklist.
-# Add the previously blocked URL with a task
-
-exo.unblock_fqdn('www.google.com')
-
-exo.add_save_page_code(
-    'https://www.google.com/search?q=exoskeleton+python')
-num_expected_queue_items += 1
-num_expected_labels += 0
-
-check_queue_count(num_expected_queue_items)
-check_label_count(num_expected_labels)
-
-# ################## TEST 1: TASK 8 ##################
 # Add new task to the queue with unique labels.
 # Remove the task from the queue before it is executed.
 # Expectation:
@@ -266,34 +249,139 @@ num_expected_labels += 0
 check_queue_count(num_expected_queue_items)
 check_label_count(num_expected_labels)
 
-# ############################################
-# Test 2: Actually execute the tasks
-# ############################################
+# ################## TEST 1: FINAL ##################
 
-# ################## TEST 2: TASK 1 ##################
-# task already in the queue when its host is added to
-# the blocklist. Expectation:
-# - queue item is not removed
-# - action will not be started in the next task as
-#   the blocklist is checked
+logging.info('Test 1: final: process the queue')
 
-# Add another task to the queue
-exo.add_save_page_code('https://www.github.com')
-# NOW set the host on the blocklist
-exo.block_fqdn('www.github.com')
-
-num_expected_queue_items += 1
-num_expected_labels += 0
-
-# ################## TEST 2: TASK 2 ##################
+# Check one more time
+logging.info("last checks befores processing starts..")
+check_queue_count(num_expected_queue_items)
+check_label_count(num_expected_labels)
 
 # process the queue
 exo.process_queue()
 
-# A single item has not been processed because it
-# was later added to the blocklist
-num_expected_queue_items = 1
-check_queue_count(1)
+# check_queue_count returns the number of items
+# which did *not* cause permanent errors
+num_expected_queue_items = 0
+check_queue_count(num_expected_queue_items)
+
+# ############################################
+# Test 2: Test the blocklist feature
+# ############################################
+logging.info('Starting Test 2: blocklist feature')
+
+# ################## TEST 2: TASK 1 ##################
+
+logging.info('Test 2: Task 1')
+
+# Task already in the queue when its host is added to
+# the blocklist. Expectation:
+# - queue item is not removed
+# - action will not be started as
+#   the blocklist is checked
+
+# Add another task to the queue
+blocked_task_uuid = exo.add_save_page_code('https://www.github.com')
+num_expected_queue_items += 1
+num_expected_labels += 0
+
+# NOW set the host on the blocklist
+exo.block_fqdn('www.github.com')
+
+
+# ################## TEST 2: TASK 2 ##################
+
+logging.info('2.2: FQDN already on blocklist / remove from blocklist')
+
+# Add host to blocklist
+exo.block_fqdn('www.google.com')
+
+# try to add URL with blocked FQDN
+uuid_t1_7 = exo.add_page_to_pdf(
+    'https://www.google.com/search?q=exoskeleton+python',
+    {'label_that_should-be_ignored'},
+    {'another_label_to_ignore'})
+num_expected_queue_items += 0
+num_expected_labels += 0
+
+check_queue_count(num_expected_queue_items)
+check_label_count(num_expected_labels)
+
+# Remove the fqdn from the blocklist.
+# Add the previously blocked URL with a task
+
+exo.unblock_fqdn('www.google.com')
+
+exo.add_save_page_code(
+    'https://www.google.com/search?q=exoskeleton+python')
+num_expected_queue_items += 1
+num_expected_labels += 0
+
+check_queue_count(num_expected_queue_items)
+check_label_count(num_expected_labels)
+
+
+
+# ################## TEST 2: FINAL ##################
+
+logging.info('Test 2: final: process the queue')
+
+# process the queue
+exo.process_queue()
+
+# check_queue_count returns the number of items
+# which did *not* cause permanent errors
+num_expected_queue_items = 0
+check_queue_count(num_expected_queue_items)
+
+exo.cur.execute('SELECT COUNT(*) FROM queue WHERE causesError IS NOT NULL;')
+permanent_errors = int(exo.cur.fetchone()[0])
+
+if permanent_errors != 0:
+    raise Exception('Wrong count of tasks with permanent errors.')
+
+# empty the queue completly
+exo.delete_from_queue(blocked_task_uuid)
+
+# ############################################
+# Test 3: Error Handling
+# ############################################
+logging.info('Starting Test 3: error handling')
+
+# ################## TEST 3: TASK 1 ##################
+
+logging.info('Test 3: Task 1: Permanent Errors')
+
+# The server is configured to always return the error
+# code named in the URL:
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-404.html")
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-410.html")
+
+num_expected_queue_items += 2
+num_expected_labels += 0
+
+exo.process_queue()
+
+# ################## TEST 3: TASK 1 ##################
+
+logging.info('Test 3: Task 2: Repeated temporary Errors')
+
+# The server is configured to *always* return the error
+# code named in the URL:
+uuid_code_500 = exo.add_save_page_code(
+    "https://www.ruediger-voigt.eu/throw-500.html")
+
+exo.process_queue()
+
+exo.cur.execute('SELECT causesError, numTries FROM queue WHERE id = %s;',
+                uuid_code_500)
+error_description = exo.cur.fetchone()
+
+if error_description != (3, 5):
+    raise Exception(f"Wrong error for exceeded retries: {error_description}")
+else:
+    logging.info("Correct error code for exceeded retries.")
 
 # ############################################
 # Test 3: Delete items and see if the
