@@ -41,10 +41,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Workflow will fail if the MariaDB container did not finish
-      # initializing before a connection attempt. So wait some seconds.
-      - name: Give mariaDB time to initialize
-        run: sleep 10
+      - name: Install Chromium
+        run: sudo apt install chromium-browser
+
+      # The next step need to wait until the MariaDB container is ready.
+      # This pings it until it gets an answer:
+      - name: Wait for MariaDB to initialize
+        run: |
+          while ! mysqladmin ping -h"127.0.0.1" -P"12345" --silent; do
+            sleep 1
+          done
 
 
       - name: Fill exoskeleton database
