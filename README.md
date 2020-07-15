@@ -1,5 +1,6 @@
 # Exoskeleton
 
+![Build](https://github.com/RuedigerVoigt/exoskeleton/workflows/Build/badge.svg)
 ![Python package](https://github.com/RuedigerVoigt/exoskeleton/workflows/Python%20package/badge.svg)
 ![Supported Python Versions](https://img.shields.io/pypi/pyversions/exoskeleton)
 ![Last commit](https://img.shields.io/github/last-commit/RuedigerVoigt/exoskeleton)
