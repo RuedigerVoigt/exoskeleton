@@ -116,16 +116,28 @@ CREATE TABLE IF NOT EXISTS errorType (
 INSERT INTO errorType (id, short, permanent, description) VALUES
 (1, 'malformed url', 1, 'URL is malformed. Missing Schema (http:// or https://) ?'),
 (2, 'transaction fails', 0, 'The database transaction failed. Rollback was initiated.'),
+(3, 'exceeded number of retries', 1, 'Tried this task the configured number of times with increasing time between tries.'),
+(400, '400', 1, ''),
+(401, '401', 1, ''),
 (402, '402', 1, 'Server replied: Payment Required'),
-(403, '403', 1, 'Server replied: Forbidden'),
-(404, '404', 1, 'Server replied: File not found'),
+(403, '403: Forbidden', 1, 'Server replied: Forbidden'),
+(404, '404: File Not Found', 1, 'Server replied: File not found'),
 (405, '405', 1, 'Server replied: Method Not Allowed'),
-(410, '410', 1, 'Server replied: Gone'),
+(406, '406', 1, ''),
+(407, '407', 1, ''),
+(408, '408', 0, ''),
+(410, '410: Gone', 1, 'Server replied: Gone'),
 (414, '414', 1, 'Server replied: URI too long'),
-(429, '429', 0, 'Server replied: Too Many Requests'),
+(429, '429: Rate Limit', 0, 'Server replied: Too Many Requests'),
 (451, '451', 1, 'Server replied: Unavailable For Legal Reasons'),
 (500, '500', 0, 'Server replied: Internal Server Error'),
-(503, '503', 0, 'Server replied: Service Unavailable');
+(501, '501', 1, ''),
+(502, '502', 0, ''),
+(503, '503', 0, 'Server replied: Service Unavailable'),
+(504, '504', 0, ''),
+(509, '509', 0, ''),
+(529, '529', 0, ''),
+(598, '598', 0, '');
 
 ALTER TABLE `queue`
 ADD CONSTRAINT `errors`
