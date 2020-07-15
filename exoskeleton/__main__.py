@@ -55,6 +55,15 @@ class Exoskeleton:
     # Steps: 1/4h, 1/2h, 1h, 3h, 6h
     DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
 
+    # HTTP response codes have to be handeled differently depending on whether
+    # they signal a permanent or temporary error. The following lists include
+    # some non-standard codes. See:
+    # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+    HTTP_PERMANENT_ERRORS = (400, 401, 402, 403, 404, 405, 406,
+                             407, 410, 451, 501)
+    # 429 (Rate Limit) is handeled separately:
+    HTTP_TEMP_ERRORS = (408, 500, 502, 503, 504, 509, 529, 598)
+
     def __init__(self,
                  database_settings: dict,
                  target_directory: str,
@@ -173,7 +182,7 @@ class Exoskeleton:
             "queue_max_retries", self.queue_max_retries, 0, 10, 3)
 
         # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit: int = bot_behavior.get('queue_revisit', 50)
+        self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
         self.queue_revisit = userprovided.parameters.int_in_range(
             "queue_revisit", self.queue_revisit, 10, 50, 50)
 
@@ -292,11 +301,8 @@ class Exoskeleton:
                         for block in r.iter_content(1024):
                             file_handle.write(block)
                         logging.debug('file written')
-                        hash_value = None
-                        if self.hash_method:
-                            hash_value = userprovided.hash.calculate_file_hash(
-                                target_path,
-                                self.hash_method)
+                        hash_value = userprovided.hash.calculate_file_hash(
+                            target_path, self.hash_method)
 
                     logging.debug('file written to disk')
                     try:
@@ -338,15 +344,19 @@ class Exoskeleton:
                 self.cnt['processed'] += 1
                 self.__update_host_statistics(url, True)
 
-            if r.status_code in (402, 403, 404, 405, 410, 451):
-                self.mark_error(queue_id, r.status_code)
+            elif r.status_code in self.HTTP_PERMANENT_ERRORS:
+                self.mark_permanent_error(queue_id, r.status_code)
                 self.__update_host_statistics(url, False)
             elif r.status_code == 429:
+                # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
                 self.add_crawl_delay_to_item(queue_id)
                 self.__update_host_statistics(url, False)
-            elif r.status_code not in (200, 402, 403, 404, 405, 410, 429, 451):
+            elif r.status_code in self.HTTP_TEMP_ERRORS:
+                logging.info('Temporary error. Adding delay to queue item.')
+                self.add_crawl_delay_to_item(queue_id)
+            else:
                 logging.error('Unhandled return code %s', r.status_code)
                 self.__update_host_statistics(url, False)
 
@@ -371,7 +381,7 @@ class Exoskeleton:
             logging.error('Missing Schema Exception. Does your URL contain ' +
                           'the protocol i.e. http:// or https:// ? ' +
                           'See queue_id = %s', queue_id)
-            self.mark_error(queue_id, 1)
+            self.mark_permanent_error(queue_id, 1)
 
         except Exception:
             logging.error('Unknown exception while trying ' +
@@ -629,7 +639,8 @@ class Exoskeleton:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def num_items_in_queue(self) -> int:
-        u"""Number of items left in the queue. """
+        u"""Number of items left in the queue which are *not* marked as
+            causing a permanent error. """
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
@@ -791,26 +802,31 @@ class Exoskeleton:
 
     def add_crawl_delay_to_item(self,
                                 queue_id: str):
-        u"""In case of timeout or temporary error add a delay until
-        the same URL is queried again. """
+        u"""In case of a timeout or a temporary error increment the counter for
+            the number of tries by one. If the configured maximum of tries
+            was reached, mark it as a permanent error. Otherwise add a delay
+            until the same URL is queried again."""
         wait_time = 0
 
         # Increase the tries counter
-        self.cur.execute('UPDATE queue SET numTries = numTries + 1 ' +
+        self.cur.execute('UPDATE queue ' +
+                         'SET numTries = numTries + 1 ' +
                          'WHERE id =%s;', queue_id)
         # How many times this task was tried?
         self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
                          queue_id)
-        num_tries = int(self.cur.fetchone())
+        num_tries = int((self.cur.fetchone())[0])
 
         # Does the number of tries exceed the configured maximum?
-        if num_tries > self.queue_max_retries:
-            # this is treated as a permanent failure
+        if num_tries == self.queue_max_retries:
+            # This is treated as a *permanent* failure!
             logging.error('Giving up: too many tries for queue item %s',
                           queue_id)
-            self.mark_error(queue_id, 3)
+            self.mark_permanent_error(queue_id, 3)
         else:
             logging.info('Adding crawl delay to queue item %s', queue_id)
+            # Using the class constant DELAY_TRIES because it can be easily
+            # overwritten for automatic testing.
             if num_tries == 1:
                 wait_time = self.DELAY_TRIES[0]  # 15 minutes
             elif num_tries == 2:
@@ -826,20 +842,17 @@ class Exoskeleton:
                          'SET delayUntil = ADDTIME(NOW(), %s) ' +
                          'WHERE id = %s', (wait_time, queue_id))
 
-    def mark_error(self,
-                   queue_id: str,
-                   error: int):
-        u""" Mark item in queue that causes permant error.
-
-        Has to be marked as otherwise exoskelton will try to
-        download it over and over again."""
+    def mark_permanent_error(self,
+                             queue_id: str,
+                             error: int):
+        u""" Mark item in queue that causes a permanent error.
+            Without this exoskelton would try to execute the
+            task over and over again."""
 
         self.cur.execute('UPDATE queue ' +
                          'SET causesError = %s ' +
                          'WHERE id = %s;', (error, queue_id))
-        logging.debug('Marked queue-item that caused a problem.')
-        if error in (429, 500, 503):
-            self.add_crawl_delay_to_item(queue_id, 600)
+        logging.info('Marked queue-item that caused a permanent problem.')
 
     def __get_next_task(self):
         u""" Get the next suitable task"""
