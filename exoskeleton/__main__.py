@@ -46,6 +46,15 @@ class Exoskeleton:
 
     MAX_PATH_LENGTH = 255
 
+    # If there is a temporary error, exoskeleton delays the
+    # next try until the configured maximum of tries is
+    # reached.
+    # The time between tries is definied here to be able
+    # to overwrite it in case of an automatic tests to
+    # avoid multi-hour runtimes.
+    # Steps: 1/4h, 1/2h, 1h, 3h, 6h
+    DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
+
     def __init__(self,
                  database_settings: dict,
                  target_directory: str,
@@ -158,7 +167,6 @@ class Exoskeleton:
         self.wait_min: int = bot_behavior.get('wait_min', 5)
         self.wait_max: int = bot_behavior.get('wait_max', 30)
 
-        # max retries NOT YET IMPLEMENTED:
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = bot_behavior.get('queue_max_retries', 3)
         self.queue_max_retries = userprovided.parameters.int_in_range(
@@ -782,18 +790,41 @@ class Exoskeleton:
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
     def add_crawl_delay_to_item(self,
-                                queue_id: str,
-                                delay_seconds: Optional[int] = None):
+                                queue_id: str):
         u"""In case of timeout or temporary error add a delay until
         the same URL is queried again. """
-        logging.debug('Adding crawl delay to queue item %s', queue_id)
-        waittime = 900  # 15 minutes default
-        if delay_seconds:
-            waittime = delay_seconds
+        wait_time = 0
+
+        # Increase the tries counter
+        self.cur.execute('UPDATE queue SET numTries = numTries + 1 ' +
+                         'WHERE id =%s;', queue_id)
+        # How many times this task was tried?
+        self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
+                         queue_id)
+        num_tries = int(self.cur.fetchone())
+
+        # Does the number of tries exceed the configured maximum?
+        if num_tries > self.queue_max_retries:
+            # this is treated as a permanent failure
+            logging.error('Giving up: too many tries for queue item %s',
+                          queue_id)
+            self.mark_error(queue_id, 3)
+        else:
+            logging.info('Adding crawl delay to queue item %s', queue_id)
+            if num_tries == 1:
+                wait_time = self.DELAY_TRIES[0]  # 15 minutes
+            elif num_tries == 2:
+                wait_time = self.DELAY_TRIES[1]  # 30 minutes
+            elif num_tries == 3:
+                wait_time = self.DELAY_TRIES[2]  # 1 hour
+            elif num_tries == 4:
+                wait_time = self.DELAY_TRIES[3]  # 3 hours
+            elif num_tries > 4:
+                wait_time = self.DELAY_TRIES[4]  # 6 hours
 
         self.cur.execute('UPDATE queue ' +
                          'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                         'WHERE id = %s', (waittime, queue_id))
+                         'WHERE id = %s', (wait_time, queue_id))
 
     def mark_error(self,
                    queue_id: str,
