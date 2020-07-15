@@ -7,9 +7,11 @@
 New Features:
 * **System Test**: Each push and every pull requests now also triggers a system test. This test launches an Ubuntu instance and loads a MariaDB container. Then it creates the database, adds task to the queue and processes the queue.
 * The parameter `queue_max_retries` (in: `bot_behavior`) is now evaluated: After a task fails, the wait time until the next try increments. After the specified number of tries (default: 5) it is assumed an error is not temporary but permanent and exoskelton stop trying to execute the task.
+* If a crawl delay is added to a specific task in the queue, it will now also be added to all other tasks that affect the same URL. The number of tries is still counted for each individual task, not the URL.
 
 Breaking Changes:
 * The function `mark_error` has been renamed to `mark_permanent_error` to better reflect its purpose.
+* The function `add_crawl_delay_to_item` was renamed to `__add_crawl_delay` and the optional parameter `delay_seconds` was removed.
 
 ## version 0.9.3 beta (2020-07-18)
 

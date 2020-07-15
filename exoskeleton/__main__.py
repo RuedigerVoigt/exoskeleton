@@ -328,9 +328,8 @@ class Exoskeleton:
                         page_content = utils.prettify_html(page_content)
 
                     try:
-                        # Stored procedure saves the content,
-                        # transfers the labels from the queue,
-                        # and removes the queue item:
+                        # Stored procedure saves the content, transfers the
+                        # labels from the queue, and removes the queue item:
                         self.cur.callproc('insert_content_SP',
                                           (url, url_hash, queue_id,
                                            mime_type, page_content, 2))
@@ -351,11 +350,11 @@ class Exoskeleton:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
-                self.add_crawl_delay_to_item(queue_id)
+                self.__add_crawl_delay(queue_id, 429)
                 self.__update_host_statistics(url, False)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
-                self.add_crawl_delay_to_item(queue_id)
+                self.__add_crawl_delay(queue_id, r.status_code)
             else:
                 logging.error('Unhandled return code %s', r.status_code)
                 self.__update_host_statistics(url, False)
@@ -363,7 +362,7 @@ class Exoskeleton:
         except TimeoutError:
             logging.error('Reached timeout.',
                           exc_info=True)
-            self.add_crawl_delay_to_item(queue_id)
+            self.__add_crawl_delay(queue_id, 4)
             self.__update_host_statistics(url, False)
 
         except ConnectionError:
@@ -451,17 +450,17 @@ class Exoskeleton:
             self.__update_host_statistics(url, True)
         except subprocess.TimeoutExpired:
             logging.error('Cannot create PDF due to timeout.')
-            self.add_crawl_delay_to_item(queue_id)
+            self.__add_crawl_delay(queue_id)
             self.__update_host_statistics(url, False)
         except subprocess.CalledProcessError:
             logging.error('Cannot create PDF due to process error.',
                           exc_info=True)
-            self.add_crawl_delay_to_item(queue_id)
+            self.__add_crawl_delay(queue_id)
             self.__update_host_statistics(url, False)
         except Exception:
             logging.error('Exception.',
                           exc_info=True)
-            self.add_crawl_delay_to_item(queue_id)
+            self.__add_crawl_delay(queue_id)
             self.__update_host_statistics(url, False)
             pass
 
@@ -800,12 +799,14 @@ class Exoskeleton:
         # callproc expects a tuple. Do not remove the comma:
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
-    def add_crawl_delay_to_item(self,
-                                queue_id: str):
+    def __add_crawl_delay(self,
+                          queue_id: str,
+                          error_type: Optional[int] = None):
         u"""In case of a timeout or a temporary error increment the counter for
             the number of tries by one. If the configured maximum of tries
-            was reached, mark it as a permanent error. Otherwise add a delay
-            until the same URL is queried again."""
+            was reached, mark it as a permanent error. Otherwise add a delay,
+            so exoskelton does not try the same task again. As multiple tasks
+            may affect the same URL, the delay is added to all of them."""
         wait_time = 0
 
         # Increase the tries counter
@@ -838,9 +839,23 @@ class Exoskeleton:
             elif num_tries > 4:
                 wait_time = self.DELAY_TRIES[4]  # 6 hours
 
+        # Add the same delay to all tasks accesing the same URL
+        # MariaDB / MySQl throws an error if the same table is specified
+        # both as a target for 'UPDATE' and a source for data. So two steps
+        # instead of a Sub-Select.
+        self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
+                         queue_id)
+        url_hash = (self.cur.fetchone())[0]
         self.cur.execute('UPDATE queue ' +
                          'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                         'WHERE id = %s', (wait_time, queue_id))
+                         'WHERE urlHash = %s;',
+                         (wait_time, url_hash))
+        # Add the error type to the specific task that caused the delay
+        if error_type:
+            self.cur.execute('UPDATE queue ' +
+                             'SET errorType = %s ' +
+                             'WHERE id = %s;',
+                             (error_type, queue_id))
 
     def mark_permanent_error(self,
                              queue_id: str,
@@ -850,7 +865,8 @@ class Exoskeleton:
             task over and over again."""
 
         self.cur.execute('UPDATE queue ' +
-                         'SET causesError = %s ' +
+                         'SET causesError = %s, ' +
+                         'delayUntil = NULL ' +
                          'WHERE id = %s;', (error, queue_id))
         logging.info('Marked queue-item that caused a permanent problem.')
 
