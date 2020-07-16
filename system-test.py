@@ -53,7 +53,7 @@ exo = exoskeleton.Exoskeleton(
                        'passphrase': 'exoskeleton'},
     bot_behavior={'queue_max_retries': 5,
                   'wait_min': 1,
-                  'wait_max': 10,
+                  'wait_max': 5,
                   'connection_timeout': 30,
                   'stop_if_queue_empty': True},
     filename_prefix='EXO_',
@@ -347,30 +347,42 @@ exo.delete_from_queue(blocked_task_uuid)
 # ############################################
 # Test 3: Error Handling
 # ############################################
-logging.info('Starting Test 3: error handling')
+logging.info('Starting Test 3: Error Handling')
 
 # ################## TEST 3: TASK 1 ##################
 
-logging.info('Test 3: Task 1: Permanent Errors')
-
-# The server is configured to always return the error
-# code named in the URL:
-exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-404.html")
-exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-410.html")
-
-num_expected_queue_items += 2
-num_expected_labels += 0
-
-exo.process_queue()
-
-# ################## TEST 3: TASK 1 ##################
-
-logging.info('Test 3: Task 2: Repeated temporary Errors')
+logging.info('Test 3: Task 1: Repeated Temporary Errors')
 
 # The server is configured to *always* return the error
 # code named in the URL:
 uuid_code_500 = exo.add_save_page_code(
     "https://www.ruediger-voigt.eu/throw-500.html")
+
+num_expected_queue_items += 1
+
+# Process together with the next task as otherwise the queue
+# would be empty. This would increase wait times and make the
+# test slower.
+# exo.process_queue()
+
+# ################## TEST 3: TASK 2 ##################
+
+logging.info('Test 3: Task 2: Permanent Errors')
+
+# The server is configured to always return the error
+# code named in the URL:
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-402.html")
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-404.html")
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-407.html")
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-410.html")
+exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-451.html")
+
+num_expected_queue_items += 5
+num_expected_labels += 0
+
+# ################## TEST 3: FINAL ##################
+
+logging.info('3.final: Check the results')
 
 exo.process_queue()
 
@@ -384,8 +396,7 @@ else:
     logging.info("Correct error code for exceeded retries.")
 
 # ############################################
-# Test 3: Delete items and see if the
-# Database triggers clean up.
+# Test 4
 # ############################################
 
 print('Done!')
