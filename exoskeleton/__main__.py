@@ -870,6 +870,49 @@ class Exoskeleton:
                          'WHERE id = %s;', (error, queue_id))
         logging.info('Marked queue-item that caused a permanent problem.')
 
+    def forget_all_errors(self):
+        u""""""
+        self.cur.execute("UPDATE queue SET " +
+                         "causesError = NULL, " +
+                         "numTries = 0, " +
+                         "delayUntil = NULL;")
+
+    def forget_permanent_errors(self):
+        u"""Treat all queued tasks, that are marked to cause a *permanent*
+            error, as if they are new tasks by removing that mark and
+            any delay."""
+        self.__forget_error_group(True)
+
+    def forget_temporary_errors(self):
+        u"""Treat all queued tasks, that are marked to cause a *temporary*
+            error, as if they are new tasks by removing that mark and
+            any delay."""
+        self.__forget_error_group(False)
+
+    def __forget_error_group(self,
+                             permanent: bool):
+        self.cur.execute("UPDATE queue SET " +
+                         "causesError = NULL, " +
+                         "numTries = 0, " +
+                         "delayUntil = NULL " +
+                         "WHERE causesError IN (" +
+                         "    SELECT id from errorType WHERE permanent = %s);",
+                         (1 if permanent else 0))
+
+    def forget_specific_error(self,
+                              specific_error: int):
+        u"""Treat all queued tasks, that are marked to cause a *specific*
+            error, as if they are new tasks by removing that mark and
+            any delay. The number of the error has to correspond to the
+            errorType database table."""
+
+        self.cur.execute("UPDATE queue SET " +
+                         "causesError = NULL, " +
+                         "numTries = 0,"
+                         "delayUntil = NULL " +
+                         "WHERE causesError = %s;",
+                         specific_error)
+
     def __get_next_task(self):
         u""" Get the next suitable task"""
         self.cur.execute('CALL next_queue_object_SP();')
