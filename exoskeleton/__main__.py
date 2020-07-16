@@ -341,39 +341,39 @@ class Exoskeleton:
                                       queue_id, exc_info=True)
 
                 self.cnt['processed'] += 1
-                self.__update_host_statistics(url, True)
+                self.__update_host_statistics(url, 1, 0, 0, 0)
 
             elif r.status_code in self.HTTP_PERMANENT_ERRORS:
                 self.mark_permanent_error(queue_id, r.status_code)
-                self.__update_host_statistics(url, False)
+                self.__update_host_statistics(url, 0, 0, 1, 0)
             elif r.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
                 self.__add_crawl_delay(queue_id, 429)
-                self.__update_host_statistics(url, False)
+                self.__update_host_statistics(url, 0, 0, 0, 1)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
                 self.__add_crawl_delay(queue_id, r.status_code)
             else:
                 logging.error('Unhandled return code %s', r.status_code)
-                self.__update_host_statistics(url, False)
+                self.__update_host_statistics(url, 0, 0, 1, 0)
 
         except TimeoutError:
             logging.error('Reached timeout.',
                           exc_info=True)
             self.__add_crawl_delay(queue_id, 4)
-            self.__update_host_statistics(url, False)
+            self.__update_host_statistics(url, 0, 1, 0, 0)
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.__update_host_statistics(url, False)
+            self.__update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except urllib3.exceptions.NewConnectionError:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
-            self.__update_host_statistics(url, False)
+            self.__update_host_statistics(url, 0, 0, 0, 1)
             self.tm.increase_wait()
 
         except requests.exceptions.MissingSchema:
@@ -385,7 +385,7 @@ class Exoskeleton:
         except Exception:
             logging.error('Unknown exception while trying ' +
                           'to download.', exc_info=True)
-            self.__update_host_statistics(url, False)
+            self.__update_host_statistics(url, 0, 0, 1, 0)
             raise
 
     def __page_to_pdf(self,
@@ -447,21 +447,21 @@ class Exoskeleton:
             except Exception:
                 logging.error('Unknown exception', exc_info=True)
             self.cnt['processed'] += 1
-            self.__update_host_statistics(url, True)
+            self.__update_host_statistics(url, 1, 0, 0, 0)
         except subprocess.TimeoutExpired:
             logging.error('Cannot create PDF due to timeout.')
-            self.__add_crawl_delay(queue_id)
-            self.__update_host_statistics(url, False)
+            self.__add_crawl_delay(queue_id, 4)
+            self.__update_host_statistics(url, 0, 1, 0, 0)
         except subprocess.CalledProcessError:
             logging.error('Cannot create PDF due to process error.',
                           exc_info=True)
-            self.__add_crawl_delay(queue_id)
-            self.__update_host_statistics(url, False)
+            self.__add_crawl_delay(queue_id, 5)
+            self.__update_host_statistics(url, 0, 0, 1, 0)
         except Exception:
             logging.error('Exception.',
                           exc_info=True)
-            self.__add_crawl_delay(queue_id)
-            self.__update_host_statistics(url, False)
+            self.__add_crawl_delay(queue_id, 0)
+            self.__update_host_statistics(url, 0, 1, 0, 0)
             pass
 
     def return_page_code(self,
@@ -486,12 +486,12 @@ class Exoskeleton:
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
-            self.__update_host_statistics(url, False)
+            self.__update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.__update_host_statistics(url, False)
+            self.__update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except Exception:
@@ -974,27 +974,28 @@ class Exoskeleton:
 
     def __update_host_statistics(self,
                                  url: str,
-                                 success: bool = True):
-        u""" Updates the host based statistics. The URL
-        gets shortened to the hostname. If success is True
-        the success counter is incremented / if not the
-        problem counter."""
+                                 successful_requests: int,
+                                 temporary_problems: int,
+                                 permanent_errors: int,
+                                 hit_rate_limit: int):
+        u""" Updates the host based statistics. The URL gets shortened to
+        the hostname. Increase the different counters."""
 
         fqdn = urlparse(url).hostname
-        if success:
-            successful, problems = 1, 0
-        else:
-            successful, problems = 0, 1
 
         self.cur.execute('INSERT INTO statisticsHosts ' +
-                         '(fqdnHash, fqdn, successful, ' +
-                         'problems) ' +
-                         'VALUES (MD5(%s), %s, %s, %s) ' +
+                         '(fqdnHash, fqdn, successfulRequests, ' +
+                         'temporaryProblems, permamentErrors, hitRateLimit) ' +
+                         'VALUES (SHA2(%s,256), %s, %s, %s, %s, %s) ' +
                          'ON DUPLICATE KEY UPDATE ' +
-                         'successful = successful + %s, ' +
-                         'problems = problems + %s;',
-                         (fqdn, fqdn, successful, problems,
-                          successful, problems))
+                         'successfulRequests = successfulRequests + %s, ' +
+                         'temporaryProblems = temporaryProblems + %s, ' +
+                         'permamentErrors = permamentErrors + %s, ' +
+                         'hitRateLimit = hitRateLimit + %s;',
+                         (fqdn, fqdn, successful_requests, temporary_problems,
+                          permanent_errors, hit_rate_limit,
+                          successful_requests, temporary_problems,
+                          permanent_errors, hit_rate_limit))
 
     def check_milestone(self):
         u""" Check if milestone is reached. If that is the case,

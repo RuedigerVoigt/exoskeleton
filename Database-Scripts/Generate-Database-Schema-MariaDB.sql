@@ -114,10 +114,12 @@ CREATE TABLE IF NOT EXISTS errorType (
 ) ENGINE=InnoDB;
 
 INSERT INTO errorType (id, short, permanent, description) VALUES
+(0, 'unspecified exception', 0, 'see logfile'),
 (1, 'malformed url', 1, 'URL is malformed. Missing Schema (http:// or https://) ?'),
 (2, 'transaction fails', 0, 'The database transaction failed. Rollback was initiated.'),
 (3, 'exceeded number of retries', 1, 'Tried this task the configured number of times with increasing time between tries.'),
 (4, 'request timeout', 0, 'Did not get a reply from the server within the specified timeframe.'),
+(5, 'process error', 0, ''),
 (400, '400', 1, ''),
 (401, '401', 1, ''),
 (402, '402', 1, 'Server replied: Payment Required'),
@@ -289,12 +291,14 @@ WHERE fileVersions.id = OLD.versionID;
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS statisticsHosts (
-    fqdnHash CHAR(32) NOT NULL
+    fqdnHash CHAR(64) NOT NULL
     ,fqdn VARCHAR(255) NOT NULL
     ,firstSeen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
     ,lastSeen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP()
-    ,successful INT UNSIGNED NOT NULL DEFAULT 0
-    ,problems INT UNSIGNED NOT NULL DEFAULT 0
+    ,successfulRequests INT UNSIGNED NOT NULL DEFAULT 0
+    ,temporaryProblems INT UNSIGNED NOT NULL DEFAULT 0
+    ,permamentErrors INT UNSIGNED NOT NULL DEFAULT 0
+    ,hitRateLimit INT UNSIGNED NOT NULL DEFAULT 0
     ,PRIMARY KEY(`fqdnHash`)
     ,INDEX(`firstSeen`)
 ) ENGINE=InnoDB;
