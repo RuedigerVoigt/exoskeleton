@@ -40,6 +40,20 @@ def check_label_count(correct_number: int):
     else:
         logging.info('Number of labels correct')
 
+
+def check_error_codes(expectation: set):
+    exo.cur.execute('SELECT causesError FROM queue ' +
+                    'WHERE causesError IS NOT NULL ' +
+                    'ORDER BY causesError;')
+    error_codes = exo.cur.fetchall()
+    error_codes = {(c[0]) for c in error_codes}
+    if error_codes == expectation:
+        logging.info('Error codes match expectation.')
+    else:
+        logging.error(f"Wrong error codes found in the queue: " +
+                      f"{error_codes} instead of {expectation}")
+        raise Exception
+
 # ############################################
 # SETUP
 # ############################################
@@ -396,7 +410,40 @@ else:
     logging.info("Correct error code for exceeded retries.")
 
 # ############################################
-# Test 4
+# Test 4: Forgetting Errors
 # ############################################
+
+logging.info('Test 4: Forgetting Errors')
+
+check_error_codes({3, 451, 402, 404, 407, 410})
+
+logging.info('Forget a specific error')
+exo.forget_specific_error(404)
+check_error_codes({3, 451, 402, 407, 410})
+
+logging.info('Forget all permanent errors')
+exo.forget_permanent_errors()
+check_error_codes(set())
+
+logging.info('process the queue again')
+exo.process_queue()
+
+logging.info('Check they all are marked as errors again')
+check_error_codes({3, 451, 402, 404, 407, 410})
+
+logging.info('Now remove all errors')
+exo.forget_all_errors()
+check_error_codes(set())
+
+# ############################################
+# Test 5: Hitting a Rate Limit
+# ############################################
+
+logging.info('Test 5: Rate Limit')
+
+#exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
+
+exo.process_queue()
+
 
 print('Done!')
