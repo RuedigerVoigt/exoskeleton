@@ -406,6 +406,21 @@ ON c.versionID = v.id
 LEFT JOIN fileMaster as m
 on c.versionID = m.id;
 
+CREATE VIEW v_errors_in_queue AS
+SELECT
+q.id as queueID,
+q.url as URL,
+a.description as action,
+q.causesError,
+e.permanent,
+e.short as error,
+e.description as errorDescription
+FROM exoskeleton.queue as q
+LEFT JOIN errorType as e ON q.causesError = e.id
+LEFT JOIN actions as a ON q.action = a.id
+WHERE q.causesError IS NOT NULL;
+
+
 -- ----------------------------------------------------------
 -- STORED PROCEDURES
 -- ----------------------------------------------------------
