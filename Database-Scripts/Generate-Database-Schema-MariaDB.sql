@@ -117,6 +117,7 @@ INSERT INTO errorType (id, short, permanent, description) VALUES
 (1, 'malformed url', 1, 'URL is malformed. Missing Schema (http:// or https://) ?'),
 (2, 'transaction fails', 0, 'The database transaction failed. Rollback was initiated.'),
 (3, 'exceeded number of retries', 1, 'Tried this task the configured number of times with increasing time between tries.'),
+(4, 'request timeout', 0, 'Did not get a reply from the server within the specified timeframe.'),
 (400, '400', 1, ''),
 (401, '401', 1, ''),
 (402, '402', 1, 'Server replied: Payment Required'),
@@ -556,7 +557,7 @@ BEGIN
     ,urlHash
     ,prettifyHtml
     FROM queue
-    WHERE causesError IS NULL AND
+    WHERE (causesError IS NULL OR causesError IN (SELECT id FROM errorType WHERE permanent = 0)) AND
     (delayUntil IS NULL OR delayUntil < NOW()) AND
     action IN (1, 2, 3)
     ORDER BY addedToQueue ASC

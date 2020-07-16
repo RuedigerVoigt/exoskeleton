@@ -839,29 +839,29 @@ class Exoskeleton:
             elif num_tries > 4:
                 wait_time = self.DELAY_TRIES[4]  # 6 hours
 
-        # Add the same delay to all tasks accesing the same URL
-        # MariaDB / MySQl throws an error if the same table is specified
-        # both as a target for 'UPDATE' and a source for data. So two steps
-        # instead of a Sub-Select.
-        self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
-                         queue_id)
-        url_hash = (self.cur.fetchone())[0]
-        self.cur.execute('UPDATE queue ' +
-                         'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                         'WHERE urlHash = %s;',
-                         (wait_time, url_hash))
-        # Add the error type to the specific task that caused the delay
-        if error_type:
+            # Add the same delay to all tasks accesing the same URL MariaDB /
+            # MySQL throws an error if the same table is specified
+            # both as a target for 'UPDATE' and a source for data.
+            # Therefore, two steps instead of a Sub-Select.
+            self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
+                             queue_id)
+            url_hash = (self.cur.fetchone())[0]
             self.cur.execute('UPDATE queue ' +
-                             'SET errorType = %s ' +
-                             'WHERE id = %s;',
-                             (error_type, queue_id))
+                             'SET delayUntil = ADDTIME(NOW(), %s) ' +
+                             'WHERE urlHash = %s;',
+                             (wait_time, url_hash))
+            # Add the error type to the specific task that caused the delay
+            if error_type:
+                self.cur.execute('UPDATE queue ' +
+                                 'SET causesError = %s ' +
+                                 'WHERE id = %s;',
+                                 (error_type, queue_id))
 
     def mark_permanent_error(self,
                              queue_id: str,
                              error: int):
         u""" Mark item in queue that causes a permanent error.
-            Without this exoskelton would try to execute the
+            Without this exoskeleton would try to execute the
             task over and over again."""
 
         self.cur.execute('UPDATE queue ' +
