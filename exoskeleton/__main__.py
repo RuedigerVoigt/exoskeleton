@@ -180,7 +180,8 @@ class Exoskeleton:
         # Limit the prefix length as on many systems the path must not be
         # longer than 255 characters and it needs space for folders and the
         # actual filename. 16 characters seems to be a reasonable limit.
-        if len(self.file_prefix) > 16:
+        if not userprovided.parameters.string_in_range(
+                self.file_prefix, 0, 16):
             raise ValueError('The file name prefix is limited to a ' +
                              'maximum of 16 characters.')
 
@@ -245,8 +246,9 @@ class Exoskeleton:
 
             if r.status_code == 200:
                 mime_type = ''
-                if r.headers.get('content-type') is not None:
-                    mime_type = (r.headers.get('content-type')).split(';')[0]  # type: ignore
+                content_type = r.headers.get('content-type')
+                if content_type:
+                    mime_type = (content_type).split(';')[0]
 
                 if action_type == 'file':
                     extension = userprovided.url.determine_file_extension(
