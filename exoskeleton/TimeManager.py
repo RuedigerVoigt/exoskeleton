@@ -19,6 +19,8 @@ class TimeManager:
             raise ValueError('The value for wait_min must be numeric.')
         if type(wait_max) not in (int, float):
             raise ValueError('The value for wait_max must be numeric.')
+        if wait_min > wait_max:
+            raise ValueError("wait_max cannot be larger than wait_min.")
         self.wait_min = wait_min
         self.wait_max = wait_max
 

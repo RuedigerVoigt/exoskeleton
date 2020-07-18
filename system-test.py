@@ -69,6 +69,7 @@ exo = exoskeleton.Exoskeleton(
                   'wait_min': 1,
                   'wait_max': 5,
                   'connection_timeout': 30,
+                  'queue_revisit': 5,
                   'stop_if_queue_empty': True},
     filename_prefix='EXO_',
     chrome_name='chromium-browser',
@@ -94,8 +95,8 @@ check_label_count(0)
 # to 6 hours between new tries. To test this without
 # astronomical runtimes, change that:
 
-exo.DELAY_TRIES = (1, 1, 1, 1, 1)
-delay_steps = f"DELAY_TRIES: {exo.DELAY_TRIES}"
+exo.qm.DELAY_TRIES = (1, 1, 1, 1, 1)
+delay_steps = f"DELAY_TRIES: {exo.qm.DELAY_TRIES}"
 logging.info(delay_steps)
 
 # ############################################

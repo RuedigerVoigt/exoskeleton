@@ -18,11 +18,9 @@ import subprocess
 import time
 from typing import Union, Optional
 from urllib.parse import urlparse
-import uuid
 
 # 3rd party libraries:
 import pymysql
-from requests.models import Response
 import urllib3  # type: ignore
 import requests
 # Sister projects:
@@ -33,6 +31,7 @@ import exoskeleton.utils as utils
 from .DatabaseConnection import DatabaseConnection
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
+from .QueueManager import QueueManager
 
 
 class Exoskeleton:
@@ -45,15 +44,6 @@ class Exoskeleton:
     # pylint: disable=too-many-branches
 
     MAX_PATH_LENGTH = 255
-
-    # If there is a temporary error, exoskeleton delays the
-    # next try until the configured maximum of tries is
-    # reached.
-    # The time between tries is definied here to be able
-    # to overwrite it in case of an automatic tests to
-    # avoid multi-hour runtimes.
-    # Steps: 1/4h, 1/2h, 1h, 3h, 6h
-    DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
 
     # HTTP response codes have to be handeled differently depending on whether
     # they signal a permanent or temporary error. The following lists include
@@ -130,27 +120,22 @@ class Exoskeleton:
             bot_behavior.get('connection_timeout', 60),
             1, 60, 50)
 
-        self.wait_min: int = bot_behavior.get('wait_min', 5)
-        self.wait_max: int = bot_behavior.get('wait_max', 30)
-
-        # Maximum number of retries if downloading a page/file failed:
-        self.queue_max_retries: int = bot_behavior.get('queue_max_retries', 3)
-        self.queue_max_retries = userprovided.parameters.int_in_range(
-            "queue_max_retries", self.queue_max_retries, 0, 10, 3)
-
-        # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
-        self.queue_revisit = userprovided.parameters.int_in_range(
-            "queue_revisit", self.queue_revisit, 10, 50, 50)
-
         self.stop_if_queue_empty: bool = bot_behavior.get(
             'stop_if_queue_empty', False)
         if type(self.stop_if_queue_empty) != bool:
             raise ValueError('The value for "stop_if_queue_empty" ' +
                              'must be a boolean (True / False).')
+        # Time to wait after the queue is empty to check for new elements:
+        self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
+        self.queue_revisit = userprovided.parameters.int_in_range(
+            "queue_revisit", self.queue_revisit, 10, 50, 50)
 
         # Init time management
-        self.tm = TimeManager(self.wait_min, self.wait_max)
+        self.tm = TimeManager(bot_behavior.get('wait_min', 5),
+                              bot_behavior.get('wait_max', 30))
+
+        # Init queue management
+        self.qm = QueueManager(self.cur, self.tm, bot_behavior)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: File Handling
@@ -206,6 +191,102 @@ class Exoskeleton:
     def random_wait(self):
         self.tm.random_wait()
 
+    def process_queue(self):
+        u"""Process the queue"""
+        while True:
+            try:
+                next_in_queue = self.qm.get_next_task()
+            except pymysql.err.OperationalError as e:
+                if e.args[0] == 2013:  # errno
+                    # this error is unusual. Give the db some time:
+                    logging.error('Lost connection to database server. ' +
+                                  'Trying to restore it in 10 seconds ...')
+                    time.sleep(10)
+                    try:
+                        self.cur = self.db.get_cursor()
+                        next_in_queue = self.qm.get_next_task()
+                        logging.info('Succesfully restored connection ' +
+                                     'to database server!')
+                    except Exception:
+                        logging.error('Could not reestablish database ' +
+                                      'server connection!', exc_info=True)
+                        self.notify.send_msg('abort_lost_db')
+                        raise ConnectionError('Lost DB connection and ' +
+                                              'could not restore it.')
+                else:
+                    logging.error('Unexpected Operational Error',
+                                  exc_info=True)
+                    raise
+
+            if next_in_queue is None:
+                # no actionable item in the queue
+                if self.stop_if_queue_empty:
+                    # Bot is configured to stop if queue is empty
+                    # => check if that is only temporary or everything is done
+                    self.cur.execute(
+                        'SELECT num_items_with_temporary_errors();')
+                    num_temp_errors = self.cur.fetchone()[0]
+                    if num_temp_errors > 0:
+                        # there are still tasks, but they have to wait
+                        logging.debug("Tasks with temporary errors: " +
+                                      "waiting %s seconds until next try.",
+                                      self.queue_revisit)
+                        time.sleep(self.queue_revisit)
+                        continue
+                    else:
+                        # Nothing left
+                        logging.info('Queue empty. Bot stops as configured.')
+
+                        self.cur.execute(
+                            'SELECT num_items_with_permanent_error();')
+                        num_permanent_errors = self.cur.fetchone()[0]
+                        if num_permanent_errors > 0:
+                            logging.error("%s permanent errors!",
+                                          num_permanent_errors)
+                        self.notify.send_finish_msg(num_permanent_errors)
+                    break
+                else:
+                    logging.debug("No actionable task: waiting %s seconds " +
+                                  "until next check", self.queue_revisit)
+                    time.sleep(self.queue_revisit)
+                    continue
+            else:
+                # got a task from the queue
+                queue_id = next_in_queue[0]
+                action = next_in_queue[1]
+                url = next_in_queue[2]
+                url_hash = next_in_queue[3]
+                prettify_html = True if next_in_queue[4] == 1 else False
+
+                # The FQDN might have been added to the blocklist *after*
+                # the task entered into the queue:
+                if self.qm.check_blocklist(urlparse(url).hostname):
+                    logging.error('Cannot process queue item as the ' +
+                                  'the FQDN has meanwhile been added to ' +
+                                  'the blocklist!')
+                    self.qm.delete_from_queue(queue_id)
+                    logging.info('Removed item fron queue: FQDN on blocklist.')
+                else:
+                    if action == 1:
+                        # download file to disk
+                        self.__get_object(queue_id, 'file', url, url_hash)
+                    elif action == 2:
+                        # save page code into database
+                        self.__get_object(queue_id, 'content',
+                                          url, url_hash,
+                                          prettify_html)
+                    elif action == 3:
+                        # headless Chrome to create PDF
+                        self.__page_to_pdf(url, url_hash, queue_id)
+                    else:
+                        logging.error('Unknown action id!')
+
+                    if self.milestone:
+                        self.check_milestone()
+
+                    # wait some interval to avoid overloading the server
+                    self.tm.random_wait()
+
     def __get_object(self,
                      queue_id: str,
                      action_type: str,
@@ -228,7 +309,7 @@ class Exoskeleton:
         if action_type != 'content' and prettify_html:
             logging.error('Wrong action_type: prettify_html ignored.')
 
-        r: Response = Response()
+        r = requests.Response()
         try:
             if action_type == 'file':
                 logging.debug('starting download of queue id %s', queue_id)
@@ -300,51 +381,51 @@ class Exoskeleton:
                                       queue_id, exc_info=True)
 
                 self.cnt['processed'] += 1
-                self.__update_host_statistics(url, 1, 0, 0, 0)
+                self.qm.update_host_statistics(url, 1, 0, 0, 0)
 
             elif r.status_code in self.HTTP_PERMANENT_ERRORS:
-                self.mark_permanent_error(queue_id, r.status_code)
-                self.__update_host_statistics(url, 0, 0, 1, 0)
+                self.qm.mark_permanent_error(queue_id, r.status_code)
+                self.qm.update_host_statistics(url, 0, 0, 1, 0)
             elif r.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
-                self.__add_crawl_delay(queue_id, 429)
-                self.__update_host_statistics(url, 0, 0, 0, 1)
+                self.qm.add_crawl_delay(queue_id, 429)
+                self.qm.update_host_statistics(url, 0, 0, 0, 1)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
-                self.__add_crawl_delay(queue_id, r.status_code)
+                self.qm.add_crawl_delay(queue_id, r.status_code)
             else:
                 logging.error('Unhandled return code %s', r.status_code)
-                self.__update_host_statistics(url, 0, 0, 1, 0)
+                self.qm.update_host_statistics(url, 0, 0, 1, 0)
 
         except TimeoutError:
             logging.error('Reached timeout.',
                           exc_info=True)
-            self.__add_crawl_delay(queue_id, 4)
-            self.__update_host_statistics(url, 0, 1, 0, 0)
+            self.qm.add_crawl_delay(queue_id, 4)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.__update_host_statistics(url, 0, 1, 0, 0)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except urllib3.exceptions.NewConnectionError:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
-            self.__update_host_statistics(url, 0, 0, 0, 1)
+            self.qm.update_host_statistics(url, 0, 0, 0, 1)
             self.tm.increase_wait()
 
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain ' +
                           'the protocol i.e. http:// or https:// ? ' +
                           'See queue_id = %s', queue_id)
-            self.mark_permanent_error(queue_id, 1)
+            self.qm.mark_permanent_error(queue_id, 1)
 
         except Exception:
             logging.error('Unknown exception while trying ' +
                           'to download.', exc_info=True)
-            self.__update_host_statistics(url, 0, 0, 1, 0)
+            self.qm.update_host_statistics(url, 0, 0, 1, 0)
             raise
 
     def __page_to_pdf(self,
@@ -406,21 +487,21 @@ class Exoskeleton:
             except Exception:
                 logging.error('Unknown exception', exc_info=True)
             self.cnt['processed'] += 1
-            self.__update_host_statistics(url, 1, 0, 0, 0)
+            self.qm.update_host_statistics(url, 1, 0, 0, 0)
         except subprocess.TimeoutExpired:
             logging.error('Cannot create PDF due to timeout.')
-            self.__add_crawl_delay(queue_id, 4)
-            self.__update_host_statistics(url, 0, 1, 0, 0)
+            self.qm.add_crawl_delay(queue_id, 4)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
         except subprocess.CalledProcessError:
             logging.error('Cannot create PDF due to process error.',
                           exc_info=True)
-            self.__add_crawl_delay(queue_id, 5)
-            self.__update_host_statistics(url, 0, 0, 1, 0)
+            self.qm.add_crawl_delay(queue_id, 5)
+            self.qm.update_host_statistics(url, 0, 0, 1, 0)
         except Exception:
             logging.error('Exception.',
                           exc_info=True)
-            self.__add_crawl_delay(queue_id, 0)
-            self.__update_host_statistics(url, 0, 1, 0, 0)
+            self.qm.add_crawl_delay(queue_id, 0)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
             pass
 
     def return_page_code(self,
@@ -445,12 +526,12 @@ class Exoskeleton:
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
-            self.__update_host_statistics(url, 0, 1, 0, 0)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.__update_host_statistics(url, 0, 1, 0, 0)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except Exception:
@@ -565,13 +646,8 @@ class Exoskeleton:
     # QUEUE MANAGEMENT
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def num_items_in_queue(self) -> int:
-        u"""Number of items left in the queue which are *not* marked as
-            causing a permanent error. """
-        # How many are left in the queue?
-        self.cur.execute("SELECT COUNT(*) FROM queue " +
-                         "WHERE causesError IS NULL;")
-        return int(self.cur.fetchone()[0])
+    def num_items_in_queue(self):
+        return self.qm.num_items_in_queue()
 
     def add_file_download(self,
                           url: str,
@@ -579,9 +655,9 @@ class Exoskeleton:
                           labels_version: set = None,
                           force_new_version: bool = False) -> Optional[str]:
         u"""Add a file download URL to the queue """
-        uuid = self.__add_to_queue(url, 1, labels_master,
-                                   labels_version, False,
-                                   force_new_version)
+        uuid = self.qm.add_to_queue(url, 1, labels_master,
+                                    labels_version, False,
+                                    force_new_version)
         return uuid
 
     def add_save_page_code(self,
@@ -592,9 +668,9 @@ class Exoskeleton:
                            force_new_version: bool = False) -> Optional[str]:
         u"""Add an URL to the queue to save it's HTML code
             into the database."""
-        uuid = self.__add_to_queue(url, 2, labels_master,
-                                   labels_version, prettify_html,
-                                   force_new_version)
+        uuid = self.qm.add_to_queue(url, 2, labels_master,
+                                    labels_version, prettify_html,
+                                    force_new_version)
         return uuid
 
     def add_page_to_pdf(self,
@@ -604,228 +680,46 @@ class Exoskeleton:
                         force_new_version: bool = False) -> Optional[str]:
         u"""Add an URL to the queue to print it to PDF
             with headless Chrome. """
-        uuid = self.__add_to_queue(url, 3, labels_master,
-                                   labels_version, False,
-                                   force_new_version)
+        uuid = self.qm.add_to_queue(url, 3, labels_master,
+                                    labels_version, False,
+                                    force_new_version)
         return uuid
-
-    def __add_to_queue(self,
-                       url: str,
-                       action: int,
-                       labels_master: set = None,
-                       labels_version: set = None,
-                       prettify_html: bool = False,
-                       force_new_version: bool = False) -> Optional[str]:
-        u""" More general function to add items to queue. Called by
-        add_file_download, add_save_page_code and add_page_to_pdf."""
-
-        if action not in (1, 2, 3):
-            logging.error('Invalid value for action!')
-            return None
-
-        # Check if the FQDN of the URL is on the blocklist
-        hostname = urlparse(url).hostname
-        if hostname and self.check_blocklist(hostname):
-            logging.error('Cannot add URL to queue: FQDN is on blocklist.')
-            return None
-
-        if prettify_html and action != 2:
-            logging.error('Option prettify_html not supported for ' +
-                          'this action. Will be ignored.')
-            prettify_html = False
-
-        # Excess whitespace might be common (copy and paste)
-        # and would change the hash:
-        url = url.strip()
-        # check if it is an URL and if it is either http or https
-        # (other schemas are not supported by requests)
-        if not userprovided.url.is_url(url, ('http', 'https')):
-            logging.error('Could not add URL %s : invalid or unsupported ' +
-                          'scheme', url)
-            return None
-
-        # Add labels for the master entry.
-        # Ignore labels for the version at this point, as it might
-        # not get processed.
-        if labels_master:
-            self.assign_labels_to_master(url, labels_master)
-
-        if not force_new_version:
-            # check if the URL has already been processed
-            id_in_file_master = self.get_filemaster_id_by_url(url)
-
-            if id_in_file_master:
-                # The URL has been processed in _some_ way.
-                # Check if was the _same_ as now requested.
-                self.cur.execute('SELECT id FROM fileVersions ' +
-                                 'WHERE fileMasterID = %s AND ' +
-                                 'actionAppliedID = %s;',
-                                 (id_in_file_master, action))
-                version_id = self.cur.fetchone()
-                if version_id:
-                    logging.info('File has already been processed ' +
-                                 'in the same way. Skipping it.')
-                    return None
-                else:
-                    # log and simply go on
-                    logging.debug('The file has already been processed, ' +
-                                  'BUT not in this way. ' +
-                                  'Adding task to the queue.')
-            else:
-                # File has not been processed yet.
-                # If the exact same task is *not* already in the queue,
-                # add it.
-                if self.get_queue_id(url, action):
-                    logging.info('Exact same task already in queue.')
-                    return None
-
-        # generate a random uuid for the file version
-        uuid_value = uuid.uuid4().hex
-
-        # add the new task to the queue
-        self.cur.execute('INSERT INTO queue ' +
-                         '(id, action, url, urlHash, prettifyHtml) ' +
-                         'VALUES (%s, %s, %s, SHA2(%s,256), %s);',
-                         (uuid_value, action, url, url, prettify_html))
-
-        # link labels to version item
-        if labels_version:
-            self.assign_labels_to_uuid(uuid_value, labels_version)
-
-        return uuid_value
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
-        self.cur.execute('SELECT id FROM fileMaster ' +
-                         'WHERE urlHash = SHA2(%s,256);',
-                         url)
-        id_in_file_master = self.cur.fetchone()
-        if id_in_file_master:
-            return id_in_file_master[0]
-        else:
-            return None
+        u"""Get the id of the filemaster entry associated with this URL"""
+        return self.qm.get_filemaster_id_by_url(url)
 
     def get_queue_id(self,
                      url: str,
                      action: int) -> Optional[str]:
-        u"""Get the id in the queue based on the URL and action ID.
+        u"""Get the UUID in the queue based on the URL and action ID.
         Returns None if such combination is not in the queue."""
-        self.cur.execute('SELECT id FROM queue ' +
-                         'WHERE urlHash = SHA2(%s,256) AND ' +
-                         'action = %s;',
-                         (url, action))
-        uuid = self.cur.fetchone()
-        if uuid:
-            return uuid[0]
-        else:
-            return None
+        return self.qm.get_queue_id(url, action)
 
     def delete_from_queue(self,
                           queue_id: str):
-        u"""Remove all label links from a queue item
-            and then delete it from the queue."""
-        # callproc expects a tuple. Do not remove the comma:
-        self.cur.callproc('delete_from_queue_SP', (queue_id,))
-
-    def __add_crawl_delay(self,
-                          queue_id: str,
-                          error_type: Optional[int] = None):
-        u"""In case of a timeout or a temporary error increment the counter for
-            the number of tries by one. If the configured maximum of tries
-            was reached, mark it as a permanent error. Otherwise add a delay,
-            so exoskelton does not try the same task again. As multiple tasks
-            may affect the same URL, the delay is added to all of them."""
-        wait_time = 0
-
-        # Increase the tries counter
-        self.cur.execute('UPDATE queue ' +
-                         'SET numTries = numTries + 1 ' +
-                         'WHERE id =%s;', queue_id)
-        # How many times this task was tried?
-        self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
-                         queue_id)
-        num_tries = int((self.cur.fetchone())[0])
-
-        # Does the number of tries exceed the configured maximum?
-        if num_tries == self.queue_max_retries:
-            # This is treated as a *permanent* failure!
-            logging.error('Giving up: too many tries for queue item %s',
-                          queue_id)
-            self.mark_permanent_error(queue_id, 3)
-        else:
-            logging.info('Adding crawl delay to queue item %s', queue_id)
-            # Using the class constant DELAY_TRIES because it can be easily
-            # overwritten for automatic testing.
-            if num_tries == 1:
-                wait_time = self.DELAY_TRIES[0]  # 15 minutes
-            elif num_tries == 2:
-                wait_time = self.DELAY_TRIES[1]  # 30 minutes
-            elif num_tries == 3:
-                wait_time = self.DELAY_TRIES[2]  # 1 hour
-            elif num_tries == 4:
-                wait_time = self.DELAY_TRIES[3]  # 3 hours
-            elif num_tries > 4:
-                wait_time = self.DELAY_TRIES[4]  # 6 hours
-
-            # Add the same delay to all tasks accesing the same URL MariaDB /
-            # MySQL throws an error if the same table is specified
-            # both as a target for 'UPDATE' and a source for data.
-            # Therefore, two steps instead of a Sub-Select.
-            self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
-                             queue_id)
-            url_hash = (self.cur.fetchone())[0]
-            self.cur.execute('UPDATE queue ' +
-                             'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                             'WHERE urlHash = %s;',
-                             (wait_time, url_hash))
-            # Add the error type to the specific task that caused the delay
-            if error_type:
-                self.cur.execute('UPDATE queue ' +
-                                 'SET causesError = %s ' +
-                                 'WHERE id = %s;',
-                                 (error_type, queue_id))
-
-    def mark_permanent_error(self,
-                             queue_id: str,
-                             error: int):
-        u""" Mark item in queue that causes a permanent error.
-            Without this exoskeleton would try to execute the
-            task over and over again."""
-
-        self.cur.execute('UPDATE queue ' +
-                         'SET causesError = %s, ' +
-                         'delayUntil = NULL ' +
-                         'WHERE id = %s;', (error, queue_id))
-        logging.info('Marked queue-item that caused a permanent problem.')
+        u"""Remove all label links from a queue item and then delete it
+            from the queue."""
+        self.qm.delete_from_queue(queue_id)
 
     def forget_all_errors(self):
-        u""""""
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0, " +
-                         "delayUntil = NULL;")
+        u"""Treat all queued tasks, that are marked to cause any type of
+            error, as if they are new tasks by removing that mark and
+            any delay."""
+        self.qm.forget_all_errors()
 
     def forget_permanent_errors(self):
         u"""Treat all queued tasks, that are marked to cause a *permanent*
             error, as if they are new tasks by removing that mark and
             any delay."""
-        self.__forget_error_group(True)
+        self.qm.forget_error_group(True)
 
     def forget_temporary_errors(self):
         u"""Treat all queued tasks, that are marked to cause a *temporary*
             error, as if they are new tasks by removing that mark and
             any delay."""
-        self.__forget_error_group(False)
-
-    def __forget_error_group(self,
-                             permanent: bool):
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0, " +
-                         "delayUntil = NULL " +
-                         "WHERE causesError IN (" +
-                         "    SELECT id from errorType WHERE permanent = %s);",
-                         (1 if permanent else 0))
+        self.qm.forget_error_group(False)
 
     def forget_specific_error(self,
                               specific_error: int):
@@ -833,140 +727,7 @@ class Exoskeleton:
             error, as if they are new tasks by removing that mark and
             any delay. The number of the error has to correspond to the
             errorType database table."""
-
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0,"
-                         "delayUntil = NULL " +
-                         "WHERE causesError = %s;",
-                         specific_error)
-
-    def __get_next_task(self):
-        u""" Get the next suitable task"""
-        self.cur.execute('CALL next_queue_object_SP();')
-        return self.cur.fetchone()
-
-    def process_queue(self):
-        u"""Process the queue"""
-        while True:
-            try:
-                next_in_queue = self.__get_next_task()
-            except pymysql.err.OperationalError as e:
-                if e.args[0] == 2013:  # errno
-                    logging.error('Lost connection to database server. ' +
-                                  'Trying to restore it...')
-                    # this error is unusual. Give the db some time:
-                    time.sleep(10)
-                    try:
-                        self.establish_db_connection()
-                        self.cur = self.connection.cursor()
-                        next_in_queue = self.__get_next_task()
-                        logging.info('Succesfully restored connection ' +
-                                     'to database server!')
-                    except Exception:
-                        logging.error('Could not reestablish database ' +
-                                      'server connection!', exc_info=True)
-                        self.notify.send_msg('abort_lost_db')
-                        raise ConnectionError('Lost DB connection and ' +
-                                              'could not restore it.')
-                else:
-                    logging.error('Unexpected Operational Error',
-                                  exc_info=True)
-                    raise
-
-            if next_in_queue is None:
-                # no actionable item in the queue
-                if self.stop_if_queue_empty:
-                    # Bot is configured to stop if queue is empty
-                    # => check if that is only temporary or everything is done
-                    self.cur.execute(
-                        'SELECT num_items_with_temporary_errors();')
-                    num_temp_errors = self.cur.fetchone()[0]
-                    if num_temp_errors > 0:
-                        # there are still tasks, but they have to wait
-                        logging.debug("Tasks with temporary errors: " +
-                                      "waiting %s seconds until next try.",
-                                      self.queue_revisit)
-                        time.sleep(self.queue_revisit)
-                        continue
-                    else:
-                        # Nothing left
-                        logging.info('Queue empty. Bot stops as configured.')
-
-                        self.cur.execute(
-                            'SELECT num_items_with_permanent_error();')
-                        num_permanent_errors = self.cur.fetchone()[0]
-                        if num_permanent_errors > 0:
-                            logging.error("%s permanent errors!",
-                                          num_permanent_errors)
-                        self.notify.send_finish_msg(num_permanent_errors)
-                    break
-                else:
-                    logging.debug("No actionable task: waiting %s seconds " +
-                                  "until next check", self.queue_revisit)
-                    time.sleep(self.queue_revisit)
-                    continue
-            else:
-                # got a task from the queue
-                queue_id = next_in_queue[0]
-                action = next_in_queue[1]
-                url = next_in_queue[2]
-                url_hash = next_in_queue[3]
-                prettify_html = True if next_in_queue[4] == 1 else False
-
-                # The FQDN might have been added to the blocklist *after*
-                # the task entered into the queue:
-                if self.check_blocklist(urlparse(url).hostname):
-                    logging.error('Cannot process queue item as the ' +
-                                  'the FQDN has meanwhile been added to ' +
-                                  'the blocklist!')
-                    self.delete_from_queue(queue_id)
-                    logging.info('Removed item fron queue: FQDN on blocklist.')
-                else:
-                    if action == 1:
-                        # download file to disk
-                        self.__get_object(queue_id, 'file', url, url_hash)
-                    elif action == 2:
-                        # save page code into database
-                        self.__get_object(queue_id, 'content',
-                                          url, url_hash,
-                                          prettify_html)
-                    elif action == 3:
-                        # headless Chrome to create PDF
-                        self.__page_to_pdf(url, url_hash, queue_id)
-                    else:
-                        logging.error('Unknown action id!')
-
-                    if self.milestone:
-                        self.check_milestone()
-
-                    # wait some interval to avoid overloading the server
-                    self.tm.random_wait()
-
-    def __update_host_statistics(self,
-                                 url: str,
-                                 successful_requests: int,
-                                 temporary_problems: int,
-                                 permanent_errors: int,
-                                 hit_rate_limit: int):
-        u""" Updates the host based statistics. The URL gets shortened to
-        the hostname. Increase the different counters."""
-
-        fqdn = urlparse(url).hostname
-
-        self.cur.execute('INSERT INTO statisticsHosts ' +
-                         '(fqdnHash, fqdn, successfulRequests, ' +
-                         'temporaryProblems, permamentErrors, hitRateLimit) ' +
-                         'VALUES (SHA2(%s,256), %s, %s, %s, %s, %s) ' +
-                         'ON DUPLICATE KEY UPDATE ' +
-                         'successfulRequests = successfulRequests + %s, ' +
-                         'temporaryProblems = temporaryProblems + %s, ' +
-                         'permamentErrors = permamentErrors + %s, ' +
-                         'hitRateLimit = hitRateLimit + %s;',
-                         (fqdn, fqdn, successful_requests, temporary_problems,
-                          permanent_errors, hit_rate_limit,
-                          successful_requests, temporary_problems,
-                          permanent_errors, hit_rate_limit))
+        self.qm.forget_specific_error(specific_error)
 
     def check_milestone(self):
         u""" Check if milestone is reached. If that is the case,
@@ -984,35 +745,12 @@ class Exoskeleton:
                     self.num_items_in_queue()
                 ))
 
-    def check_blocklist(self,
-                        fqdn: str) -> bool:
-        u"""Check if a specific FQDN is on the blocklist."""
-
-        self.cur.execute('SELECT COUNT(*) FROM blockList ' +
-                         'WHERE fqdnhash = SHA2(%s,256);',
-                         fqdn.strip())
-        count = (self.cur.fetchone())[0]
-        if count > 0:
-            return True
-        return False
-
     def block_fqdn(self,
                    fqdn: str,
                    comment: Optional[str] = None):
         u"""Add a specific fully qualified domain name (fqdn)
             - like www.example.com - to the blocklist."""
-        if len(fqdn) > 255:
-            raise ValueError('No valid FQDN can be longer than 255 ' +
-                             'characters. Exoskeleton can only block ' +
-                             'a FQDN but not URLs.')
-        else:
-            try:
-                self.cur.execute('INSERT INTO blockList ' +
-                                 '(fqdn, fqdnHash, comment) ' +
-                                 'VALUES (%s, SHA2(%s,256), %s);',
-                                 (fqdn.strip(), fqdn.strip(), comment))
-            except pymysql.err.IntegrityError:
-                logging.info('FQDN already on blocklist.')
+        self.qm.block_fqdn(fqdn, comment)
 
     def unblock_fqdn(self,
                      fqdn: str):
@@ -1023,30 +761,11 @@ class Exoskeleton:
 
     def truncate_blocklist(self):
         u"""Remove *all* entries from the blocklist."""
-        self.cur.execute('TRUNCATE TABLE blockList;')
-        pass
+        self.qm.truncate_blocklist()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # LABELS
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def __define_new_label(self,
-                           shortname: str,
-                           description: str = None):
-        u""" If the label is not already in use, define a new label
-        and a description. """
-        if len(shortname) > 31:
-            logging.error("Labelname exceeds max length of 31 " +
-                          "characters. Cannot add it.")
-            return
-        try:
-            self.cur.execute('INSERT INTO labels (shortName, description) ' +
-                             'VALUES (%s, %s);',
-                             (shortname, description))
-
-            logging.debug('Added label to the database.')
-        except pymysql.err.IntegrityError:
-            logging.debug('Label already existed.')
 
     def define_or_update_label(self,
                                shortname: str,
@@ -1064,29 +783,6 @@ class Exoskeleton:
                          'ON DUPLICATE KEY UPDATE description = %s;',
                          (shortname, description, description))
 
-    def get_label_ids(self,
-                      label_set: Union[set, str]) -> set:
-        u""" Given a set of labels, this returns the corresponding ids
-        in the labels table. """
-        if label_set:
-            label_set = userprovided.parameters.convert_to_set(label_set)
-            # The IN-Operator makes it necessary to construct the command
-            # every time, so input gets escaped. See the accepted answer here:
-            # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
-            query = ("SELECT id " +
-                     "FROM labels " +
-                     "WHERE shortName " +
-                     "IN ({0});".format(', '.join(['%s'] * len(label_set))))
-            self.cur.execute(query, tuple(label_set))
-            label_id = self.cur.fetchall()
-            label_set = set()
-            if label_id:
-                label_set = {(id[0]) for id in label_id}
-
-            return set() if label_id is None else label_set
-        logging.error('No labels provided to get_label_ids().')
-        return set()
-
     def version_uuids_by_label(self,
                                single_label: str,
                                processed_only: bool = False) -> set:
@@ -1095,7 +791,7 @@ class Exoskeleton:
             If processed_only is set to True only UUIDs of
             already downloaded items are returned.
             Otherwise it contains queue objects with that label."""
-        returned_set = self.get_label_ids(single_label)
+        returned_set = self.qm.get_label_ids(single_label)
         if returned_set == set():
             raise ValueError('Unknown label. Check for typo.')
 
@@ -1202,49 +898,6 @@ class Exoskeleton:
         joined_set = version_labels | filemaster_labels
         return joined_set
 
-    def assign_labels_to_uuid(self,
-                              uuid: str,
-                              labels: Union[set, None]):
-        u""" Assigns one or multiple labels either to a specific
-        version of a file.
-        Removes duplicates and adds new labels to the label list
-        if necessary.."""
-
-        if not labels:
-            return
-        else:
-            # Using a set to avoid duplicates. However, accept either
-            # a single string or a list type.
-            label_set = userprovided.parameters.convert_to_set(labels)
-
-            for label in label_set:
-                # Make sure all labels are in the database table.
-                # -> If they already exist or malformed the command
-                # will be ignored by the dbms.
-                self.__define_new_label(label)
-
-            # Get all label-ids
-            id_list = self.get_label_ids(label_set)
-
-            # Check if there are already labels assigned with the version
-            self.cur.execute('SELECT labelID ' +
-                             'FROM labelToVersion ' +
-                             'WHERE versionUUID = %s;', uuid)
-            ids_found = self.cur.fetchall()
-            ids_associated = set()
-            if ids_found:
-                ids_associated = set(ids_found)
-            # ignore all labels already associated:
-            remaining_ids = tuple(id_list - ids_associated)
-
-            if len(remaining_ids) > 0:
-                # Case: there are new labels
-                # Convert into a format to INSERT with executemany
-                insert_list = [(id, uuid) for id in remaining_ids]
-                self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
-                                     '(labelID, versionUUID) ' +
-                                     'VALUES (%s, %s);', insert_list)
-
     def remove_labels_from_uuid(self,
                                 uuid: str,
                                 labels_to_remove: set):
@@ -1256,55 +909,9 @@ class Exoskeleton:
             labels_to_remove)
 
         # Get all label-ids
-        id_list = self.get_label_ids(labels_to_remove)
+        id_list = self.qm.get_label_ids(labels_to_remove)
 
         for label_id in id_list:
             self.cur.execute("DELETE FROM labelToVersion " +
                              "WHERE labelID = %s and versionUUID = %s;",
                              (label_id, uuid))
-
-    def assign_labels_to_master(self,
-                                url: str,
-                                labels: Union[set, None]):
-        u""" Assigns one or multiple labels to the *fileMaster* entry.
-        Removes duplicates and adds new labels to the label list
-        if necessary.."""
-
-        if not labels:
-            return
-        else:
-            # Using a set to avoid duplicates. However, accept either
-            # a single string or a list type.
-            label_set = userprovided.parameters.convert_to_set(labels)
-
-            for label in label_set:
-                # Make sure all labels are in the database table.
-                # -> If they already exist or malformed the command
-                # will be ignored by the dbms.
-                self.__define_new_label(label)
-
-            # Get all label-ids
-            id_list = self.get_label_ids(label_set)
-
-            # Check whether some labels are already associated
-            # with the fileMaster entry.
-            self.cur.execute('SELECT labelID ' +
-                             'FROM labelToMaster ' +
-                             'WHERE urlHash = SHA2(%s,256);', url)
-            ids_found: Optional[tuple] = self.cur.fetchall()
-            ids_associated = set()
-            if ids_found:
-                ids_associated = set(ids_found)
-
-            # ignore all labels already associated:
-            remaining_ids = tuple(id_list - ids_associated)
-
-            if len(remaining_ids) > 0:
-                # Case: there are new labels
-                # Convert into a format to INSERT with executemany
-                insert_list = [(id, url) for id in remaining_ids]
-                # Add those associatons
-                self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
-                                     '(labelID, urlHash) ' +
-                                     'VALUES (%s, SHA2(%s,256));',
-                                     insert_list)

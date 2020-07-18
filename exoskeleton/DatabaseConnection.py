@@ -179,5 +179,12 @@ class DatabaseConnection:
         return True
 
     def get_cursor(self):
-        u"""Make the database cursor accesible from outside the class."""
-        return self.cur
+        u"""Make the database cursor accessible from outside the class.
+            Try to reconnect if the connection is lost."""
+        if self.cur:
+            return self.cur
+        else:
+            logging.info("Lost database connection. Trying to reconnect...")
+            self.establish_db_connection()
+            self.cur = self.connection.cursor()
+            return self.cur
