@@ -29,8 +29,8 @@ import requests
 import userprovided
 
 # import other modules of this framework
-import exoskeleton.database_check as db_check
 import exoskeleton.utils as utils
+from .DatabaseConnection import DatabaseConnection
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
 
@@ -85,52 +85,9 @@ class Exoskeleton:
         # INIT: Database Setup / Establish a Database Connection
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        if database_settings is None:
-            raise ValueError('You must supply database credentials for' +
-                             'exoskeleton to work.')
-
-        userprovided.parameters.validate_dict_keys(
-            database_settings,
-            {'host', 'port', 'database', 'username', 'passphrase'},
-            {'database'},
-            'database_settings')
-
-        self.db_host: str = database_settings.get('host', None)
-        if not self.db_host:
-            logging.warning('No hostname provided. Will try localhost.')
-            self.db_host = 'localhost'
-
-        self.db_port: int = database_settings.get('port', None)
-        if not self.db_port:
-            logging.info('No port number supplied. ' +
-                         'Will try standard port 3306 instead.')
-            self.db_port = 3306
-        elif not userprovided.port.port_in_range(self.db_port):
-            raise ValueError('Port outside valid range!')
-
-        self.db_name: str = database_settings.get('database', None)
-        if not self.db_name:
-            raise ValueError('You must provide the name of the database.')
-
-        self.db_username: str = database_settings.get('username', None)
-        if not self.db_username:
-            raise ValueError('You must provide a database user.')
-
-        self.db_passphrase: str = database_settings.get('passphrase', '')
-        if self.db_passphrase == '':
-            logging.warning('No database passphrase provided. ' +
-                            'Will try to connect without.')
-
-        # Establish the connection:
-        self.connection = None
-        self.establish_db_connection()
-        # Add ignore for mypy as it cannot be None at this point, because
-        # establish_db_connection would have failed before:
-        self.cur = self.connection.cursor()  # type: ignore
-
-        # Check the schema:
-        db_check.check_table_existence(self.cur)
-        db_check.check_stored_procedures(self.cur, self.db_name)
+        # Init database Connection
+        self.db = DatabaseConnection(database_settings)
+        self.cur = self.db.get_cursor()
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Mail / Notification Setup
@@ -497,37 +454,6 @@ class Exoskeleton:
         except Exception:
             logging.exception('Exception while trying to get page-code',
                               exc_info=True)
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # DATABASE MANAGEMENT
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def establish_db_connection(self):
-        u"""Establish a connection to MariaDB """
-        try:
-            logging.debug('Trying to connect to database.')
-            self.connection = pymysql.connect(host=self.db_host,
-                                              port=self.db_port,
-                                              database=self.db_name,
-                                              user=self.db_username,
-                                              password=self.db_passphrase,
-                                              autocommit=True)
-
-            logging.info('Established database connection.')
-
-        except pymysql.InterfaceError:
-            logging.exception('Exception related to the database ' +
-                              '*interface*.', exc_info=True)
-            raise
-        except pymysql.DatabaseError:
-            logging.exception('Exception related to the database.',
-                              exc_info=True)
-            raise
-        except Exception:
-            logging.exception('Unknown exception while ' +
-                              'trying to connect to the DBMS.',
-                              exc_info=True)
-            raise
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # JOB MANAGEMENT
