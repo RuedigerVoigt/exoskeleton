@@ -440,10 +440,43 @@ logging.info('Truncate the queue')
 exo.cur.execute('TRUNCATE TABLE queue;')
 
 # ############################################
-# Test 5: Hitting a Rate Limit
+# Test 5: Redirects
 # ############################################
 
-logging.info('Test 5: Rate Limit')
+logging.info('Test 5: Redirects')
+
+logging.info('Add some URLs that redirect')
+# permanently moved:
+redirect301 = exo.add_save_page_code(
+    "https://www.ruediger-voigt.eu/redirect-301.html")
+# temporarily moved:
+redirect302 = exo.add_save_page_code(
+    "https://www.ruediger-voigt.eu/redirect-302.html")
+
+logging.info('Execute queue.')
+exo.process_queue()
+
+exo.cur.execute('SELECT pageContent FROM fileContent WHERE versionID =%s;',
+                redirect301)
+filecontent_301 = (exo.cur.fetchone())[0]
+if filecontent_301 == 'testfile1':
+    logging.info('Redirect 301 worked')
+else:
+    raise Exception('Redirect 301 DID NOT work.')
+
+exo.cur.execute('SELECT pageContent FROM fileContent WHERE versionID =%s;',
+                redirect302)
+filecontent_302 = (exo.cur.fetchone())[0]
+if filecontent_302 == 'testfile2':
+    logging.info('Redirect 302 worked')
+else:
+    raise Exception('Redirect 302 DID NOT work.')
+
+# ############################################
+# Test 6: Hitting a Rate Limit
+# ############################################
+
+logging.info('Test 6: Rate Limit')
 
 
 def count_rate_limit() -> int:
