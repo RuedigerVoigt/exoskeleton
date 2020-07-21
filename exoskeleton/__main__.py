@@ -391,7 +391,9 @@ class Exoskeleton:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
-                self.qm.add_rate_limit(urlparse(url).hostname)
+                fqdn = urlparse(url).hostname
+                if fqdn:
+                    self.qm.add_rate_limit(fqdn)
                 self.qm.update_host_statistics(url, 0, 0, 0, 1)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
