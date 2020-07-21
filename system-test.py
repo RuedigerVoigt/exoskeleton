@@ -436,15 +436,65 @@ logging.info('Now remove all errors')
 exo.forget_all_errors()
 check_error_codes(set())
 
+logging.info('Truncate the queue')
+exo.cur.execute('TRUNCATE TABLE queue;')
+
 # ############################################
 # Test 5: Hitting a Rate Limit
 # ############################################
 
 logging.info('Test 5: Rate Limit')
 
-#exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
 
-exo.process_queue()
+def count_rate_limit() -> int:
+    exo.cur.execute('SELECT COUNT(*) FROM rateLimits;')
+    count = int((exo.cur.fetchone())[0])
+    return count
 
 
-print('Done!')
+logging.info('Add a single rate limit')
+exo.qm.add_rate_limit('www.example.com')
+
+if count_rate_limit() == 1:
+    logging.info('Rate limit was added.')
+else:
+    raise Exception('Did not add rate limit!')
+
+logging.info('Forget this rate limit')
+exo.qm.forget_specific_rate_limit('www.example.com')
+
+if count_rate_limit() == 0:
+    logging.info('Rate limit was removed.')
+else:
+    raise Exception('Did not remove rate limit!')
+
+logging.info('Add tow rate limits, but duplicate one.')
+exo.qm.add_rate_limit('www.example.com')
+exo.qm.add_rate_limit('www.example.com')
+exo.qm.add_rate_limit('www.ruediger-voigt.eu')
+
+if count_rate_limit() == 2:
+    logging.info('Rate limit was not falsely duplicated.')
+else:
+    raise Exception('Duplicate rate limit in database!')
+
+logging.info('Forget all rate limits')
+exo.qm.forget_all_rate_limits()
+if count_rate_limit() == 0:
+    logging.info('All rate limits were removed.')
+else:
+    raise Exception('Removing all rate limits did not work')
+
+logging.info('Check that a rate limited FQDN does not show up as next item.')
+exo.qm.add_rate_limit('www.ruediger-voigt.eu')
+exo.cur.execute('TRUNCATE TABLE queue;')
+exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
+print(exo.qm.get_next_task())
+if exo.qm.get_next_task() is None:
+    logging.info('As expected FQDN did not show up as next task')
+else:
+    raise Exception('Rate limited task showed up as next')
+exo.qm.forget_all_rate_limits()
+
+
+print('Passed all tests. Done!')

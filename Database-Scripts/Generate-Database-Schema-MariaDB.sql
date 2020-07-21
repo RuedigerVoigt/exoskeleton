@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS queue (
     ,prettifyHtml TINYINT UNSIGNED DEFAULT 0
     ,url TEXT NOT NULL
     ,urlHash CHAR(64) NOT NULL
+    ,fqdnHash CHAR(64) NOT NULL
     ,addedToQueue TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     ,causesError INT NULL
     ,numTries INT DEFAULT 0
@@ -387,6 +388,19 @@ CREATE TABLE IF NOT EXISTS blockList (
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------
+-- RATELIMIT
+-- ----------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS rateLimits (
+    fqdnHash CHAR(64) NOT NULL
+    ,fqdn VARCHAR(255) NOT NULL
+    ,hitRateLimitAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP()
+    ,noContactUntil TIMESTAMP NOT NULL
+    ,PRIMARY KEY(fqdnHash)
+    ,INDEX(noContactUntil)
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------
 -- VIEWS
 --
 -- For easier access.
@@ -576,7 +590,12 @@ BEGIN
     ,urlHash
     ,prettifyHtml
     FROM queue
-    WHERE (causesError IS NULL OR causesError IN (SELECT id FROM errorType WHERE permanent = 0)) AND
+    WHERE (
+        causesError IS NULL OR causesError IN (
+            SELECT id FROM errorType WHERE permanent = 0)
+            ) AND (
+        fqdnHash NOT IN (SELECT fqdnHash FROM rateLimits WHERE noContactUntil > NOW())
+        ) AND
     (delayUntil IS NULL OR delayUntil < NOW()) AND
     action IN (1, 2, 3)
     ORDER BY addedToQueue ASC

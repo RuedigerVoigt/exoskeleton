@@ -43,6 +43,10 @@ class QueueManager:
         self.queue_max_retries = userprovided.parameters.int_in_range(
             "queue_max_retries", self.queue_max_retries, 0, 10, 3)
 
+        # Seconds to wait before contacting the same FQDN again, after the bot
+        # hit a rate limit. Defaults to 1860 seconds (i.e. 31 minutes):
+        self.rate_limit_wait: int = bot_behavior.get('rate_limit_wait', 1860)
+
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # HANDLE THE BLOCKLIST
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,11 +170,15 @@ class QueueManager:
         # generate a random uuid for the file version
         uuid_value = uuid.uuid4().hex
 
+        # get FQDN from URL
+        fqdn = urlparse(url).hostname
+
         # add the new task to the queue
         self.cur.execute('INSERT INTO queue ' +
-                         '(id, action, url, urlHash, prettifyHtml) ' +
-                         'VALUES (%s, %s, %s, SHA2(%s,256), %s);',
-                         (uuid_value, action, url, url, prettify_html))
+                         '(id, action, url, urlHash, fqdnHash, ' +
+                         'prettifyHtml) VALUES ' +
+                         '(%s, %s, %s, SHA2(%s,256), SHA2(%s,256), %s);',
+                         (uuid_value, action, url, url, fqdn, prettify_html))
 
         # link labels to version item
         if labels_version:
@@ -461,6 +469,34 @@ class QueueManager:
                          "causesError = NULL, " +
                          "numTries = 0, " +
                          "delayUntil = NULL;")
+
+    def add_rate_limit(self,
+                       fqdn: str):
+        u"""If a bot receives the statuscode 429 ('too many requests') it hit
+            a rate limit. Adding the fully qualified domain name to the rate
+            limit list, ensures that this FQDN is not contacted for a
+            predefined time."""
+        msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
+               f"contact this host for {self.rate_limit_wait} seconds.")
+        logging.error(msg)
+        # Always use SEC_TO_TIME() to avoid unexpected behavior if
+        # just adding seconds as a plain number.
+        self.cur.execute('INSERT INTO rateLimits ' +
+                         '(fqdnHash, fqdn, noContactUntil) VALUES ' +
+                         '(SHA2(%s,256), %s, ADDTIME(NOW(), SEC_TO_TIME(%s))) ' +
+                         'ON DUPLICATE KEY UPDATE ' +
+                         'noContactUntil = ADDTIME(NOW(), SEC_TO_TIME(%s));',
+                         (fqdn, fqdn, self.rate_limit_wait,
+                          self.rate_limit_wait))
+
+    def forget_specific_rate_limit(self,
+                                   fqdn: str):
+        self.cur.execute('DELETE FROM rateLimits ' +
+                         'WHERE fqdnHash = SHA2(%s,256);',
+                         fqdn)
+
+    def forget_all_rate_limits(self):
+        self.cur.execute('TRUNCATE TABLE rateLimits;')
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # STATISTICS

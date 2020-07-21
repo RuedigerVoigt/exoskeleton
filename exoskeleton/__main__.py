@@ -102,6 +102,7 @@ class Exoskeleton:
         known_behavior_keys = {'connection_timeout',
                                'queue_max_retries',
                                'queue_revisit',
+                               'rate_limit_wait',
                                'stop_if_queue_empty',
                                'wait_min',
                                'wait_max'}
@@ -390,7 +391,7 @@ class Exoskeleton:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
-                self.qm.add_crawl_delay(queue_id, 429)
+                self.qm.add_rate_limit(urlparse(url).hostname)
                 self.qm.update_host_statistics(url, 0, 0, 0, 1)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
