@@ -90,7 +90,7 @@ INSERT INTO actions (id, description) VALUES
 (1, 'download file to disk'),
 (2, 'save page code into database'),
 (3, 'save as PDF using headless Chrome'),
-(4, 'reserved for future use'),
+(4, 'save text'),
 (5, 'reserved for future use'),
 (6, 'reserved for future use'),
 (7, 'reserved for future use');
@@ -597,7 +597,7 @@ BEGIN
         fqdnHash NOT IN (SELECT fqdnHash FROM rateLimits WHERE noContactUntil > NOW())
         ) AND
     (delayUntil IS NULL OR delayUntil < NOW()) AND
-    action IN (1, 2, 3)
+    action IN (1, 2, 3, 4)
     ORDER BY addedToQueue ASC
     LIMIT 1;
 

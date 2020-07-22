@@ -20,6 +20,7 @@ from typing import Union, Optional
 from urllib.parse import urlparse
 
 # 3rd party libraries:
+from bs4 import BeautifulSoup  # type: ignore
 import pymysql
 import urllib3  # type: ignore
 import requests
@@ -266,7 +267,7 @@ class Exoskeleton:
                                   'the FQDN has meanwhile been added to ' +
                                   'the blocklist!')
                     self.qm.delete_from_queue(queue_id)
-                    logging.info('Removed item fron queue: FQDN on blocklist.')
+                    logging.info('Removed item from queue: FQDN on blocklist.')
                 else:
                     if action == 1:
                         # download file to disk
@@ -279,6 +280,11 @@ class Exoskeleton:
                     elif action == 3:
                         # headless Chrome to create PDF
                         self.__page_to_pdf(url, url_hash, queue_id)
+                    elif action == 4:
+                        # save page text into database
+                        self.__get_object(queue_id, 'text',
+                                          url, url_hash,
+                                          prettify_html)
                     else:
                         logging.error('Unknown action id!')
 
@@ -299,7 +305,7 @@ class Exoskeleton:
         # pylint: disable=too-many-branches
         if not isinstance(queue_id, str):
             raise ValueError('The queue_id must be a string.')
-        if action_type not in ('file', 'content'):
+        if action_type not in ('file', 'content', 'text'):
             raise ValueError('Invalid action')
         if url == '' or url is None:
             raise ValueError('Missing url')
@@ -307,7 +313,7 @@ class Exoskeleton:
         if url_hash == '' or url_hash is None:
             raise ValueError('Missing url_hash')
 
-        if action_type != 'content' and prettify_html:
+        if action_type not in ('content', 'text') and prettify_html:
             logging.error('Wrong action_type: prettify_html ignored.')
 
         r = requests.Response()
@@ -318,7 +324,7 @@ class Exoskeleton:
                                  headers={"User-agent": self.user_agent},
                                  timeout=self.connection_timeout,
                                  stream=True)
-            elif action_type == 'content':
+            elif action_type in('content', 'text'):
                 logging.debug('retrieving content of queue id %s', queue_id)
                 r = requests.get(url,
                                  headers={"User-agent": self.user_agent},
@@ -358,7 +364,7 @@ class Exoskeleton:
                                       'already downloaded file %s to the ' +
                                       'database!', new_filename)
 
-                elif action_type == 'content':
+                elif action_type in ('content', 'text'):
 
                     detected_encoding = str(r.encoding)
                     logging.debug('detected encoding: %s', detected_encoding)
@@ -367,6 +373,10 @@ class Exoskeleton:
 
                     if mime_type == 'text/html' and prettify_html:
                         page_content = utils.prettify_html(page_content)
+
+                    if action_type == 'text':
+                        page_content = BeautifulSoup(page_content, 'lxml')
+                        page_content = page_content.get_text()
 
                     try:
                         # Stored procedure saves the content, transfers the
@@ -669,7 +679,7 @@ class Exoskeleton:
                            labels_version: set = None,
                            prettify_html: bool = False,
                            force_new_version: bool = False) -> Optional[str]:
-        u"""Add an URL to the queue to save it's HTML code
+        u"""Add an URL to the queue to save its HTML code
             into the database."""
         uuid = self.qm.add_to_queue(url, 2, labels_master,
                                     labels_version, prettify_html,
@@ -688,9 +698,23 @@ class Exoskeleton:
                                     force_new_version)
         return uuid
 
+    def add_save_page_text(self,
+                           url: str,
+                           labels_master: set = None,
+                           labels_version: set = None,
+                           force_new_version: bool = False) -> Optional[str]:
+        u"""Extract the text (not the code) from a HTML page and store it
+            into the database. This can be useful for some language processing tasks,
+            but compared to add_save_page_code this removes the possiblity to work
+            on a specific part using a CSS selector."""
+        uuid = self.qm.add_to_queue(url, 4, labels_master,
+                                    labels_version, True,
+                                    force_new_version)
+        return uuid
+
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
-        u"""Get the id of the filemaster entry associated with this URL"""
+        u"""Get the id of the filemaster entry associated with this URL."""
         return self.qm.get_filemaster_id_by_url(url)
 
     def get_queue_id(self,
@@ -773,7 +797,7 @@ class Exoskeleton:
     def define_or_update_label(self,
                                shortname: str,
                                description: str = None):
-        u""" Insert a new label into the database or update it's
+        u""" Insert a new label into the database or update its
         description in case it already exists. Use __define_new_label
         if an update has to be avoided. """
         if len(shortname) > 31:

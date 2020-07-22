@@ -107,7 +107,7 @@ class QueueManager:
         u""" More general function to add items to queue. Called by
         add_file_download, add_save_page_code and add_page_to_pdf."""
 
-        if action not in (1, 2, 3):
+        if action not in (1, 2, 3, 4):
             logging.error('Invalid value for action!')
             return None
 

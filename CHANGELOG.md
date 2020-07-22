@@ -6,6 +6,7 @@
 
 New Features:
 * **System Test**: Each push and every pull requests now also triggers a system test. This test launches an Ubuntu instance and loads a MariaDB container. Then it creates the database, adds task to the queue and processes the queue.
+* New function `add_save_page_text` which only saves the text of a page, but not its HTML code.
 * The parameter `queue_max_retries` (in: `bot_behavior`) is now evaluated: After a task fails, the wait time until the next try increments. After the specified number of tries (default: 5) it is assumed an error is not temporary but permanent and exoskelton stop trying to execute the task.
 * If a crawl delay is added to a specific task in the queue, it will now also be added to all other tasks that affect the same URL. The number of tries is still counted for each individual task, not the URL.
 * If a crawler hits a rate limit, a server should respond with the HTTP status code 429 ("Too Many Requests"). If that is the case, exoskeleton now adds the fully qualified domain name (like `www.example.com`) to a rate limit list and blocks contact to this FQDN for a predefinied time (default: 31 minutes).
