@@ -14,6 +14,7 @@ from collections import Counter
 from collections import defaultdict
 import logging
 import pathlib
+import shutil
 import subprocess
 import time
 from typing import Union, Optional
@@ -176,6 +177,31 @@ class Exoskeleton:
         if not userprovided.hash.hash_available(self.hash_method):
             raise ValueError('The hash method SHA256 is not available on ' +
                              'your system.')
+
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # INIT: Browser
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        # See if the executable name provided by the setup is in the path:
+        self.browser_present = True if shutil.which(chrome_name) else False
+        # if it is not avaible, some functionality is not avaialble:
+        if not self.browser_present:
+            logging.warning("No browser available with this executable name." +
+                            "Saving a HTML page as PDF is not possible " +
+                            "without that.")
+        else:
+            # found an executable
+            # check whether the user provided an unsupported browser:
+            unsupported_browsers = {'firefox', 'safari', 'edge'}
+            supported_browsers = {'google-chrome', 'chrome', 'chromium',
+                                  'chromium-browser'}
+            if chrome_name.lower() in supported_browsers:
+                logging.info('Broser supported and available.')
+            elif chrome_name.lower() in unsupported_browsers:
+                raise ValueError('Only Chrome and Chromium are supported!')
+            else:
+                logging.warning("Browser executable seems to be neither " +
+                                "Google Chrome nor Chromium")
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Create Objects
@@ -458,7 +484,7 @@ class Exoskeleton:
         # * Selenium has no built in command for PDF export, but needs
         #   to operate the dialog. That is far more likely to break.
 
-        if self.chrome_process is None:
+        if not self.browser_present:
             raise ValueError('You must provide the name of the Chrome ' +
                              'process to use this.')
         filename = f"{self.file_prefix}{queue_id}.pdf"
@@ -693,6 +719,9 @@ class Exoskeleton:
                         force_new_version: bool = False) -> Optional[str]:
         u"""Add an URL to the queue to print it to PDF
             with headless Chrome. """
+        if not self.browser_present:
+            logging.warning('Will add this task to the queue, but without ' +
+                            'Chrome or Chromium this task cannot run!')
         uuid = self.qm.add_to_queue(url, 3, labels_master,
                                     labels_version, False,
                                     force_new_version)
