@@ -375,8 +375,8 @@ class Exoskeleton:
                         page_content = utils.prettify_html(page_content)
 
                     if action_type == 'text':
-                        page_content = BeautifulSoup(page_content, 'lxml')
-                        page_content = page_content.get_text()
+                        soup = BeautifulSoup(page_content, 'lxml')
+                        page_content = soup.get_text()
 
                     try:
                         # Stored procedure saves the content, transfers the
