@@ -17,6 +17,7 @@ Breaking Changes:
 * The function `mark_error` has been renamed to `mark_permanent_error` to better reflect its purpose.
 * The function `add_crawl_delay_to_item` was renamed to `__add_crawl_delay` and the optional parameter `delay_seconds` was removed.
 * The database table `statistics_host`was extended.
+* The method `get_queue_id` is now `QueueManager.__get_queue_uuids` as there is now reason to access it from a script.
 
 ## version 0.9.3 beta (2020-07-18)
 

@@ -163,7 +163,7 @@ class QueueManager:
                 # File has not been processed yet.
                 # If the exact same task is *not* already in the queue,
                 # add it.
-                if self.get_queue_id(url, action):
+                if self.__get_queue_uuids(url, action):
                     logging.info('Exact same task already in queue.')
                     return None
 
@@ -186,20 +186,25 @@ class QueueManager:
 
         return uuid_value
 
-    def get_queue_id(self,
-                     url: str,
-                     action: int) -> Optional[str]:
-        u"""Get the id in the queue based on the URL and action ID.
-        Returns None if such combination is not in the queue."""
+    def __get_queue_uuids(self,
+                          url: str,
+                          action: int) -> set:
+        u"""Based on the URL and action ID this returns a set of UUIDs in the
+            *queue* that match those. Normally this set has a single element,
+            but as you can force exoskeleton to repeat tasks on the same
+            URL it can be multiple. Returns an empty set if such combination
+            is not in the queue."""
         self.cur.execute('SELECT id FROM queue ' +
                          'WHERE urlHash = SHA2(%s,256) AND ' +
-                         'action = %s;',
+                         'action = %s ' +
+                         'ORDER BY addedToQueue ASC;',
                          (url, action))
-        queue_uuid = self.cur.fetchone()
-        if queue_uuid:
-            return queue_uuid[0]
+        queue_uuids = self.cur.fetchall()
+        uuid_set: set = {uuid[0] for uuid in queue_uuids}
+        if uuid_set:
+            return uuid_set
         else:
-            return None
+            return set()
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:

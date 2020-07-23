@@ -745,13 +745,6 @@ class Exoskeleton:
         u"""Get the id of the filemaster entry associated with this URL."""
         return self.qm.get_filemaster_id_by_url(url)
 
-    def get_queue_id(self,
-                     url: str,
-                     action: int) -> Optional[str]:
-        u"""Get the UUID in the queue based on the URL and action ID.
-        Returns None if such combination is not in the queue."""
-        return self.qm.get_queue_id(url, action)
-
     def delete_from_queue(self,
                           queue_id: str):
         u"""Remove all label links from a queue item and then delete it
