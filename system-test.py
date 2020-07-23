@@ -19,7 +19,8 @@ logging.basicConfig(level=logging.DEBUG)
 def check_queue_count(correct_number: int):
     u"""Check if the number of items in the queue equals
         the expected number. """
-    found = exo.num_items_in_queue()
+    stats = exo.qm.queue_stats()
+    found = stats['tasks_without_error']
     if found != correct_number:
         raise Exception(f"Wrong number of items in the queue " +
                         f"({found} found / " +

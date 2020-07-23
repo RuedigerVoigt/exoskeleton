@@ -684,9 +684,6 @@ class Exoskeleton:
     # QUEUE MANAGEMENT
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def num_items_in_queue(self):
-        return self.qm.num_items_in_queue()
-
     def add_file_download(self,
                           url: str,
                           labels_master: set = None,
