@@ -1,22 +1,20 @@
 # Changelog / History
 
-## upcoming 1.0.0
-
-* Experimental Docker image
+## version 1.0.0 stable (2020-07-23)
 
 New Features:
-* **System Test**: Each push and every pull requests now also triggers a system test. This test launches an Ubuntu instance and loads a MariaDB container. Then it creates the database, adds task to the queue and processes the queue.
+* **System Test**: Each push and every pull requests now also triggers a system test. This test launches an Ubuntu instance and loads a MariaDB container. Then it creates the database, adds tasks to the queue, processes the queue, and checks the resulting structure.
 * New function `add_save_page_text` which only saves the text of a page, but not its HTML code.
-* The parameter `queue_max_retries` (in: `bot_behavior`) is now evaluated: After a task fails, the wait time until the next try increments. After the specified number of tries (default: 5) it is assumed an error is not temporary but permanent and exoskelton stop trying to execute the task.
+* The parameter `queue_max_retries` (in: `bot_behavior`) is now evaluated: After a task fails, the wait time until the next try increments. After the specified number of tries (default: 5) it is assumed an error is not temporary but permanent and exoskeleton stop trying to execute the task.
 * If a crawl delay is added to a specific task in the queue, it will now also be added to all other tasks that affect the same URL. The number of tries is still counted for each individual task, not the URL.
-* If a crawler hits a rate limit, a server should respond with the HTTP status code 429 ("Too Many Requests"). If that is the case, exoskeleton now adds the fully qualified domain name (like `www.example.com`) to a rate limit list and blocks contact to this FQDN for a predefinied time (default: 31 minutes).
+* If a crawler hits a rate limit, a server should respond with the HTTP status code 429 ("Too Many Requests"). If that is the case, exoskeleton now adds the fully qualified domain name (like `www.example.com`) to a rate limit list. It then blocks contact to this FQDN for a predefined time (default: 31 minutes).
 * Not all servers signal hitting the rate limit with the HTTP status code 429, but use codes like 404 ("Not Found") or 410 ("Gone") instead. Tasks that cause such errors stay in the queue, but exoskeleton does not try to carry them out. Therefore some helper functions were introduced to reset and start to process those again: `forget_all_errors`, `forget_permanent_errors`, `forget_temporary_errors`, and `forget_specific_error`.
-* Added the database view `v_errors_in_queue` that makes information about errors occured while crawling better accessible.
+* Added the database view `v_errors_in_queue` that makes information about errors occurred while crawling better accessible.
 
 Breaking Changes:
 * The function `mark_error` has been renamed to `mark_permanent_error` to better reflect its purpose.
 * The function `add_crawl_delay_to_item` was renamed to `__add_crawl_delay` and the optional parameter `delay_seconds` was removed.
-* The database table `statistics_host`was extended.
+* The database table `statistics_host` was extended.
 * The method `get_queue_id` is now `QueueManager.__get_queue_uuids` as there is now reason to access it from a script.
 * The method `num_items_in_queue` has been replaced with `Queuemanager.queue_stats` and now returns more information as a dictionary.
 
@@ -94,7 +92,7 @@ Other:
 ## version 0.8.0 beta (2020-02-14)
 
 * Require Python 3.6 (Debian 10 "Buster" just moved to Python 3.7 with the 10.3 update. Ubuntu stable uses 3.6.)
-* Use transactions and rollbacks to ensure dbms integrity (i.e. changes to the database schema).
+* Use transactions and rollbacks to ensure DBMS integrity (i.e. changes to the database schema).
 
 ## version 0.7.1 beta (2020-01-27)
 
