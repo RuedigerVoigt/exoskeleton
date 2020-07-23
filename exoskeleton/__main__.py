@@ -29,7 +29,6 @@ import requests
 import userprovided
 
 # import other modules of this framework
-import exoskeleton.utils as utils
 from .DatabaseConnection import DatabaseConnection
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
@@ -382,7 +381,7 @@ class Exoskeleton:
                         self.cur.callproc('insert_file_SP',
                                           (url, url_hash, queue_id, mime_type,
                                            str(self.target_dir), new_filename,
-                                           utils.get_file_size(target_path),
+                                           self.get_file_size(target_path),
                                            self.hash_method, hash_value, 1))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
@@ -398,7 +397,7 @@ class Exoskeleton:
                     page_content = r.text
 
                     if mime_type == 'text/html' and prettify_html:
-                        page_content = utils.prettify_html(page_content)
+                        page_content = self.prettify_html(page_content)
 
                     if action_type == 'text':
                         soup = BeautifulSoup(page_content, 'lxml')
@@ -516,7 +515,7 @@ class Exoskeleton:
                 self.cur.callproc('insert_file_SP',
                                   (url, url_hash, queue_id, 'application/pdf',
                                    str(self.target_dir), filename,
-                                   utils.get_file_size(path),
+                                   self.get_file_size(path),
                                    self.hash_method, hash_value, 3))
             except pymysql.DatabaseError:
                 self.cnt['transaction_fail'] += 1
@@ -818,6 +817,28 @@ class Exoskeleton:
     def truncate_blocklist(self):
         u"""Remove *all* entries from the blocklist."""
         self.qm.truncate_blocklist()
+
+    def get_file_size(self,
+                      file_path: pathlib.Path) -> int:
+        u"""File size in bytes."""
+        try:
+            return file_path.stat().st_size
+        except Exception:
+            logging.error('Cannot get file size', exc_info=True)
+            raise
+
+    def prettify_html(self,
+                      content: str) -> str:
+        u"""Parse the HTML => add a document structure if needed
+            => Encode HTML-entities and the document as Unicode (UTF-8).
+            Only use for HTML, not XML."""
+
+        # Empty elements are not removed as they might
+        # be used to find specific elements within the tree.
+
+        content = BeautifulSoup(content, 'lxml').prettify()
+
+        return content
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # LABELS
