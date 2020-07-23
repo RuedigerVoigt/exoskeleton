@@ -15,11 +15,12 @@ Guidelines:
 
  ## Code Contributions
 
- Code Contributions are welcome. Before you spend a lot of time programming 
- please check the issue's page or get in contact. It is a design goal to avoid 
+ Code Contributions are welcome. Before you spend a lot of time programming
+ please check the issue's page or get in contact. It is a design goal to avoid
  bloat by implementing too many features.
 
  * Please adhere to [PEP8](https://www.python.org/dev/peps/pep-0008/).
- * The code should included documentation.
+ * The code should include documentation.
  * Variable names should be speaking.
+ * The code uses type-annotations. Part of the built is an automatic run of mypy.
 

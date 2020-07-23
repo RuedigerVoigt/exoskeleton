@@ -12,7 +12,7 @@ Note, that it usually does not work to send email from a system with a dynamic I
 
 Even if you send from a machine with static IP, many things might go wrong. For example, there might be a [SPF setting](https://en.wikipedia.org/wiki/Sender_Policy_Framework "Wikipedia explaining the Sender Policy Framework") for the sending domain that limits sending mails to a server specified in the MX record of your DNS entry.
 
-However, exoskeleton can connect to a regular mail server and send mails via that.
+Exoskeleton can use a local mail server. It can also connect to the remote mail server of your ISP and send mails via that.
 
 ## Activating Mails
 

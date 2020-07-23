@@ -75,4 +75,5 @@ def version_labels_by_uuid(self,
                            version_uuid: str) -> list:
 ```
 
-> :arrow_right: **[Learn about Data Sequences](data-sequences.md)**
+> :arrow_right: **[Learn about the Blocklist](blocklist.md)**
+

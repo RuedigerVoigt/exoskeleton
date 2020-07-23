@@ -47,11 +47,12 @@ You may consider using a [virtualenv](https://virtualenv.pypa.io/en/latest/userg
 These are:
 
 * [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/ "beautiful soup project homepage"): A very useful package to analyze a webpage's code.
-* [lxml](https://lxml.de/): A parser used to repair broken HTML code
+* [lxml](https://lxml.de/): A parser used to repair broken HTML code.
 * [pymysql](https://github.com/PyMySQL/PyMySQL): Needed to connect to the MariaDB database.
 * [requests](https://requests.readthedocs.io/en/master/): A high-level library to send and download data
 * [urllib3](https://urllib3.readthedocs.io/en/latest/)
 * [userprovided](https://github.com/RuedigerVoigt/userprovided): A sister package of exoskeleton which checks user input for plausibility.
+* [bote](https://github.com/RuedigerVoigt/bote): A sister package of exoskeleton which sends notifications.
 
 ### Updating Exoskeleton with Pip
 

@@ -20,6 +20,7 @@ Use `block_fqdn('www.example.com')` to add `www.example.com` to the blocklist. A
 def unblock_fqdn(self,
                  fqdn: str):
 ```
+
 Expectedly `unblock_fqdn('www.example.com')` reverses `block_fqdn()` and removes `www.example.com` from the blocklist.
 
 ```python

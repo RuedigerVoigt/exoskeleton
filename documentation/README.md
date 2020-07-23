@@ -10,7 +10,6 @@
 * [Bot Behavior](behavior-settings.md)
 * [Progress Reports via Email](progress-reports-via-email.md)
 * [File Versions and Labels](versions-and-labels.md)
-* [Data Sequences](data-sequences.md)
 * [Using the Blocklist](blocklist.md)
 
 ## Example Uses

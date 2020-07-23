@@ -113,5 +113,15 @@ This feature uses headless Chrome / Chromium to save a website as PDF. For it to
 
 **BEWARE**: *This function is not reliable for every website. Chrome / Chromium does not remember web cookies in headless mode. As a result, some websites black out the whole page and only display a cookie / data privacy dialogue and only this gets stored.*
 
+## Saving just the text of a HTML page
+
+Saving the HTML code provides the benefit, that you later can select the part of the page you are interested it. Nonetheless exoskeleton has the option to save just the text displayed on a web page. be aware, that this includes headers and similar.
+
+```python
+def add_save_page_text(url: str,
+                       labels_master: set = None,
+                       labels_version: set = None,
+                       force_new_version: bool = False) -> Optional[str]:
+```
 
 > :arrow_right: **[Now learn how to steer the bot's behavior](behavior-settings.md)**

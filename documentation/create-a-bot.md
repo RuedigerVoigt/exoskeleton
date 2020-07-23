@@ -6,7 +6,15 @@ In the previous step you [installed exoskeleton and prepared a database](install
 
 You should avoid putting your credentials, like password and username, directly into your code. Many people accidentally upload code with secrets into public repositories. You might pass on your code to another project in order to get it started. This means you would have to remember every time to scrape your credentials.
 
-The OS independent and easiest way is to put your username and passphrase for the database into a separate file called something like `credentials.py`.
+### dotenv
+
+The preferred way to store credentials would be to store them as environment variables. This can be tricky as per default those are not permanently stored and are not available after a reboot.
+
+The (python-dotenv package)[https://pypi.org/project/python-dotenv/] solves this problem by making the contents of a `.env` file available as environment variables. Accordingly `.env` should be added to your `.gitignore` file.
+
+### Credentials File
+
+Another OS independent and easy way is to put your username and passphrase for the database into a separate file called something like `credentials.py`.
 
 Store this file outside your local repository or exclude it from uploads via the git ignore list. This file just defines some variables and could look like this:
 
@@ -32,7 +40,6 @@ Now create a file `bot.py` that contains your bot:
 import logging
 
 import exoskeleton
-import credentials
 
 # exoskeleton makes heavy use of the built-in
 # logging functionality. Change the level to
@@ -41,9 +48,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 exo = exoskeleton.Exoskeleton(
-    database_settings={'database': credentials.db,
-                       'username': credentials.user,
-                       'passphrase': credentials.passphrase},
+    database_settings={'database': 'database-name,
+                       'username': 'database-user',
+                       'passphrase': 'database-passphrase'},
     filename_prefix='TEST_',
     target_directory='/home/yourusername/testfolder/'
 )
@@ -83,7 +90,7 @@ DEBUG:root:Hash method sha256 is available.
 DEBUG:root:started timers
 ```
 
-You can later change the logging level to INFO, but here it gives you a good overview of what is checked.
+You can (and probably should) later change the logging level to INFO, but here it gives you a good overview of what is checked.
 
 If possible, parameters have plausible defaults. if you did not explicitly provide the information exoskeleton will try those defaults. An example for this:
 ```
@@ -91,7 +98,7 @@ WARNING:root:No hostname provided. Will try localhost.
 INFO:root:No port number supplied. Will try standard port instead.
 ```
 
-So exoskelton assumed MariaDB runs on the same machine and the port is unchanged to standard 3306.
+So exoskeleton assumed MariaDB runs on the same machine and the port is unchanged to standard 3306.
 
 The dictionary `database_settings` knows the following parameters and defaults:
 
@@ -110,15 +117,14 @@ Now let us *extend* the python code with:
 # Add two files to the queue for download
 exo.add_file_download('https://www.ruediger-voigt.eu/examplefile.txt')
 exo.add_file_download('https://github.com/RuedigerVoigt/exoskeleton/blob/master/README.md')
-# How many items are now in the queue
-print(exo.num_items_in_queue())
+
 # Now tell exoskeleton to work through that queue:
 exo.process_queue()
 ```
 
 If you run this extended script exoskeleton downloads the first file, waits a bit, and downloads the next.
 
-:heavy_exclamation_mark: *Notice*: In the default setup the bot will not stop after downloading these two files. Instead it will wait for a minute and see if new jobs were added to the queue. You must stop the python program with (depending on your system) CTRL+C and/or CTRL+D.
+:heavy_exclamation_mark: *Notice*: In the default setup the bot will not stop after downloading these two files. Instead it will wait for 20 seconds and see if new jobs were added to the queue. You must stop the python program with (depending on your system) CTRL+C and/or CTRL+D.
 
 
 Now look into the folder you specified with the `target_directory` parameter. The files are *not* named `examplefile.txt` and `README.md` but instead have the `filename_prefix` you specified followed by an alphanumeric id as name. The reason for such strange names is simple: if you download hundreds or thousands of files there will be many name collisions. That means you will have many files with the name `index.html` or similar which would overwrite each other. You would have to rename them into `index_a.html`, `index_b.html`, `index_c.html` and so on. *Here the alphanumeric id after the prefix is the id within the database. So, you can look up the source URL, the download date, and so on.*
