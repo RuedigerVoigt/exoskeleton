@@ -785,13 +785,15 @@ class Exoskeleton:
         # failing with the first item.
         if processed > 0 and (processed % self.milestone) == 0:
             logging.info("Milestone reached: %s processed", str(processed))
+            stats = self.qm.queue_stats()
+            remaining_tasks = (stats['tasks_without_error'] +
+                               stats['tasks_with_temp_errors'])
             self.notify.send_milestone_msg(
                 self.cnt['processed'],
-                self.num_items_in_queue(),
-                self.tm.estimate_remaining_time(
-                    self.cnt['processed'],
-                    self.num_items_in_queue()
-                ))
+                remaining_tasks,
+                self.tm.estimate_remaining_time(self.cnt['processed'],
+                                                remaining_tasks)
+                                            )
 
     def block_fqdn(self,
                    fqdn: str,

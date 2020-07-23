@@ -83,12 +83,15 @@ class NotificationManager:
                            processed: int,
                            remaining: int,
                            time_to_finish_seconds: int):
+        u"""Once a milestone is reached, send an email with an estimate
+            how long it will take for the bot to finish."""
+        # TO DO: more precise estimate requires to account for rate limits
         subject = (f"Project {self.project_name} Milestone: " +
                    f"{processed} processed")
         body = (f"{processed} processed.\n" +
                 f"{remaining} tasks remaining in the queue.\n" +
                 f"Estimated time to complete queue: " +
-                f"{time_to_finish_seconds} seconds.\n")
+                f"{round(time_to_finish_seconds / 60)} minutes.\n")
         self.mailer.send_mail(subject, body)
 
     def send_finish_msg(self,

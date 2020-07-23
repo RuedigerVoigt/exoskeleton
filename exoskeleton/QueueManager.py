@@ -507,13 +507,48 @@ class QueueManager:
     # STATISTICS
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def num_items_in_queue(self) -> int:
-        u"""Number of items left in the queue which are *not* marked as
-            causing a permanent error. """
+    def __num_tasks_wo_errors(self) -> int:
+        u"""Number of tasks left in the queue which are *not* marked as
+            causing any kind of error. """
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
         return int(self.cur.fetchone()[0])
+
+    def __num_tasks_w_permanent_errors(self) -> int:
+        u"""Number of tasks in the queue that are marked as causing a permanent
+            error."""
+        self.cur.execute("SELECT COUNT(*) FROM queue " +
+                         "WHERE causesError IN " +
+                         "    (SELECT id FROM errorType WHERE permanent = 1);")
+        return int(self.cur.fetchone()[0])
+
+    def __num_tasks_w_temporary_errors(self) -> int:
+        u"""Number of tasks in the queue that are marked as causing a
+            temporary error."""
+        self.cur.execute("SELECT COUNT(*) FROM queue " +
+                         "WHERE causesError IN " +
+                         "    (SELECT id FROM errorType WHERE permanent = 0);")
+        return int(self.cur.fetchone()[0])
+
+    def __num_tasks_w_rate_limit(self) -> int:
+        u"""Number of tasks in the queue that are marked as causing a permanent
+            error."""
+        self.cur.execute("SELECT COUNT(*) FROM queue " +
+                         "WHERE fqdnhash IN " +
+                         "    (SELECT fqdnhash FROM rateLimits " +
+                         "     WHERE noContactUntil > NOW());")
+        return int(self.cur.fetchone()[0])
+
+    def queue_stats(self) -> dict:
+        u"""Return a number of statistics about the queue as a dictionary."""
+        stats = {
+            'tasks_without_error': self.__num_tasks_wo_errors(),
+            'tasks_with_temp_errors': self.__num_tasks_w_temporary_errors(),
+            'tasks_with_permanent_errors': self.__num_tasks_w_permanent_errors(),
+            'tasks_blocked_by_rate_limit': self.__num_tasks_w_rate_limit()
+        }
+        return stats
 
     def update_host_statistics(self,
                                url: str,
