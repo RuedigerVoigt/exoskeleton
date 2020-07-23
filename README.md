@@ -14,6 +14,7 @@ Exoskeleton is a python framework that aims to help you build a similar bot. Mai
 * Working through that queue by either
     * downloading files to disk,
     * storing the page source code into a database table,
+    * storing the page text,
     * or making PDF-copies of webpages.
 * Managing already downloaded files:
     * Storing multiple versions of a specific file.
@@ -47,7 +48,7 @@ logging.basicConfig(level=logging.DEBUG)
 exo = exoskeleton.Exoskeleton(
     project_name='Bot',
     database_settings={'database': 'exoskeleton',
-                       'username': 'admin',
+                       'username': 'exoskeleton',
                        'passphrase': ''},
     # True, to stop after the queue is empty, Otherwise it will
     # look consistently for new tasks in the queue:
@@ -78,8 +79,6 @@ exo.add_save_page_code('https://www.ruediger-voigt.eu/')
 
 # Use chromium or Google chrome to generate a PDF of the website:
 exo.add_page_to_pdf('https://github.com/RuedigerVoigt/exoskeleton')
-
-print(exo.num_items_in_queue())
 
 # work through the queue:
 exo.process_queue()
