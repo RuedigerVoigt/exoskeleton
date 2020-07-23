@@ -535,7 +535,10 @@ class QueueManager:
         u"""Number of tasks in the queue that are marked as causing a permanent
             error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
-                         "WHERE fqdnhash IN " +
+                         "WHERE causesError NOT IN " +
+                         "    (SELECT id FROM errorType " +
+                         "     WHERE permanent = 1) " +
+                         "AND fqdnhash IN " +
                          "    (SELECT fqdnhash FROM rateLimits " +
                          "     WHERE noContactUntil > NOW());")
         return int(self.cur.fetchone()[0])
@@ -549,6 +552,19 @@ class QueueManager:
             'tasks_blocked_by_rate_limit': self.__num_tasks_w_rate_limit()
         }
         return stats
+
+    def log_queue_stats(self):
+        u"""Log the queue statistics. Especially useful when the bot starts
+            ore resumes processing the queue."""
+        stats = self.queue_stats()
+        overall_workable = (stats['tasks_without_error'] +
+                            stats['tasks_with_temp_errors'])
+        message = (f"The queue contains {overall_workable} tasks waiting " +
+                   f"to be executed. {stats['tasks_blocked_by_rate_limit']} " +
+                   f"of those are stalled as the bot hit a rate limit. " +
+                   f"{stats['tasks_with_permanent_errors']} cannot be " +
+                   f"executed due to permanent errors.")
+        logging.info(message)
 
     def update_host_statistics(self,
                                url: str,

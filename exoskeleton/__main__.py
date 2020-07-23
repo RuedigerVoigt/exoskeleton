@@ -220,6 +220,8 @@ class Exoskeleton:
 
     def process_queue(self):
         u"""Process the queue"""
+        self.qm.log_queue_stats()
+
         while True:
             try:
                 next_in_queue = self.qm.get_next_task()
