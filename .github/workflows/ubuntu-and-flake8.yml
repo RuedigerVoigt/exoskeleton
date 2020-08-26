@@ -1,14 +1,14 @@
 # This workflow will install Python dependencies on Ubuntu,
-# run tests and lint using flake8 with the latest three 
+# run tests and lint using flake8 with the latest three
 # Python versions.
 
 name: Build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, develop ]
 
 jobs:
   build:

@@ -2,9 +2,9 @@ name: System Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, develop ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, develop ]
 
 jobs:
   build:
@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Make a directory to store downloads
         run: mkdir ./fileDownloads
 
@@ -57,10 +57,10 @@ jobs:
         env:
           PORT: ${{ job.services.mariadb.ports[3306] }}
         run: |
-          mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'       
+          mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'
 
       - name: Run Systemtest
         run: python3 system-test.py
-  
+
       - name: List downloaded files
         run: ls -l ./fileDownloads
