@@ -36,6 +36,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: APT Update
+        run: apt update
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
