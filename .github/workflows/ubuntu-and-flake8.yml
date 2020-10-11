@@ -19,15 +19,22 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
+
+    - name: APT Update
+      run: sudo apt update
+
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
     - name: Lint with flake8
       run: |
         pip install flake8

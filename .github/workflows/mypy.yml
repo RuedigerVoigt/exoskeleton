@@ -15,6 +15,10 @@ jobs:
       matrix:
         python-version: [3.9]
     steps:
+
+    - name: APT Update
+      run: sudo apt update
+
     - uses: actions/checkout@v2
 
     - name: Set up Python ${{ matrix.python-version }}
