@@ -36,7 +36,7 @@ from .QueueManager import QueueManager
 
 
 class Exoskeleton:
-    u""" Main class of the exoskeleton crawler framework. """
+    """ Main class of the exoskeleton crawler framework. """
     # The class is complex which leads pylint3 to complain a lot.
     # As the complexity is needed, disable some warnings:
     # pylint: disable=too-many-statements
@@ -65,7 +65,7 @@ class Exoskeleton:
                  mail_settings: Union[dict, None] = None,
                  mail_behavior: Union[dict, None] = None,
                  chrome_name: str = 'chromium-browser'):
-        u"""Sets defaults"""
+        """Sets defaults"""
 
         logging.info('You are using exoskeleton 1.0.0 (July 23, 2020)')
 
@@ -219,7 +219,7 @@ class Exoskeleton:
         self.tm.random_wait()
 
     def process_queue(self):
-        u"""Process the queue"""
+        """Process the queue"""
         self.qm.log_queue_stats()
 
         while True:
@@ -327,8 +327,8 @@ class Exoskeleton:
                      url: str,
                      url_hash: str,
                      prettify_html: bool = False):
-        u""" Generic function to either download a file or
-             store a page's content. """
+        """ Generic function to either download a file or
+        store a page's content. """
         # pylint: disable=too-many-branches
         if not isinstance(queue_id, str):
             raise ValueError('The queue_id must be a string.')
@@ -472,7 +472,7 @@ class Exoskeleton:
                       url: str,
                       url_hash: str,
                       queue_id: str):
-        u""" Uses the Google Chrome or Chromium browser in headless mode
+        """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
         Beware: some cookie-popups blank out the page and
         all what is stored is the dialogue."""
@@ -546,7 +546,7 @@ class Exoskeleton:
 
     def return_page_code(self,
                          url: str):
-        u"""Directly return a page's code and do *not* store it
+        """Directly return a page's code and do *not* store it
         in the database. """
         if url == '' or url is None:
             raise ValueError('Missing url')
@@ -585,7 +585,7 @@ class Exoskeleton:
     def job_define_new(self,
                        job_name: str,
                        start_url: str):
-        u""" Create a new crawl job identified by it name and an url
+        """ Create a new crawl job identified by it name and an url
         to start crawling. """
         # no check for None or '' here as it is a required argument
 
@@ -622,7 +622,7 @@ class Exoskeleton:
     def job_update_current_url(self,
                                job_name: str,
                                current_url: str):
-        u""" Set the currentUrl for a specific job. """
+        """ Set the currentUrl for a specific job. """
 
         if job_name == '' or job_name is None:
             raise ValueError('Provide the job name.')
@@ -638,9 +638,9 @@ class Exoskeleton:
 
     def job_get_current_url(self,
                             job_name: str) -> str:
-        u""" Returns the current URl for this job. If none is stored, this
-             returns the start URL. Raises exception if the job is already
-             finished."""
+        """ Returns the current URl for this job. If none is stored, this
+        returns the start URL. Raises exception if the job is already
+        finished."""
 
         self.cur.execute('SELECT finished FROM jobs ' +
                          'WHERE jobName = %s;',
@@ -670,7 +670,7 @@ class Exoskeleton:
 
     def job_mark_as_finished(self,
                              job_name: str):
-        u""" Mark a crawl job as finished. """
+        """ Mark a crawl job as finished. """
         if job_name == '' or job_name is None:
             raise ValueError
         job_name = job_name.strip()
@@ -691,7 +691,7 @@ class Exoskeleton:
                           labels_master: set = None,
                           labels_version: set = None,
                           force_new_version: bool = False) -> Optional[str]:
-        u"""Add a file download URL to the queue """
+        """Add a file download URL to the queue """
         uuid = self.qm.add_to_queue(url, 1, labels_master,
                                     labels_version, False,
                                     force_new_version)
@@ -703,8 +703,7 @@ class Exoskeleton:
                            labels_version: set = None,
                            prettify_html: bool = False,
                            force_new_version: bool = False) -> Optional[str]:
-        u"""Add an URL to the queue to save its HTML code
-            into the database."""
+        """Add an URL to the queue to save its HTML code into the database."""
         uuid = self.qm.add_to_queue(url, 2, labels_master,
                                     labels_version, prettify_html,
                                     force_new_version)
@@ -715,8 +714,8 @@ class Exoskeleton:
                         labels_master: set = None,
                         labels_version: set = None,
                         force_new_version: bool = False) -> Optional[str]:
-        u"""Add an URL to the queue to print it to PDF
-            with headless Chrome. """
+        """Add an URL to the queue to print it to PDF
+        with headless Chrome. """
         if not self.browser_present:
             logging.warning('Will add this task to the queue, but without ' +
                             'Chrome or Chromium this task cannot run!')
@@ -730,10 +729,10 @@ class Exoskeleton:
                            labels_master: set = None,
                            labels_version: set = None,
                            force_new_version: bool = False) -> Optional[str]:
-        u"""Extract the text (not the code) from a HTML page and store it
-            into the database. This can be useful for some language processing tasks,
-            but compared to add_save_page_code this removes the possiblity to work
-            on a specific part using a CSS selector."""
+        """Extract the text (not the code) from a HTML page and store it into
+        the database. This can be useful for some language processing tasks,
+        but compared to add_save_page_code this removes the possiblity to work
+        on a specific part using a CSS selector."""
         uuid = self.qm.add_to_queue(url, 4, labels_master,
                                     labels_version, True,
                                     force_new_version)
@@ -741,43 +740,43 @@ class Exoskeleton:
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
-        u"""Get the id of the filemaster entry associated with this URL."""
+        """Get the id of the filemaster entry associated with this URL."""
         return self.qm.get_filemaster_id_by_url(url)
 
     def delete_from_queue(self,
                           queue_id: str):
-        u"""Remove all label links from a queue item and then delete it
-            from the queue."""
+        """Remove all label links from a queue item and then delete it
+        from the queue."""
         self.qm.delete_from_queue(queue_id)
 
     def forget_all_errors(self):
-        u"""Treat all queued tasks, that are marked to cause any type of
-            error, as if they are new tasks by removing that mark and
-            any delay."""
+        """Treat all queued tasks, that are marked to cause any type of
+        error, as if they are new tasks by removing that mark and
+        any delay."""
         self.qm.forget_all_errors()
 
     def forget_permanent_errors(self):
-        u"""Treat all queued tasks, that are marked to cause a *permanent*
-            error, as if they are new tasks by removing that mark and
-            any delay."""
+        """Treat all queued tasks, that are marked to cause a *permanent*
+        error, as if they are new tasks by removing that mark and
+        any delay."""
         self.qm.forget_error_group(True)
 
     def forget_temporary_errors(self):
-        u"""Treat all queued tasks, that are marked to cause a *temporary*
-            error, as if they are new tasks by removing that mark and
-            any delay."""
+        """Treat all queued tasks, that are marked to cause a *temporary*
+        error, as if they are new tasks by removing that mark and
+        any delay."""
         self.qm.forget_error_group(False)
 
     def forget_specific_error(self,
                               specific_error: int):
-        u"""Treat all queued tasks, that are marked to cause a *specific*
-            error, as if they are new tasks by removing that mark and
-            any delay. The number of the error has to correspond to the
-            errorType database table."""
+        """Treat all queued tasks, that are marked to cause a *specific*
+        error, as if they are new tasks by removing that mark and
+        any delay. The number of the error has to correspond to the
+        errorType database table."""
         self.qm.forget_specific_error(specific_error)
 
     def check_milestone(self):
-        u""" Check if milestone is reached. If that is the case,
+        """ Check if milestone is reached. If that is the case,
         send a notification (if configured to do so)."""
         processed = self.cnt['processed']
         # Have to check >0 in case the bot starts
@@ -797,24 +796,24 @@ class Exoskeleton:
     def block_fqdn(self,
                    fqdn: str,
                    comment: Optional[str] = None):
-        u"""Add a specific fully qualified domain name (fqdn)
-            - like www.example.com - to the blocklist."""
+        """Add a specific fully qualified domain name (fqdn)
+        - like www.example.com - to the blocklist."""
         self.qm.block_fqdn(fqdn, comment)
 
     def unblock_fqdn(self,
                      fqdn: str):
-        u"""Remove a specific fqdn from the blocklist."""
+        """Remove a specific fqdn from the blocklist."""
         self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn.strip())
 
     def truncate_blocklist(self):
-        u"""Remove *all* entries from the blocklist."""
+        """Remove *all* entries from the blocklist."""
         self.qm.truncate_blocklist()
 
     def get_file_size(self,
                       file_path: pathlib.Path) -> int:
-        u"""File size in bytes."""
+        """File size in bytes."""
         try:
             return file_path.stat().st_size
         except Exception:
@@ -823,9 +822,9 @@ class Exoskeleton:
 
     def prettify_html(self,
                       content: str) -> str:
-        u"""Parse the HTML => add a document structure if needed
-            => Encode HTML-entities and the document as Unicode (UTF-8).
-            Only use for HTML, not XML."""
+        """Parse the HTML => add a document structure if needed
+        => Encode HTML-entities and the document as Unicode (UTF-8).
+        Only use for HTML, not XML."""
 
         # Empty elements are not removed as they might
         # be used to find specific elements within the tree.
@@ -841,7 +840,7 @@ class Exoskeleton:
     def define_or_update_label(self,
                                shortname: str,
                                description: str = None):
-        u""" Insert a new label into the database or update its
+        """ Insert a new label into the database or update its
         description in case it already exists. Use __define_new_label
         if an update has to be avoided. """
         if len(shortname) > 31:
@@ -857,11 +856,11 @@ class Exoskeleton:
     def version_uuids_by_label(self,
                                single_label: str,
                                processed_only: bool = False) -> set:
-        u"""Get a list of UUIDs (in this context file versions)
-            which have *one* specific label attached to them.
-            If processed_only is set to True only UUIDs of
-            already downloaded items are returned.
-            Otherwise it contains queue objects with that label."""
+        """Get a list of UUIDs (in this context file versions)
+        which have *one* specific label attached to them.
+        If processed_only is set to True only UUIDs of
+        already downloaded items are returned.
+        Otherwise it contains queue objects with that label."""
         returned_set = self.qm.get_label_ids(single_label)
         if returned_set == set():
             raise ValueError('Unknown label. Check for typo.')
@@ -886,9 +885,9 @@ class Exoskeleton:
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
-        u"""Get a list of label names (not id numbers!) attached
-            to a specific version of a file. Does not include
-            labels attached to the filemaster entry."""
+        """Get a list of label names (not id numbers!) attached
+        to a specific version of a file. Does not include
+        labels attached to the filemaster entry."""
         self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
@@ -906,8 +905,8 @@ class Exoskeleton:
 
     def get_filemaster_id(self,
                           version_uuid: str) -> str:
-        u"""Get the id of the filemaster entry associated with
-            a specific version identified by its UUID."""
+        """Get the id of the filemaster entry associated with
+        a specific version identified by its UUID."""
         self.cur.execute('SELECT fileMasterID ' +
                          'FROM exoskeleton.fileVersions ' +
                          'WHERE id = %s;',
@@ -920,8 +919,8 @@ class Exoskeleton:
 
     def filemaster_labels_by_id(self,
                                 filemaster_id: str) -> set:
-        u"""Get a list of label names (not id numbers!) attached
-            to a specific filemaster entry."""
+        """Get a list of label names (not id numbers!) attached
+        to a specific filemaster entry."""
         self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
@@ -939,11 +938,10 @@ class Exoskeleton:
 
     def filemaster_labels_by_url(self,
                                  url: str) -> set:
-        u"""Primary use for automatic test: Get a list of label names
-            (not id numbers!) attached to a specific filemaster entry
-            via its URL instead of the id. The reason for this is that
-            the association with the URl predates the filemaster entry /
-            the id."""
+        """Primary use for automatic test: Get a list of label names
+        (not id numbers!) attached to a specific filemaster entry
+        via its URL instead of the id. The reason for this:
+        The association with the URl predates the filemaster entry / the id."""
         self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
@@ -961,8 +959,8 @@ class Exoskeleton:
 
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
-        u"""Get a set of ALL label names (not id numbers!) attached
-            to a specific version of a file AND its filemaster entry."""
+        """Get a set of ALL label names (not id numbers!) attached
+        to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
         filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
@@ -972,7 +970,7 @@ class Exoskeleton:
     def remove_labels_from_uuid(self,
                                 uuid: str,
                                 labels_to_remove: set):
-        u"""Detaches a label from a UUID / version."""
+        """Detaches a label from a UUID / version."""
 
         # Using a set to avoid duplicates. However, accept either
         # a single string or a list type.

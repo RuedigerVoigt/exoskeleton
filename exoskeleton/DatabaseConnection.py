@@ -17,11 +17,11 @@ import userprovided
 
 
 class DatabaseConnection:
-    u"""Database connection management for the exoskeleton framework."""
+    """Database connection management for the exoskeleton framework."""
 
     def __init__(self,
                  database_settings: dict):
-        u"""Sets defaults"""
+        """Sets defaults"""
 
         if database_settings is None:
             raise ValueError('You must supply database credentials for' +
@@ -77,7 +77,7 @@ class DatabaseConnection:
         self.connection.close()
 
     def establish_db_connection(self):
-        u"""Establish a connection to MariaDB """
+        """Establish a connection to MariaDB """
         try:
             logging.debug('Trying to connect to database.')
             self.connection = pymysql.connect(host=self.db_host,
@@ -105,7 +105,7 @@ class DatabaseConnection:
 
     def check_table_existence(self,
                               db_cursor) -> bool:
-        u"""Check if all expected tables exist."""
+        """Check if all expected tables exist."""
         logging.debug('Checking if the database table structure is complete.')
         expected_tables = ['actions',
                            'blockList',
@@ -146,7 +146,7 @@ class DatabaseConnection:
     def check_stored_procedures(self,
                                 db_cursor,
                                 db_name: str) -> bool:
-        u"""Check if all expected stored procedures exist and if the user
+        """Check if all expected stored procedures exist and if the user
         is allowed to execute them. """
         logging.debug('Checking if stored procedures exist.')
         expected_procedures = ['delete_all_versions_SP',
@@ -179,8 +179,8 @@ class DatabaseConnection:
         return True
 
     def get_cursor(self):
-        u"""Make the database cursor accessible from outside the class.
-            Try to reconnect if the connection is lost."""
+        """Make the database cursor accessible from outside the class.
+        Try to reconnect if the connection is lost."""
         if self.cur:
             return self.cur
         else:

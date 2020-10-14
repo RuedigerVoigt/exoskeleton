@@ -20,7 +20,7 @@ import userprovided
 
 
 class QueueManager:
-    u"""Manage the queue and labels for the exoskeleton framework."""
+    """Manage the queue and labels for the exoskeleton framework."""
 
     # If there is a temporary error, exoskeleton delays the
     # next try until the configured maximum of tries is
@@ -53,7 +53,7 @@ class QueueManager:
 
     def check_blocklist(self,
                         fqdn: str) -> bool:
-        u"""Check if a specific FQDN is on the blocklist."""
+        """Check if a specific FQDN is on the blocklist."""
 
         self.cur.execute('SELECT COUNT(*) FROM blockList ' +
                          'WHERE fqdnhash = SHA2(%s,256);',
@@ -66,8 +66,8 @@ class QueueManager:
     def block_fqdn(self,
                    fqdn: str,
                    comment: Optional[str] = None):
-        u"""Add a specific fully qualified domain name (fqdn)
-            - like www.example.com - to the blocklist."""
+        """Add a specific fully qualified domain name (fqdn)
+        - like www.example.com - to the blocklist."""
         if len(fqdn) > 255:
             raise ValueError('No valid FQDN can be longer than 255 ' +
                              'characters. Exoskeleton can only block ' +
@@ -83,13 +83,13 @@ class QueueManager:
 
     def unblock_fqdn(self,
                      fqdn: str):
-        u"""Remove a specific fqdn from the blocklist."""
+        """Remove a specific fqdn from the blocklist."""
         self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn.strip())
 
     def truncate_blocklist(self):
-        u"""Remove *all* entries from the blocklist."""
+        """Remove *all* entries from the blocklist."""
         logging.info("Truncating the blocklist.")
         self.cur.execute('TRUNCATE TABLE blockList;')
 
@@ -104,7 +104,7 @@ class QueueManager:
                      labels_version: set = None,
                      prettify_html: bool = False,
                      force_new_version: bool = False) -> Optional[str]:
-        u""" More general function to add items to queue. Called by
+        """ More general function to add items to queue. Called by
         add_file_download, add_save_page_code and add_page_to_pdf."""
 
         if action not in (1, 2, 3, 4):
@@ -189,11 +189,11 @@ class QueueManager:
     def __get_queue_uuids(self,
                           url: str,
                           action: int) -> set:
-        u"""Based on the URL and action ID this returns a set of UUIDs in the
-            *queue* that match those. Normally this set has a single element,
-            but as you can force exoskeleton to repeat tasks on the same
-            URL it can be multiple. Returns an empty set if such combination
-            is not in the queue."""
+        """Based on the URL and action ID this returns a set of UUIDs in the
+        *queue* that match those. Normally this set has a single element,
+        but as you can force exoskeleton to repeat tasks on the same
+        URL it can be multiple. Returns an empty set if such combination
+        is not in the queue."""
         self.cur.execute('SELECT id FROM queue ' +
                          'WHERE urlHash = SHA2(%s,256) AND ' +
                          'action = %s ' +
@@ -208,7 +208,7 @@ class QueueManager:
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
-        u"""Get the id of the filemaster entry associated with this URL"""
+        """Get the id of the filemaster entry associated with this URL"""
         self.cur.execute('SELECT id FROM fileMaster ' +
                          'WHERE urlHash = SHA2(%s,256);',
                          url)
@@ -225,7 +225,7 @@ class QueueManager:
     def __define_new_label(self,
                            shortname: str,
                            description: str = None):
-        u""" If the label is not already in use, define a new label
+        """ If the label is not already in use, define a new label
         and a description. """
         if len(shortname) > 31:
             logging.error("Labelname exceeds max length of 31 " +
@@ -243,9 +243,9 @@ class QueueManager:
     def assign_labels_to_master(self,
                                 url: str,
                                 labels: Union[set, None]):
-        u""" Assigns one or multiple labels to the *fileMaster* entry.
+        """ Assigns one or multiple labels to the *fileMaster* entry.
         Removes duplicates and adds new labels to the label list
-        if necessary.."""
+        if necessary."""
 
         if not labels:
             return
@@ -289,7 +289,7 @@ class QueueManager:
     def assign_labels_to_uuid(self,
                               uuid: str,
                               labels: Union[set, None]):
-        u""" Assigns one or multiple labels either to a specific
+        """ Assigns one or multiple labels either to a specific
         version of a file.
         Removes duplicates and adds new labels to the label list
         if necessary.."""
@@ -331,7 +331,7 @@ class QueueManager:
 
     def get_label_ids(self,
                       label_set: Union[set, str]) -> set:
-        u""" Given a set of labels, this returns the corresponding ids
+        """ Given a set of labels, this returns the corresponding ids
         in the labels table. """
         if label_set:
             label_set = userprovided.parameters.convert_to_set(label_set)
@@ -357,14 +357,14 @@ class QueueManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def get_next_task(self):
-        u""" Get the next suitable task"""
+        """ Get the next suitable task"""
         self.cur.execute('CALL next_queue_object_SP();')
         return self.cur.fetchone()
 
     def delete_from_queue(self,
                           queue_id: str):
-        u"""Remove all label links from a queue item
-            and then delete it from the queue."""
+        """Remove all label links from a queue item
+        and then delete it from the queue."""
         # callproc expects a tuple. Do not remove the comma:
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
@@ -375,11 +375,11 @@ class QueueManager:
     def add_crawl_delay(self,
                         queue_id: str,
                         error_type: Optional[int] = None):
-        u"""In case of a timeout or a temporary error increment the counter for
-            the number of tries by one. If the configured maximum of tries
-            was reached, mark it as a permanent error. Otherwise add a delay,
-            so exoskelton does not try the same task again. As multiple tasks
-            may affect the same URL, the delay is added to all of them."""
+        """In case of a timeout or a temporary error increment the counter for
+        the number of tries by one. If the configured maximum of tries
+        was reached, mark it as a permanent error. Otherwise add a delay,
+        so exoskelton does not try the same task again. As multiple tasks
+        may affect the same URL, the delay is added to all of them."""
         wait_time = 0
 
         # Increase the tries counter
@@ -433,9 +433,9 @@ class QueueManager:
     def mark_permanent_error(self,
                              queue_id: str,
                              error: int):
-        u""" Mark item in queue that causes a permanent error.
-            Without this exoskeleton would try to execute the
-            task over and over again."""
+        """ Mark item in queue that causes a permanent error.
+        Without this exoskeleton would try to execute the
+        task over and over again."""
 
         self.cur.execute('UPDATE queue ' +
                          'SET causesError = %s, ' +
@@ -445,10 +445,10 @@ class QueueManager:
 
     def forget_specific_error(self,
                               specific_error: int):
-        u"""Treat all queued tasks, that are marked to cause a *specific*
-            error, as if they are new tasks by removing that mark and
-            any delay. The number of the error has to correspond to the
-            errorType database table."""
+        """Treat all queued tasks, that are marked to cause a *specific*
+        error, as if they are new tasks by removing that mark and any delay.
+        The number of the error has to correspond to the errorType
+        database table."""
         self.cur.execute("UPDATE queue SET " +
                          "causesError = NULL, " +
                          "numTries = 0,"
@@ -467,9 +467,8 @@ class QueueManager:
                          (1 if permanent else 0))
 
     def forget_all_errors(self):
-        u"""Treat all queued tasks, that are marked to cause any type of
-            error, as if they are new tasks by removing that mark and
-            any delay."""
+        """Treat all queued tasks, that are marked to cause any type of
+        error, as if they are new tasks by removing that mark and any delay."""
         self.cur.execute("UPDATE queue SET " +
                          "causesError = NULL, " +
                          "numTries = 0, " +
@@ -477,10 +476,10 @@ class QueueManager:
 
     def add_rate_limit(self,
                        fqdn: str):
-        u"""If a bot receives the statuscode 429 ('too many requests') it hit
-            a rate limit. Adding the fully qualified domain name to the rate
-            limit list, ensures that this FQDN is not contacted for a
-            predefined time."""
+        """If a bot receives the statuscode 429 ('too many requests') it hit
+        a rate limit. Adding the fully qualified domain name to the rate
+        limit list, ensures that this FQDN is not contacted for a
+        predefined time."""
         msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
                f"contact this host for {self.rate_limit_wait} seconds.")
         logging.error(msg)
@@ -508,32 +507,32 @@ class QueueManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def __num_tasks_wo_errors(self) -> int:
-        u"""Number of tasks left in the queue which are *not* marked as
-            causing any kind of error. """
+        """Number of tasks left in the queue which are *not* marked as
+        causing any kind of error. """
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
         return int(self.cur.fetchone()[0])
 
     def __num_tasks_w_permanent_errors(self) -> int:
-        u"""Number of tasks in the queue that are marked as causing a permanent
-            error."""
+        """Number of tasks in the queue that are marked as causing a permanent
+        error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 1);")
         return int(self.cur.fetchone()[0])
 
     def __num_tasks_w_temporary_errors(self) -> int:
-        u"""Number of tasks in the queue that are marked as causing a
-            temporary error."""
+        """Number of tasks in the queue that are marked as causing a
+        temporary error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 0);")
         return int(self.cur.fetchone()[0])
 
     def __num_tasks_w_rate_limit(self) -> int:
-        u"""Number of tasks in the queue that are marked as causing a permanent
-            error."""
+        """Number of tasks in the queue that are marked as causing a permanent
+        error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError NOT IN " +
                          "    (SELECT id FROM errorType " +
@@ -544,7 +543,7 @@ class QueueManager:
         return int(self.cur.fetchone()[0])
 
     def queue_stats(self) -> dict:
-        u"""Return a number of statistics about the queue as a dictionary."""
+        """Return a number of statistics about the queue as a dictionary."""
         stats = {
             'tasks_without_error': self.__num_tasks_wo_errors(),
             'tasks_with_temp_errors': self.__num_tasks_w_temporary_errors(),
@@ -554,8 +553,8 @@ class QueueManager:
         return stats
 
     def log_queue_stats(self):
-        u"""Log the queue statistics. Especially useful when the bot starts
-            ore resumes processing the queue."""
+        """Log the queue statistics. Especially useful when the bot starts
+        or resumes processing the queue."""
         stats = self.queue_stats()
         overall_workable = (stats['tasks_without_error'] +
                             stats['tasks_with_temp_errors'])
@@ -572,7 +571,7 @@ class QueueManager:
                                temporary_problems: int,
                                permanent_errors: int,
                                hit_rate_limit: int):
-        u""" Updates the host based statistics. The URL gets shortened to
+        """ Updates the host based statistics. The URL gets shortened to
         the hostname. Increase the different counters."""
 
         fqdn = urlparse(url).hostname

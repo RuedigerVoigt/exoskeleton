@@ -16,15 +16,15 @@ import userprovided
 
 
 class NotificationManager:
-    u"""Notification management for the exoskeleton crawler framework.
-        At the moment this sends out email, but it may support other
-        notification methods in future versions of exoskeleton."""
+    """Notification management for the exoskeleton crawler framework.
+    At the moment this sends out email, but it may support other
+    notification methods in future versions of exoskeleton."""
 
     def __init__(self,
                  project_name: str,
                  mail_settings: dict,
                  mail_behavior: dict):
-        u"""Sets defaults"""
+        """Sets defaults"""
 
         self.project_name = project_name
 
@@ -56,8 +56,8 @@ class NotificationManager:
 
     def send_msg(self,
                  reason: str):
-        u"""Send a prepared message if the bot is configured
-            and able to do so."""
+        """Send a prepared message if the bot is configured
+        and able to do so."""
         messages = {
             'start': {
                 'subject': f"Project {self.project_name} just started.",
@@ -83,8 +83,8 @@ class NotificationManager:
                            processed: int,
                            remaining: int,
                            time_to_finish_seconds: int):
-        u"""Once a milestone is reached, send an email with an estimate
-            how long it will take for the bot to finish."""
+        """Once a milestone is reached, send an email with an estimate
+        how long it will take for the bot to finish."""
         # TO DO: more precise estimate requires to account for rate limits
         subject = (f"Project {self.project_name} Milestone: " +
                    f"{processed} processed")
@@ -106,7 +106,6 @@ class NotificationManager:
     def send_custom_msg(self,
                         subject: str,
                         body: str):
-        u"""Send a custom message if the bot is configured
-            and able to do so."""
+        """Send a custom message if the bot is configured and able to do so."""
         if self.send_mails:
             self.mailer.send_mail(subject, body)
