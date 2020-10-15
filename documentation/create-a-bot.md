@@ -10,7 +10,7 @@ You should avoid putting your credentials, like password and username, directly 
 
 The preferred way to store credentials would be to store them as environment variables. This can be tricky as per default those are not permanently stored and are not available after a reboot.
 
-The (python-dotenv package)[https://pypi.org/project/python-dotenv/] solves this problem by making the contents of a `.env` file available as environment variables. Accordingly `.env` should be added to your `.gitignore` file.
+The [python-dotenv package](https://pypi.org/project/python-dotenv/) solves this problem by making the contents of a `.env` file available as environment variables. Accordingly `.env` should be added to your `.gitignore` file.
 
 ### Credentials File
 
