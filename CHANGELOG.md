@@ -1,5 +1,15 @@
 # Changelog / History
 
+## version 1.1.0 stable (upcoming)
+
+* The [agg](https://github.com/RuedigerVoigt/agg) package has been added as an dependency.  Its functionality is joining multiple CSV files into one. As a sister project of exoskeleton it follows the same development steps.
+* If a user provides an unsupported browser to the "save as PDF" functionality, exoskeleton now checks if supported browsers are in the PATH and suggests them.
+
+Breaking Changes:
+
+* The parameter `chrome_name` now defaults to an empty string. So if you want to use Chromium or Google Chrome to download PDF versions of webpages, you have to provide the name of an executable in the path.
+
+
 ## version 1.0.0 stable (2020-07-23)
 
 New Features:

@@ -16,7 +16,6 @@ from collections import Counter
 from collections import defaultdict
 import logging
 import pathlib
-import shutil
 import subprocess
 import time
 from typing import Union, Optional
@@ -35,6 +34,7 @@ from .DatabaseConnection import DatabaseConnection
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
 from .QueueManager import QueueManager
+from .RemoteControlChrome import RemoteControlChrome
 
 
 class Exoskeleton:
@@ -66,7 +66,7 @@ class Exoskeleton:
                  bot_behavior: Union[dict, None] = None,
                  mail_settings: Union[dict, None] = None,
                  mail_behavior: Union[dict, None] = None,
-                 chrome_name: str = 'chromium-browser'):
+                 chrome_name: str = ''):
         """Sets defaults"""
 
         logging.info('You are using exoskeleton 1.0.0 (July 23, 2020)')
@@ -183,34 +183,19 @@ class Exoskeleton:
         # INIT: Browser
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        # See if the executable name provided by the setup is in the path:
-        self.browser_present = True if shutil.which(chrome_name) else False
-        # if it is not avaible, some functionality is not avaialble:
-        if not self.browser_present:
-            logging.warning("No browser available with this executable name." +
-                            "Saving a HTML page as PDF is not possible " +
-                            "without that.")
-        else:
-            # found an executable
-            # check whether the user provided an unsupported browser:
-            unsupported_browsers = {'firefox', 'safari', 'edge'}
-            supported_browsers = {'google-chrome', 'chrome', 'chromium',
-                                  'chromium-browser'}
-            if chrome_name.lower() in supported_browsers:
-                logging.info('Broser supported and available.')
-            elif chrome_name.lower() in unsupported_browsers:
-                raise ValueError('Only Chrome and Chromium are supported!')
-            else:
-                logging.warning("Browser executable seems to be neither " +
-                                "Google Chrome nor Chromium")
+        self.browser_present = False
+        if chrome_name.strip() != '':
+            try:
+                self.controlled_browser = RemoteControlChrome(chrome_name)
+                self.browser_present = True
+            except Exception:
+                raise
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Create Objects
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         self.cnt: Counter = Counter()
-
-        self.chrome_process = chrome_name.strip()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ACTIONS
@@ -476,80 +461,50 @@ class Exoskeleton:
                       queue_id: str):
         """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
-        Beware: some cookie-popups blank out the page and
+        BEWARE: some cookie-popups blank out the page and
         all what is stored is the dialogue."""
-        # Using headless Chrome instead of Selenium for the following
-        # reasons:
-        # * The user does not need to install and update a version of
-        #   chromedriver matching the browser.
-        # * It is faster.
-        # * It does not open a GUI.
-        # * Selenium has no built in command for PDF export, but needs
-        #   to operate the dialog. That is far more likely to break.
 
         if not self.browser_present:
-            raise ValueError('You must provide the name of the Chrome ' +
-                             'process to use this.')
+            raise ValueError('As you have not provided a valid name / path ' +
+                             'of the Chromium or Chrome process to use, you ' +
+                             'cannot save a page in PDF format.')
+
         filename = f"{self.file_prefix}{queue_id}.pdf"
         path = self.target_dir.joinpath(filename)
 
         try:
-            # Using the subprocess module as it is part of the
-            # standard library and set up to replace os.system
-            # and os.spawn!
-            subprocess.run([self.chrome_process,
-                            "--headless",
-                            "--new-windows",
-                            "--disable-gpu",
-                            "--account-consistency",
-                            # No additional quotation marks around the path:
-                            # subprocess does the necessary escaping!
-                            f"--print-to-pdf={path}",
-                            url],
-                           shell=False,
-                           timeout=30,
-                           check=True)
+            self.controlled_browser.page_to_pdf(url, path)
 
             hash_value = None
             if self.hash_method:
                 hash_value = userprovided.hash.calculate_file_hash(
                     path, self.hash_method)
             logging.debug('PDF of page saved to disk')
-            try:
-                self.cur.callproc('insert_file_SP',
-                                  (url, url_hash, queue_id, 'application/pdf',
-                                   str(self.target_dir), filename,
-                                   self.get_file_size(path),
-                                   self.hash_method, hash_value, 3))
-            except pymysql.DatabaseError:
-                self.cnt['transaction_fail'] += 1
-                logging.error('Transaction failed: Could not add already ' +
-                              'downloaded file %s to the database!',
-                              filename, exc_info=True)
-            except Exception:
-                logging.error('Unknown exception', exc_info=True)
-            self.cnt['processed'] += 1
-            self.qm.update_host_statistics(url, 1, 0, 0, 0)
+
+            self.cur.callproc('insert_file_SP',
+                              (url, url_hash, queue_id, 'application/pdf',
+                               str(self.target_dir), filename,
+                               self.get_file_size(path),
+                               self.hash_method, hash_value, 3))
+        except pymysql.DatabaseError:
+            self.cnt['transaction_fail'] += 1
+            logging.error('Transaction failed: Could not add already ' +
+                          'downloaded file %s to the database!',
+                          path, exc_info=True)
         except subprocess.TimeoutExpired:
-            logging.error('Cannot create PDF due to timeout.')
             self.qm.add_crawl_delay(queue_id, 4)
             self.qm.update_host_statistics(url, 0, 1, 0, 0)
         except subprocess.CalledProcessError:
-            logging.error('Cannot create PDF due to process error.',
-                          exc_info=True)
             self.qm.add_crawl_delay(queue_id, 5)
             self.qm.update_host_statistics(url, 0, 0, 1, 0)
         except Exception:
-            logging.error('Exception.',
-                          exc_info=True)
             self.qm.add_crawl_delay(queue_id, 0)
             self.qm.update_host_statistics(url, 0, 1, 0, 0)
             pass
 
     def return_page_code(self,
                          url: str):
-        """Directly return a page's code and do *not* store it
-        in the database. """
+        """Directly return a page's code. Do *not* store it in the database."""
         if url == '' or url is None:
             raise ValueError('Missing url')
         url = url.strip()
@@ -720,7 +675,9 @@ class Exoskeleton:
         with headless Chrome. """
         if not self.browser_present:
             logging.warning('Will add this task to the queue, but without ' +
-                            'Chrome or Chromium this task cannot run!')
+                            'Chrome or Chromium this task cannot run!' +
+                            'Provide the path to the executable when you ' +
+                            'initialize exoskeleton.')
         uuid = self.qm.add_to_queue(url, 3, labels_master,
                                     labels_version, False,
                                     force_new_version)
