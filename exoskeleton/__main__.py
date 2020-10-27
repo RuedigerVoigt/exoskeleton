@@ -158,8 +158,7 @@ class Exoskeleton:
             # working directory.
             self.target_dir = pathlib.Path(target_directory).resolve()
             if self.target_dir.is_dir():
-                logging.debug("Set target directory to %s",
-                              target_directory)
+                logging.debug("Set target directory to %s", target_directory)
             else:
                 raise OSError("Cannot find or access the user " +
                               "supplied target directory! " +
@@ -277,9 +276,8 @@ class Exoskeleton:
                 # The FQDN might have been added to the blocklist *after*
                 # the task entered into the queue:
                 if self.qm.check_blocklist(urlparse(url).hostname):
-                    logging.error('Cannot process queue item as the ' +
-                                  'the FQDN has meanwhile been added to ' +
-                                  'the blocklist!')
+                    logging.error('Cannot process queue item as the FQDN ' +
+                                  'has meanwhile been added to the blocklist!')
                     self.qm.delete_from_queue(queue_id)
                     logging.info('Removed item from queue: FQDN on blocklist.')
                 else:
@@ -315,7 +313,7 @@ class Exoskeleton:
                      url_hash: str,
                      prettify_html: bool = False):
         """ Generic function to either download a file or
-        store a page's content. """
+            store a page's content."""
         # pylint: disable=too-many-branches
         if not isinstance(queue_id, str):
             raise ValueError('The queue_id must be a string.')
@@ -427,8 +425,7 @@ class Exoskeleton:
                 self.qm.update_host_statistics(url, 0, 0, 1, 0)
 
         except TimeoutError:
-            logging.error('Reached timeout.',
-                          exc_info=True)
+            logging.error('Reached timeout.', exc_info=True)
             self.qm.add_crawl_delay(queue_id, 4)
             self.qm.update_host_statistics(url, 0, 1, 0, 0)
 
@@ -450,8 +447,8 @@ class Exoskeleton:
             self.qm.mark_permanent_error(queue_id, 1)
 
         except Exception:
-            logging.error('Unknown exception while trying ' +
-                          'to download.', exc_info=True)
+            logging.error('Unknown exception while trying to download.',
+                          exc_info=True)
             self.qm.update_host_statistics(url, 0, 0, 1, 0)
             raise
 
@@ -461,7 +458,7 @@ class Exoskeleton:
                       queue_id: str):
         """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
-        BEWARE: some cookie-popups blank out the page and
+        BEWARE: Some cookie-popups blank out the page and
         all what is stored is the dialogue."""
 
         if not self.browser_present:
