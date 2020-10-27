@@ -122,11 +122,13 @@ class QueueManager:
                           'this action. Will be ignored.')
             prettify_html = False
 
-        # Excess whitespace might be common (copy and paste)
-        # and would change the hash:
-        url = url.strip()
-        # check if it is an URL and if it is either http or https
-        # (other schemas are not supported by requests)
+        try:
+            url = userprovided.url.normalize_url(url)
+        except ValueError:
+            return None
+
+        # Check if the scheme is either http or https
+        # (others are not supported by requests)
         if not userprovided.url.is_url(url, ('http', 'https')):
             logging.error('Could not add URL %s : invalid or unsupported ' +
                           'scheme', url)
@@ -209,6 +211,12 @@ class QueueManager:
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
         """Get the id of the filemaster entry associated with this URL"""
+
+        try:
+            url = userprovided.url.normalize_url(url)
+        except ValueError:
+            return None
+
         self.cur.execute('SELECT id FROM fileMaster ' +
                          'WHERE urlHash = SHA2(%s,256);',
                          url)
@@ -246,6 +254,11 @@ class QueueManager:
         """ Assigns one or multiple labels to the *fileMaster* entry.
         Removes duplicates and adds new labels to the label list
         if necessary."""
+
+        try:
+            url = userprovided.url.normalize_url(url)
+        except ValueError:
+            return None
 
         if not labels:
             return
