@@ -71,6 +71,7 @@ class DatabaseConnection:
         # Check the schema:
         self.check_table_existence(self.cur)
         self.check_stored_procedures(self.cur, self.db_name)
+        self.check_schema_version(self.cur)
 
     def __del__(self):
         # make sure the connection is closed instead of waiting for timeout:
@@ -177,6 +178,31 @@ class DatabaseConnection:
 
         logging.info("Found all expected stored procedures.")
         return True
+
+    def check_schema_version(self, db_cursor):
+        """Check if the database schema is compatible with this version
+           of exoskeleton: Although check_table_existence and
+           check_stored_procedures check if all expected tables and
+           stored procedures exist, there might have been changes to
+           the structure of those. This can alert the user."""
+        try:
+            db_cursor.execute("SELECT exoValue FROM exoInfo " +
+                              "WHERE exoKey ='schema';")
+            schema = db_cursor.fetchone()
+            if not schema:
+                logging.warning('Found no information about the version ' +
+                                'of the database schema.')
+            elif schema[0] == '1.1.0':
+                logging.info('Database schema matches the version ' +
+                             'of exoskeleton.')
+            else:
+                logging.warning(f"Mismatch between version of exoskeleton " +
+                                f" (1.1.0) and version of the database " +
+                                f"schema ({schema[0]}).")
+        except pymysql.ProgrammingError:
+            # means: the table does not exist (i.e. before version 1.1.0)
+            logging.warning('Found no information about the version of the ' +
+                            'database schema.')
 
     def get_cursor(self):
         """Make the database cursor accessible from outside the class.
