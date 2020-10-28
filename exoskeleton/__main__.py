@@ -69,7 +69,7 @@ class Exoskeleton:
                  chrome_name: str = ''):
         """Sets defaults"""
 
-        logging.info('You are using exoskeleton 1.0.0 (July 23, 2020)')
+        logging.info('You are using exoskeleton 1.1.0 (October 29, 2020)')
 
         self.project: str = project_name.strip()
         self.user_agent: str = bot_user_agent.strip()

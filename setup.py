@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="exoskeleton",
-    version="1.0.0",
+    version="1.1.0",
     author="Rüdiger Voigt",
     author_email="projects@ruediger-voigt.eu",
     description="A library to create a bot / spider / crawler.",

@@ -8,5 +8,5 @@ from exoskeleton.QueueManager import QueueManager
 from exoskeleton.RemoteControlChrome import RemoteControlChrome
 
 name = "exoskeleton"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Rüdiger Voigt"
