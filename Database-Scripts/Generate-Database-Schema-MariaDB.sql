@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 1.0.0 of exoskeleton
+-- for version 1.1.0 of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -25,8 +25,6 @@ USE `exoskeleton`;
 --
 -- Needed by the bot to know what to do next.
 --
--- IMPORTANT: The queue must not use an integer with auto-increment
--- as an id.
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS queue (
@@ -61,6 +59,10 @@ CREATE TABLE IF NOT EXISTS queue (
 
 -- ----------------------------------------------------------
 -- JOBS
+--
+-- Jobs are a tool to traverse multiple search result pages.
+-- The named job holds the current URL so that the crawl must not be
+-- restarted if it is stopped in between for any reason.
 -- ----------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS jobs (
@@ -619,3 +621,22 @@ RETURNS INTEGER
 RETURN(SELECT COUNT(*) FROM queue WHERE causesError IN (
     SELECT id FROM errorType WHERE permanent = 1)
     );
+
+
+-- ----------------------------------------------------------
+-- ----------------------------------------------------------
+-- BELOW CHANGES FOR EXOSKELETON VERSION 1.1.0
+-- ----------------------------------------------------------
+-- ----------------------------------------------------------
+
+-- Store some information about the installation
+CREATE TABLE IF NOT EXISTS exoInfo (
+    exoKey CHAR(32) CHARACTER SET ASCII NOT NULL
+    ,exoValue VARCHAR(64) NOT NULL
+    ,PRIMARY KEY(`exoKey`)
+) ENGINE=InnoDB;
+
+-- Store the version of the schema so exoskeleton can check if the schema 
+-- fulfills the basic reuirements for the version:
+INSERT INTO exoInfo VALUES ('schema', '1.1.0') 
+ON DUPLICATE KEY UPDATE exoValue = '1.1.0';
