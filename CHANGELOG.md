@@ -4,7 +4,7 @@
 
 * The [agg](https://github.com/RuedigerVoigt/agg) package has been added as an dependency for a planned feature.  Its functionality is joining multiple CSV files into one. As a sister project of exoskeleton it follows the same development steps.
 * If a user provides an unsupported browser to the "save as PDF" functionality, exoskeleton now checks if supported browsers are in the PATH and suggests them.
-* The database schema now stores its version in the table `exoinfo`. This makes it possible to alert users combing different, potentially incompatible versions of the database schema and exoskeleton.
+* The database schema now stores its version in the table `exoinfo`. This makes it possible to alert users combining different, potentially incompatible versions of the database schema and exoskeleton.
 
 Breaking Changes:
 * URLs are now normalized using `userprovided.url.normalize_url()` ([more info](https://github.com/RuedigerVoigt/userprovided/blob/master/CHANGELOG.md#version-075-beta-2020-10-27)). This is a more elaborate method than used before and will reduce the number of duplicates in certain scenarios. For example, it is now recognized as a duplicate if two links point to the same page and the only difference is a fragment (i.e. `https://www.example.com/index.html` and `https://www.example.com/index.html#foo`). So if you switch from 1.0.0 to 1.1.0 in an already running project, this might lead to some resources being downloaded again as old URLs are normalized in a different way.
