@@ -70,7 +70,7 @@ class DatabaseConnection:
 
         # Check the schema:
         self.check_table_existence(self.cur)
-        self.check_stored_procedures(self.cur, self.db_name)
+        self.check_stored_procedures(self.cur)
         self.check_schema_version(self.cur)
 
     def __del__(self):
@@ -145,8 +145,7 @@ class DatabaseConnection:
         return True
 
     def check_stored_procedures(self,
-                                db_cursor,
-                                db_name: str) -> bool:
+                                db_cursor) -> bool:
         """Check if all expected stored procedures exist and if the user
         is allowed to execute them. """
         logging.debug('Checking if stored procedures exist.')
@@ -160,7 +159,7 @@ class DatabaseConnection:
         db_cursor.execute('SELECT SPECIFIC_NAME ' +
                           'FROM INFORMATION_SCHEMA.ROUTINES ' +
                           'WHERE ROUTINE_SCHEMA = %s;',
-                          db_name)
+                          self.db_name)
         procedures = db_cursor.fetchall()
         procedures_found = [item[0] for item in procedures]
         for procedure in expected_procedures:
