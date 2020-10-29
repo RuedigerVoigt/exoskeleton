@@ -300,8 +300,17 @@ class Exoskeleton:
                     else:
                         logging.error('Unknown action id!')
 
-                    if self.milestone:
-                        self.check_milestone()
+                    if self.milestone and self.check_is_milestone():
+                        stats = self.qm.queue_stats()
+                        remaining_tasks = (stats['tasks_without_error'] +
+                                           stats['tasks_with_temp_errors'])
+                        self.notify.send_milestone_msg(
+                            self.cnt['processed'],
+                            remaining_tasks,
+                            self.tm.estimate_remaining_time(
+                                self.cnt['processed'],
+                                remaining_tasks)
+                                )
 
                     # wait some interval to avoid overloading the server
                     self.tm.random_wait()
@@ -731,23 +740,14 @@ class Exoskeleton:
         errorType database table."""
         self.qm.forget_specific_error(specific_error)
 
-    def check_milestone(self):
-        """ Check if milestone is reached. If that is the case,
-        send a notification (if configured to do so)."""
+    def check_is_milestone(self) -> bool:
+        """ Check if a milestone is reached."""
         processed = self.cnt['processed']
-        # Have to check >0 in case the bot starts
-        # failing with the first item.
+        # Check >0 in case the bot starts failing with the first item.
         if processed > 0 and (processed % self.milestone) == 0:
             logging.info("Milestone reached: %s processed", str(processed))
-            stats = self.qm.queue_stats()
-            remaining_tasks = (stats['tasks_without_error'] +
-                               stats['tasks_with_temp_errors'])
-            self.notify.send_milestone_msg(
-                self.cnt['processed'],
-                remaining_tasks,
-                self.tm.estimate_remaining_time(self.cnt['processed'],
-                                                remaining_tasks)
-                                            )
+            return True
+        return False
 
     def block_fqdn(self,
                    fqdn: str,
