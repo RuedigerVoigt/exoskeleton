@@ -31,6 +31,7 @@ import userprovided
 # import other modules of this framework
 from .DatabaseConnection import DatabaseConnection
 from .FileManager import FileManager
+from .JobManager import JobManager
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
 from .QueueManager import QueueManager
@@ -134,23 +135,22 @@ class Exoskeleton:
         self.queue_revisit = userprovided.parameters.int_in_range(
             "queue_revisit", self.queue_revisit, 10, 50, 50)
 
-        # Init time management
+        # Init Classes
         self.tm = TimeManager(bot_behavior.get('wait_min', 5),
                               bot_behavior.get('wait_max', 30))
 
-        # Init queue management
         self.qm = QueueManager(self.cur, self.tm, bot_behavior)
 
-        # Init File Handling
         self.fm = FileManager(self.cur,
                               self.qm,
                               target_directory,
                               filename_prefix)
 
-        # Init Browser
         self.controlled_browser = RemoteControlChrome(chrome_name)
 
-        # Create objects
+        self.jobs = JobManager(self.cur)
+
+        # Create other objects
         self.cnt: Counter = Counter()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -492,100 +492,25 @@ class Exoskeleton:
                        start_url: str):
         """ Create a new crawl job identified by it name and an url
         to start crawling. """
-        # no check for None or '' here as it is a required argument
-
-        job_name = job_name.strip()
-        # the job_name may have consisted only of whitespace_
-        if job_name == '':
-            raise ValueError('Provide a valid job_name')
-
-        if len(job_name) > 127:
-            raise ValueError('Invalid job name: maximum 127 characters.')
-
-        if start_url == '' or start_url is None:
-            raise ValueError
-
-        try:
-            self.cur.execute('INSERT INTO jobs ' +
-                             '(jobName, startUrl, startUrlHash) ' +
-                             'VALUES (%s, %s, SHA2(%s,256));',
-                             (job_name, start_url, start_url))
-            logging.debug('Defined new job.')
-        except pymysql.IntegrityError:
-            # A job with this name already exists
-            # Check if startURL is the same:
-            self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
-                             job_name)
-            existing_start_url = self.cur.fetchone()[0]
-            if existing_start_url == start_url:
-                logging.warning('A job with identical name and startURL ' +
-                                'is already defined.')
-            else:
-                raise ValueError('A job with the identical name but ' +
-                                 '*different* startURL is already defined!')
+        self.jobs.define_new(job_name, start_url)
 
     def job_update_current_url(self,
                                job_name: str,
                                current_url: str):
         """ Set the currentUrl for a specific job. """
-
-        if job_name == '' or job_name is None:
-            raise ValueError('Provide the job name.')
-        if current_url == '' or current_url is None:
-            raise ValueError('Current URL must not be empty.')
-
-        affected_rows = self.cur.execute('UPDATE jobs ' +
-                                         'SET currentURL = %s ' +
-                                         'WHERE jobName = %s;',
-                                         (current_url, job_name))
-        if affected_rows == 0:
-            raise ValueError('A job with this name is not known.')
+        self.jobs.update_current_url(job_name, current_url)
 
     def job_get_current_url(self,
                             job_name: str) -> str:
         """ Returns the current URl for this job. If none is stored, this
         returns the start URL. Raises exception if the job is already
         finished."""
-
-        self.cur.execute('SELECT finished FROM jobs ' +
-                         'WHERE jobName = %s;',
-                         job_name)
-        job_state = self.cur.fetchone()
-        # If the job does not exist at all, then MariaDB returns None.
-        # If the job exists, but the finished field has a value of NULL,
-        # then MariaDB returns (None,)
-        try:
-            job_state = job_state[0]
-        except TypeError:
-            # Occurs if the the result was None, i.e. the job
-            # does not exist.
-            raise ValueError('Job is unknown!')
-
-        if job_state is not None:
-            # i.e. the finished field is not empty
-            raise RuntimeError(f"Job already finished at {job_state}.")
-
-        # The job exists and is not finished. So return the currentUrl,
-        # or - in case that is not defined - the startUrl value.
-        self.cur.execute('SELECT COALESCE(currentUrl, startUrl) ' +
-                         'FROM jobs ' +
-                         'WHERE jobName = %s;',
-                         job_name)
-        return self.cur.fetchone()[0]
+        return self.jobs.get_current_url(job_name)
 
     def job_mark_as_finished(self,
                              job_name: str):
         """ Mark a crawl job as finished. """
-        if job_name == '' or job_name is None:
-            raise ValueError
-        job_name = job_name.strip()
-        affected_rows = self.cur.execute('UPDATE jobs SET ' +
-                                         'finished = CURRENT_TIMESTAMP() ' +
-                                         'WHERE jobName = %s;',
-                                         job_name)
-        if affected_rows == 0:
-            raise ValueError('A job with this name is not known.')
-        logging.debug('Marked job %s as finished.', job_name)
+        self.jobs.mark_as_finished(job_name)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # QUEUE MANAGEMENT
