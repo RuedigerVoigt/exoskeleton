@@ -31,15 +31,22 @@ class RemoteControlChrome:
                  browser_name: str):
         """Check the path of the executable and if it is supported. """
 
-        self.browser_name = browser_name.strip()
+        self.browser_name = ''
+        self.browser_present = False
 
-        if not self.check_executable_existence(self.browser_name):
-            logging.exception("No browser with this executable name found " +
-                              "in the path. Saving a HTML page as PDF is " +
-                              "not possible without that.")
-            self.suggest_executables()
-            raise ValueError(f"Browser {self.browser_name} not found in path!")
-        self.check_browser_support(self.browser_name)
+        if browser_name is None or browser_name == '':
+            logging.warning('You have not provided a browser name. So you ' +
+                            'cannot use the save as PDF feature.')
+        else:
+            self.browser_name = browser_name.strip()
+            if not self.check_executable_existence(self.browser_name):
+                logging.exception("No browser with this executable name " +
+                                  "found in the path. Saving a HTML page " +
+                                  "as PDF is not possible without that.")
+                self.suggest_executables()
+                raise ValueError(f"Browser {self.browser_name} not found in path!")
+            if self.check_browser_support(self.browser_name):
+                self.browser_present = True
 
     def check_executable_existence(self,
                                    browser_name: str) -> bool:
@@ -57,7 +64,8 @@ class RemoteControlChrome:
     def check_browser_support(self,
                               browser_name: str) -> bool:
         """User might provide the name of an existing executable of an
-           unsupported browser."""
+           unsupported browser. So checked if is a version of Chrome or
+           Chromium."""
         if browser_name.lower() in self.SUPPORTED_BROWSERS:
             logging.info('Browser supported.')
         elif browser_name.lower() in self.UNSUPPORTED_BROWSERS:
@@ -78,7 +86,14 @@ class RemoteControlChrome:
                     url: str,
                     file_path: pathlib.Path):
         """ Uses the Google Chrome or Chromium browser in headless mode
-        to print the page to PDF and stores that."""
+        to print the page to PDF and stores that.
+        BEWARE: Some cookie-popups blank out the page and all what is stored
+        is the dialogue."""
+
+        if not self.browser_present:
+            raise ValueError('As you have not provided a valid name / path ' +
+                             'of the Chromium or Chrome process to use, you ' +
+                             'cannot save a page in PDF format.')
 
         try:
             # Using the subprocess module as it is part of the

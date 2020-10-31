@@ -147,22 +147,10 @@ class Exoskeleton:
                               target_directory,
                               filename_prefix)
 
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # INIT: Browser
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Init Browser
+        self.controlled_browser = RemoteControlChrome(chrome_name)
 
-        self.browser_present = False
-        if chrome_name.strip() != '':
-            try:
-                self.controlled_browser = RemoteControlChrome(chrome_name)
-                self.browser_present = True
-            except Exception:
-                raise
-
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # INIT: Create Objects
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+        # Create objects
         self.cnt: Counter = Counter()
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -433,11 +421,6 @@ class Exoskeleton:
         BEWARE: Some cookie-popups blank out the page and all what is stored
         is the dialogue."""
 
-        if not self.browser_present:
-            raise ValueError('As you have not provided a valid name / path ' +
-                             'of the Chromium or Chrome process to use, you ' +
-                             'cannot save a page in PDF format.')
-
         filename = f"{self.fm.file_prefix}{queue_id}.pdf"
         path = self.fm.target_dir.joinpath(filename)
 
@@ -445,8 +428,6 @@ class Exoskeleton:
             self.controlled_browser.page_to_pdf(url, path)
 
             hash_value = self.fm.get_file_hash(path)
-
-            logging.debug('PDF of page saved to disk')
 
             self.cur.callproc('insert_file_SP',
                               (url, url_hash, queue_id, 'application/pdf',
@@ -640,7 +621,7 @@ class Exoskeleton:
                         force_new_version: bool = False) -> Optional[str]:
         """Add an URL to the queue to print it to PDF
         with headless Chrome. """
-        if not self.browser_present:
+        if not self.controlled_browser.browser_present:
             logging.warning('Will add this task to the queue, but without ' +
                             'Chrome or Chromium this task cannot run!' +
                             'Provide the path to the executable when you ' +
