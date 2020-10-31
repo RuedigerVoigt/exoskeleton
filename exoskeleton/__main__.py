@@ -15,7 +15,6 @@ from collections import Counter
 # noinspection PyUnresolvedReferences
 from collections import defaultdict
 import logging
-import pathlib
 import subprocess
 import time
 from typing import Union, Optional
@@ -31,6 +30,7 @@ import userprovided
 
 # import other modules of this framework
 from .DatabaseConnection import DatabaseConnection
+from .FileManager import FileManager
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
 from .QueueManager import QueueManager
@@ -141,42 +141,11 @@ class Exoskeleton:
         # Init queue management
         self.qm = QueueManager(self.cur, self.tm, bot_behavior)
 
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # INIT: File Handling
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-        self.target_dir = pathlib.Path.cwd()
-
-        if target_directory is None or target_directory.strip() == '':
-            logging.warning("Target directory is not set. " +
-                            "Using the current working directory " +
-                            "%s to store files!",
-                            self.target_dir)
-        else:
-            # Assuming that if a directory was set, it has
-            # to be used. Therefore no fallback to the current
-            # working directory.
-            self.target_dir = pathlib.Path(target_directory).resolve()
-            if self.target_dir.is_dir():
-                logging.debug("Set target directory to %s", target_directory)
-            else:
-                raise OSError("Cannot find or access the user " +
-                              "supplied target directory! " +
-                              "Create this directory or check permissions.")
-
-        self.file_prefix = filename_prefix.strip()
-        # Limit the prefix length as on many systems the path must not be
-        # longer than 255 characters and it needs space for folders and the
-        # actual filename. 16 characters seems to be a reasonable limit.
-        if not userprovided.parameters.string_in_range(
-                self.file_prefix, 0, 16):
-            raise ValueError('The file name prefix is limited to a ' +
-                             'maximum of 16 characters.')
-
-        self.hash_method = 'sha256'
-        if not userprovided.hash.hash_available(self.hash_method):
-            raise ValueError('The hash method SHA256 is not available on ' +
-                             'your system.')
+        # Init File Handling
+        self.fm = FileManager(self.cur,
+                              self.qm,
+                              target_directory,
+                              filename_prefix)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Browser
@@ -226,7 +195,7 @@ class Exoskeleton:
                         logging.error('Could not reestablish database ' +
                                       'server connection!', exc_info=True)
                         self.notify.send_msg('abort_lost_db')
-                        raise ConnectionError('Lost DB connection and ' +
+                        raise ConnectionError('Lost database connection and ' +
                                               'could not restore it.')
                 else:
                     logging.error('Unexpected Operational Error',
@@ -362,23 +331,17 @@ class Exoskeleton:
                 if action_type == 'file':
                     extension = userprovided.url.determine_file_extension(
                         url, mime_type)
-                    new_filename = f"{self.file_prefix}{queue_id}{extension}"
-                    target_path = self.target_dir.joinpath(new_filename)
+                    new_filename = f"{self.fm.file_prefix}{queue_id}{extension}"
+                    file_path = self.fm.write_response_to_file(r, new_filename)
+                    hash_value = self.fm.get_file_hash(file_path)
 
-                    with open(target_path, 'wb') as file_handle:
-                        for block in r.iter_content(1024):
-                            file_handle.write(block)
-                        logging.debug('file written')
-                        hash_value = userprovided.hash.calculate_file_hash(
-                            target_path, self.hash_method)
-
-                    logging.debug('file written to disk')
                     try:
                         self.cur.callproc('insert_file_SP',
                                           (url, url_hash, queue_id, mime_type,
-                                           str(self.target_dir), new_filename,
-                                           self.get_file_size(target_path),
-                                           self.hash_method, hash_value, 1))
+                                           str(self.fm.target_dir),
+                                           new_filename,
+                                           self.fm.get_file_size(file_path),
+                                           self.fm.hash_method, hash_value, 1))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
                         logging.error('Transaction failed: Could not add ' +
@@ -467,35 +430,33 @@ class Exoskeleton:
                       queue_id: str):
         """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
-        BEWARE: Some cookie-popups blank out the page and
-        all what is stored is the dialogue."""
+        BEWARE: Some cookie-popups blank out the page and all what is stored
+        is the dialogue."""
 
         if not self.browser_present:
             raise ValueError('As you have not provided a valid name / path ' +
                              'of the Chromium or Chrome process to use, you ' +
                              'cannot save a page in PDF format.')
 
-        filename = f"{self.file_prefix}{queue_id}.pdf"
-        path = self.target_dir.joinpath(filename)
+        filename = f"{self.fm.file_prefix}{queue_id}.pdf"
+        path = self.fm.target_dir.joinpath(filename)
 
         try:
             self.controlled_browser.page_to_pdf(url, path)
 
-            hash_value = None
-            if self.hash_method:
-                hash_value = userprovided.hash.calculate_file_hash(
-                    path, self.hash_method)
+            hash_value = self.fm.get_file_hash(path)
+
             logging.debug('PDF of page saved to disk')
 
             self.cur.callproc('insert_file_SP',
                               (url, url_hash, queue_id, 'application/pdf',
-                               str(self.target_dir), filename,
-                               self.get_file_size(path),
-                               self.hash_method, hash_value, 3))
+                               str(self.fm.target_dir), filename,
+                               self.fm.get_file_size(path),
+                               self.fm.hash_method, hash_value, 3))
         except pymysql.DatabaseError:
             self.cnt['transaction_fail'] += 1
-            logging.error('Transaction failed: Could not add already ' +
-                          'downloaded file %s to the database!',
+            logging.error('Database Transaction failed: Could not add ' +
+                          'already downloaded file %s to the database!',
                           path, exc_info=True)
         except subprocess.TimeoutExpired:
             self.qm.add_crawl_delay(queue_id, 4)
@@ -728,8 +689,7 @@ class Exoskeleton:
 
     def forget_temporary_errors(self):
         """Treat all queued tasks, that are marked to cause a *temporary*
-        error, as if they are new tasks by removing that mark and
-        any delay."""
+        error, as if they are new tasks by removing that mark and any delay."""
         self.qm.forget_error_group(False)
 
     def forget_specific_error(self,
@@ -766,15 +726,6 @@ class Exoskeleton:
     def truncate_blocklist(self):
         """Remove *all* entries from the blocklist."""
         self.qm.truncate_blocklist()
-
-    def get_file_size(self,
-                      file_path: pathlib.Path) -> int:
-        """File size in bytes."""
-        try:
-            return file_path.stat().st_size
-        except Exception:
-            logging.error('Cannot get file size', exc_info=True)
-            raise
 
     def prettify_html(self,
                       content: str) -> str:
