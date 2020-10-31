@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-
+File handling for the exoskeleton framework
 ~~~~~~~~~~~~~~~~~~~~~
 
 """
@@ -17,7 +17,7 @@ import userprovided
 
 
 class FileManager:
-    """"""
+    """File handling for the exoskeleton framework"""
 
     def __init__(self,
                  db_cursor,
@@ -37,6 +37,9 @@ class FileManager:
 
     def __check_target_directory(self,
                                  target_directory) -> pathlib.Path:
+        """Check if a target directory is set to write files to.
+           If not fallback to the current working directory.
+           If a directory is set, but not accesible, fail early."""
 
         target_dir = pathlib.Path.cwd()
 
@@ -60,6 +63,8 @@ class FileManager:
 
     def __clean_prefix(self,
                        file_prefix: str) -> str:
+        """Remove whitespace around the filenam prefix and check if it is
+           not longer than 16 characters."""
         file_prefix = file_prefix.strip()
         # Limit the prefix length as on many systems the path must not be
         # longer than 255 characters and it needs space for folders and the
@@ -73,7 +78,7 @@ class FileManager:
         return file_prefix
 
     def write_response_to_file(self,
-                               r: requests.Response(),
+                               r: requests.Response,
                                file_name: str) -> pathlib.Path:
         """Write the servers response (request.Response()) into a file."""
         target_path = self.target_dir.joinpath(file_name)
@@ -85,8 +90,9 @@ class FileManager:
         return target_path
 
     def get_file_hash(self,
-                      file_path: pathlib.Path()) -> str:
-        """Calculate the hash of a file."""
+                      file_path: pathlib.Path) -> str:
+        """Calculate the hash of a file using the set method
+           (currently fixed to SHA256)."""
         hash_value = userprovided.hash.calculate_file_hash(
             file_path, self.hash_method)
         return hash_value

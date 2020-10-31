@@ -704,7 +704,9 @@ class Exoskeleton:
         """ Check if a milestone is reached."""
         processed = self.cnt['processed']
         # Check >0 in case the bot starts failing with the first item.
-        if processed > 0 and (processed % self.milestone) == 0:
+        if (self.milestone and
+                processed > 0 and
+                (processed % self.milestone) == 0):
             logging.info("Milestone reached: %s processed", str(processed))
             return True
         return False
