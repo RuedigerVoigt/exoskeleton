@@ -146,7 +146,7 @@ class Exoskeleton:
                               target_directory,
                               filename_prefix)
 
-        self.controlled_browser = RemoteControlChrome(chrome_name)
+        self.controlled_browser = RemoteControlChrome(chrome_name, self.qm)
 
         self.jobs = JobManager(self.cur)
 
@@ -424,11 +424,11 @@ class Exoskeleton:
         filename = f"{self.fm.file_prefix}{queue_id}.pdf"
         path = self.fm.target_dir.joinpath(filename)
 
+        self.controlled_browser.page_to_pdf(url, path, queue_id)
+
+        hash_value = self.fm.get_file_hash(path)
+
         try:
-            self.controlled_browser.page_to_pdf(url, path)
-
-            hash_value = self.fm.get_file_hash(path)
-
             self.cur.callproc('insert_file_SP',
                               (url, url_hash, queue_id, 'application/pdf',
                                str(self.fm.target_dir), filename,
@@ -439,16 +439,6 @@ class Exoskeleton:
             logging.error('Database Transaction failed: Could not add ' +
                           'already downloaded file %s to the database!',
                           path, exc_info=True)
-        except subprocess.TimeoutExpired:
-            self.qm.add_crawl_delay(queue_id, 4)
-            self.qm.update_host_statistics(url, 0, 1, 0, 0)
-        except subprocess.CalledProcessError:
-            self.qm.add_crawl_delay(queue_id, 5)
-            self.qm.update_host_statistics(url, 0, 0, 1, 0)
-        except Exception:
-            self.qm.add_crawl_delay(queue_id, 0)
-            self.qm.update_host_statistics(url, 0, 1, 0, 0)
-            pass
 
     def return_page_code(self,
                          url: str):

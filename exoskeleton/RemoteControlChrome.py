@@ -28,11 +28,13 @@ class RemoteControlChrome:
                           'chromium-browser'}
 
     def __init__(self,
-                 browser_name: str):
+                 browser_name: str,
+                 queue_manager_object):
         """Check the path of the executable and if it is supported. """
 
         self.browser_name = ''
         self.browser_present = False
+        self.qm = queue_manager_object
 
         if browser_name is None or browser_name == '':
             logging.warning('You have not provided a browser name. So you ' +
@@ -84,7 +86,8 @@ class RemoteControlChrome:
 
     def page_to_pdf(self,
                     url: str,
-                    file_path: pathlib.Path):
+                    file_path: pathlib.Path,
+                    queue_id: str):
         """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
         BEWARE: Some cookie-popups blank out the page and all what is stored
@@ -117,11 +120,14 @@ class RemoteControlChrome:
         except subprocess.TimeoutExpired:
             logging.exception('Cannot create PDF due to subprocess timeout.',
                               exc_info=True)
-            raise
+            self.qm.add_crawl_delay(queue_id, 4)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
         except subprocess.CalledProcessError:
             logging.exception('Cannot create PDF due to process error.',
                               exc_info=True)
-            raise
+            self.qm.add_crawl_delay(queue_id, 5)
+            self.qm.update_host_statistics(url, 0, 0, 1, 0)
         except Exception:
             logging.error('Exception.', exc_info=True)
-            raise
+            self.qm.add_crawl_delay(queue_id, 0)
+            self.qm.update_host_statistics(url, 0, 1, 0, 0)
