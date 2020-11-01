@@ -15,7 +15,6 @@ from collections import Counter
 # noinspection PyUnresolvedReferences
 from collections import defaultdict
 import logging
-import subprocess
 import time
 from typing import Union, Optional
 from urllib.parse import urlparse
@@ -551,10 +550,11 @@ class Exoskeleton:
                            labels_master: set = None,
                            labels_version: set = None,
                            force_new_version: bool = False) -> Optional[str]:
-        """Extract the text (not the code) from a HTML page and store it into
-        the database. This can be useful for some language processing tasks,
-        but compared to add_save_page_code this removes the possiblity to work
-        on a specific part using a CSS selector."""
+        """Add the task 'Extract the text (not the code) from a HTML page and
+           store it into the database' to the queue.
+           This can be useful for some language processing tasks, but compared
+           to add_save_page_code this removes the possiblity to work on a
+           specific part using a CSS selector."""
         uuid = self.qm.add_to_queue(url, 4, labels_master,
                                     labels_version, True,
                                     force_new_version)
