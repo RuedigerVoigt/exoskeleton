@@ -29,6 +29,7 @@ import userprovided
 
 # import other modules of this framework
 from .DatabaseConnection import DatabaseConnection
+from .ExoActions import ExoActions
 from .FileManager import FileManager
 from .JobManager import JobManager
 from .StatisticsManager import StatisticsManager
@@ -138,6 +139,11 @@ class Exoskeleton:
             "queue_revisit", self.queue_revisit, 10, 50, 50)
 
         # Init Classes
+
+        self.action = ExoActions(self.stats,
+                                 self.user_agent,
+                                 self.connection_timeout)
+
         self.tm = TimeManager(bot_behavior.get('wait_min', 5),
                               bot_behavior.get('wait_max', 30))
 
@@ -445,35 +451,7 @@ class Exoskeleton:
     def return_page_code(self,
                          url: str):
         """Directly return a page's code. Do *not* store it in the database."""
-        if url == '' or url is None:
-            raise ValueError('Missing url')
-        url = url.strip()
-
-        try:
-            r = requests.get(url,
-                             headers={"User-agent": str(self.user_agent)},
-                             timeout=self.connection_timeout,
-                             stream=False
-                             )
-
-            if r.status_code == 200:
-                return r.text
-            else:
-                raise RuntimeError('Cannot return page code')
-
-        except TimeoutError:
-            logging.error('Reached timeout.', exc_info=True)
-            self.stats.update_host_statistics(url, 0, 1, 0, 0)
-            raise
-
-        except ConnectionError:
-            logging.error('Connection Error', exc_info=True)
-            self.stats.update_host_statistics(url, 0, 1, 0, 0)
-            raise
-
-        except Exception:
-            logging.exception('Exception while trying to get page-code',
-                              exc_info=True)
+        self.action.return_page_code(url)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # JOB MANAGEMENT
