@@ -31,6 +31,7 @@ import userprovided
 from .DatabaseConnection import DatabaseConnection
 from .FileManager import FileManager
 from .JobManager import JobManager
+from .StatisticsManager import StatisticsManager
 from .TimeManager import TimeManager
 from .NotificationManager import NotificationManager
 from .QueueManager import QueueManager
@@ -81,6 +82,8 @@ class Exoskeleton:
         # Init database Connection
         self.db = DatabaseConnection(database_settings)
         self.cur = self.db.get_cursor()
+
+        self.stats = StatisticsManager(self.cur)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Mail / Notification Setup
@@ -162,7 +165,7 @@ class Exoskeleton:
 
     def process_queue(self):
         """Process the queue"""
-        self.qm.log_queue_stats()
+        self.stats.log_queue_stats()
 
         while True:
             try:
@@ -257,14 +260,14 @@ class Exoskeleton:
                         logging.error('Unknown action id!')
 
                     if self.milestone and self.check_is_milestone():
-                        stats = self.qm.queue_stats()
+                        stats = self.stats.queue_stats()
                         remaining_tasks = (stats['tasks_without_error'] +
                                            stats['tasks_with_temp_errors'])
                         self.notify.send_milestone_msg(
-                            self.cnt['processed'],
+                            self.stats.get_processed_counter(),
                             remaining_tasks,
                             self.tm.estimate_remaining_time(
-                                self.cnt['processed'],
+                                self.stats.get_processed_counter(),
                                 remaining_tasks)
                                 )
 
@@ -362,12 +365,12 @@ class Exoskeleton:
                                       'the database!',
                                       queue_id, exc_info=True)
 
-                self.cnt['processed'] += 1
-                self.qm.update_host_statistics(url, 1, 0, 0, 0)
+                self.stats.increment_processed_counter()
+                self.stats.update_host_statistics(url, 1, 0, 0, 0)
 
             elif r.status_code in self.HTTP_PERMANENT_ERRORS:
                 self.qm.mark_permanent_error(queue_id, r.status_code)
-                self.qm.update_host_statistics(url, 0, 0, 1, 0)
+                self.stats.update_host_statistics(url, 0, 0, 1, 0)
             elif r.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
@@ -375,28 +378,28 @@ class Exoskeleton:
                 fqdn = urlparse(url).hostname
                 if fqdn:
                     self.qm.add_rate_limit(fqdn)
-                self.qm.update_host_statistics(url, 0, 0, 0, 1)
+                self.stats.update_host_statistics(url, 0, 0, 0, 1)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
                 self.qm.add_crawl_delay(queue_id, r.status_code)
             else:
                 logging.error('Unhandled return code %s', r.status_code)
-                self.qm.update_host_statistics(url, 0, 0, 1, 0)
+                self.stats.update_host_statistics(url, 0, 0, 1, 0)
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
             self.qm.add_crawl_delay(queue_id, 4)
-            self.qm.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.update_host_statistics(url, 0, 1, 0, 0)
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.qm.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except urllib3.exceptions.NewConnectionError:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
-            self.qm.update_host_statistics(url, 0, 0, 0, 1)
+            self.stats.update_host_statistics(url, 0, 0, 0, 1)
             self.tm.increase_wait()
 
         except requests.exceptions.MissingSchema:
@@ -408,7 +411,7 @@ class Exoskeleton:
         except Exception:
             logging.error('Unknown exception while trying to download.',
                           exc_info=True)
-            self.qm.update_host_statistics(url, 0, 0, 1, 0)
+            self.stats.update_host_statistics(url, 0, 0, 1, 0)
             raise
 
     def __page_to_pdf(self,
@@ -460,12 +463,12 @@ class Exoskeleton:
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
-            self.qm.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.qm.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.update_host_statistics(url, 0, 1, 0, 0)
             raise
 
         except Exception:
@@ -598,7 +601,7 @@ class Exoskeleton:
 
     def check_is_milestone(self) -> bool:
         """ Check if a milestone is reached."""
-        processed = self.cnt['processed']
+        processed = self.stats.get_processed_counter()
         # Check >0 in case the bot starts failing with the first item.
         if (self.milestone and
                 processed > 0 and
