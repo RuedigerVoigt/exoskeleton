@@ -38,7 +38,8 @@ class ExoActions:
                  stats_manager_object,
                  file_manager_object,
                  time_manager_object,
-                 queue_manager_object,
+                 crawling_error_manager_object,
+                 remote_control_chrome_object,
                  user_agent: str,
                  connection_timeout: int):
         """ """
@@ -46,7 +47,8 @@ class ExoActions:
         self.stats = stats_manager_object
         self.fm = file_manager_object
         self.tm = time_manager_object
-        self.qm = queue_manager_object
+        self.errorhandling = crawling_error_manager_object
+        self.controlled_browser = remote_control_chrome_object
         self.user_agent = user_agent
         self.connection_timeout = connection_timeout
         self.cnt: Counter = Counter()
@@ -146,7 +148,8 @@ class ExoActions:
                 self.stats.update_host_statistics(url, 1, 0, 0, 0)
 
             elif r.status_code in self.HTTP_PERMANENT_ERRORS:
-                self.qm.mark_permanent_error(queue_id, r.status_code)
+                self.errorhandling.mark_permanent_error(
+                    queue_id, r.status_code)
                 self.stats.update_host_statistics(url, 0, 0, 1, 0)
             elif r.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
@@ -154,18 +157,18 @@ class ExoActions:
                               'fast => increase min_wait.')
                 fqdn = urlparse(url).hostname
                 if fqdn:
-                    self.qm.add_rate_limit(fqdn)
+                    self.errorhandling.add_rate_limit(fqdn)
                 self.stats.update_host_statistics(url, 0, 0, 0, 1)
             elif r.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
-                self.qm.add_crawl_delay(queue_id, r.status_code)
+                self.errorhandling.add_crawl_delay(queue_id, r.status_code)
             else:
                 logging.error('Unhandled return code %s', r.status_code)
                 self.stats.update_host_statistics(url, 0, 0, 1, 0)
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
-            self.qm.add_crawl_delay(queue_id, 4)
+            self.errorhandling.add_crawl_delay(queue_id, 4)
             self.stats.update_host_statistics(url, 0, 1, 0, 0)
 
         except ConnectionError:
@@ -183,7 +186,7 @@ class ExoActions:
             logging.error('Missing Schema Exception. Does your URL contain ' +
                           'the protocol i.e. http:// or https:// ? ' +
                           'See queue_id = %s', queue_id)
-            self.qm.mark_permanent_error(queue_id, 1)
+            self.errorhandling.mark_permanent_error(queue_id, 1)
 
         except Exception:
             logging.error('Unknown exception while trying to download.',
@@ -223,6 +226,35 @@ class ExoActions:
         except Exception:
             logging.exception('Exception while trying to get page-code',
                               exc_info=True)
+
+    def page_to_pdf(self,
+                    url: str,
+                    url_hash: str,
+                    queue_id: str):
+        """ Uses the Google Chrome or Chromium browser in headless mode
+        to print the page to PDF and stores that.
+        BEWARE: Some cookie-popups blank out the page and all what is stored
+        is the dialogue."""
+
+        filename = f"{self.fm.file_prefix}{queue_id}.pdf"
+        path = self.fm.target_dir.joinpath(filename)
+
+        self.controlled_browser.page_to_pdf(url, path, queue_id)
+
+        hash_value = self.fm.get_file_hash(path)
+
+        try:
+            self.cur.callproc('insert_file_SP',
+                              (url, url_hash, queue_id, 'application/pdf',
+                               str(self.fm.target_dir), filename,
+                               self.fm.get_file_size(path),
+                               self.fm.hash_method, hash_value, 3))
+        except pymysql.DatabaseError:
+            self.cnt['transaction_fail'] += 1
+            logging.error('Database Transaction failed: Could not add ' +
+                          'already downloaded file %s to the database!',
+                          path, exc_info=True)
+
 
     def prettify_html(self,
                       content: str) -> str:

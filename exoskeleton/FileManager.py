@@ -21,12 +21,10 @@ class FileManager:
 
     def __init__(self,
                  db_cursor,
-                 queue_manager_object,
                  target_directory: str,
                  filename_prefix: str
                  ):
         self.cur = db_cursor
-        self.qm = queue_manager_object
         self.target_dir = self.__check_target_directory(target_directory)
         self.file_prefix = self.__clean_prefix(filename_prefix)
 

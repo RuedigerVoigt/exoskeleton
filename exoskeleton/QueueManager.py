@@ -9,6 +9,7 @@ Database connection management for the exoskeleton framework.
 # standard library:
 from collections import defaultdict
 import logging
+import time
 from typing import Union, Optional
 from urllib.parse import urlparse
 import uuid
@@ -22,30 +23,37 @@ import userprovided
 class QueueManager:
     """Manage the queue and labels for the exoskeleton framework."""
 
-    # If there is a temporary error, exoskeleton delays the
-    # next try until the configured maximum of tries is
-    # reached.
-    # The time between tries is definied here to be able
-    # to overwrite it in case of an automatic tests to
-    # avoid multi-hour runtimes.
-    # Steps: 1/4h, 1/2h, 1h, 3h, 6h
-    DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
-
     def __init__(self,
+                 db_connection,
                  db_cursor,
                  time_manager_object,
-                 bot_behavior: dict):
+                 stats_manager_object,
+                 actions_object,
+                 notification_manager_object,
+                 bot_behavior: dict,
+                 milestone: int):
+        # Connection object AND cursor for the queue manager to get a new
+        # cursor in case there is a problem.
+        # Planned to be replaced with a connection pool. See issue #20
+        self.db = db_connection
         self.cur = db_cursor
         self.tm = time_manager_object
+        self.stats = stats_manager_object
+        self.action = actions_object
+        self.notify = notification_manager_object
 
-        # Maximum number of retries if downloading a page/file failed:
-        self.queue_max_retries: int = bot_behavior.get('queue_max_retries', 3)
-        self.queue_max_retries = userprovided.parameters.int_in_range(
-            "queue_max_retries", self.queue_max_retries, 0, 10, 3)
+        self.stop_if_queue_empty: bool = bot_behavior.get(
+            'stop_if_queue_empty', False)
+        if type(self.stop_if_queue_empty) != bool:
+            raise ValueError('The value for "stop_if_queue_empty" ' +
+                             'must be a boolean (True / False).')
 
-        # Seconds to wait before contacting the same FQDN again, after the bot
-        # hit a rate limit. Defaults to 1860 seconds (i.e. 31 minutes):
-        self.rate_limit_wait: int = bot_behavior.get('rate_limit_wait', 1860)
+        # Time to wait after the queue is empty to check for new elements:
+        self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
+        self.queue_revisit = userprovided.parameters.int_in_range(
+            "queue_revisit", self.queue_revisit, 10, 50, 50)
+
+        self.milestone = milestone
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # HANDLE THE BLOCKLIST
@@ -381,136 +389,127 @@ class QueueManager:
         # callproc expects a tuple. Do not remove the comma:
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
+    def process_queue(self):
+        """Process the queue"""
+        self.stats.log_queue_stats()
+
+        while True:
+            try:
+                next_in_queue = self.get_next_task()
+            except pymysql.err.OperationalError as e:
+                if e.args[0] == 2013:  # errno
+                    # this error is unusual. Give the db some time:
+                    logging.error('Lost connection to database server. ' +
+                                  'Trying to restore it in 10 seconds ...')
+                    time.sleep(10)
+                    try:
+                        self.cur = self.db.get_cursor()
+                        next_in_queue = self.get_next_task()
+                        logging.info('Succesfully restored connection ' +
+                                     'to database server!')
+                    except Exception:
+                        logging.error('Could not reestablish database ' +
+                                      'server connection!', exc_info=True)
+                        self.notify.send_msg('abort_lost_db')
+                        raise ConnectionError('Lost database connection and ' +
+                                              'could not restore it.')
+                else:
+                    logging.error('Unexpected Operational Error',
+                                  exc_info=True)
+                    raise
+
+            if next_in_queue is None:
+                # no actionable item in the queue
+                if self.stop_if_queue_empty:
+                    # Bot is configured to stop if queue is empty
+                    # => check if that is only temporary or everything is done
+                    self.cur.execute(
+                        'SELECT num_items_with_temporary_errors();')
+                    num_temp_errors = self.cur.fetchone()[0]
+                    if num_temp_errors > 0:
+                        # there are still tasks, but they have to wait
+                        logging.debug("Tasks with temporary errors: " +
+                                      "waiting %s seconds until next try.",
+                                      self.queue_revisit)
+                        time.sleep(self.queue_revisit)
+                        continue
+                    else:
+                        # Nothing left
+                        logging.info('Queue empty. Bot stops as configured.')
+
+                        self.cur.execute(
+                            'SELECT num_items_with_permanent_error();')
+                        num_permanent_errors = self.cur.fetchone()[0]
+                        if num_permanent_errors > 0:
+                            logging.error("%s permanent errors!",
+                                          num_permanent_errors)
+                        self.notify.send_finish_msg(num_permanent_errors)
+                    break
+                else:
+                    logging.debug("No actionable task: waiting %s seconds " +
+                                  "until next check", self.queue_revisit)
+                    time.sleep(self.queue_revisit)
+                    continue
+            else:
+                # got a task from the queue
+                queue_id = next_in_queue[0]
+                action = next_in_queue[1]
+                url = next_in_queue[2]
+                url_hash = next_in_queue[3]
+                prettify_html = True if next_in_queue[4] == 1 else False
+
+                # The FQDN might have been added to the blocklist *after*
+                # the task entered into the queue:
+                if self.check_blocklist(urlparse(url).hostname):
+                    logging.error('Cannot process queue item as the FQDN ' +
+                                  'has meanwhile been added to the blocklist!')
+                    self.delete_from_queue(queue_id)
+                    logging.info('Removed item from queue: FQDN on blocklist.')
+                else:
+                    if action == 1:
+                        # download file to disk
+                        self.action.get_object(queue_id, 'file', url, url_hash)
+                    elif action == 2:
+                        # save page code into database
+                        self.action.get_object(queue_id, 'content',
+                                               url, url_hash,
+                                               prettify_html)
+                    elif action == 3:
+                        # headless Chrome to create PDF
+                        self.action.page_to_pdf(url, url_hash, queue_id)
+                    elif action == 4:
+                        # save page text into database
+                        self.action.get_object(queue_id, 'text',
+                                               url, url_hash,
+                                               prettify_html)
+                    else:
+                        logging.error('Unknown action id!')
+
+                    if self.milestone and self.check_is_milestone():
+                        stats = self.stats.queue_stats()
+                        remaining_tasks = (stats['tasks_without_error'] +
+                                           stats['tasks_with_temp_errors'])
+                        self.notify.send_milestone_msg(
+                            self.stats.get_processed_counter(),
+                            remaining_tasks,
+                            self.tm.estimate_remaining_time(
+                                self.stats.get_processed_counter(),
+                                remaining_tasks)
+                                )
+
+                    # wait some interval to avoid overloading the server
+                    self.tm.random_wait()
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # ERROR HANDLING AND CRAWL DELAYS
+    # MILESTONES
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def add_crawl_delay(self,
-                        queue_id: str,
-                        error_type: Optional[int] = None):
-        """In case of a timeout or a temporary error increment the counter for
-        the number of tries by one. If the configured maximum of tries
-        was reached, mark it as a permanent error. Otherwise add a delay,
-        so exoskelton does not try the same task again. As multiple tasks
-        may affect the same URL, the delay is added to all of them."""
-        wait_time = 0
-
-        # Increase the tries counter
-        self.cur.execute('UPDATE queue ' +
-                         'SET numTries = numTries + 1 ' +
-                         'WHERE id =%s;', queue_id)
-        # How many times this task was tried?
-        self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
-                         queue_id)
-        num_tries = int((self.cur.fetchone())[0])
-
-        # Does the number of tries exceed the configured maximum?
-        if num_tries == self.queue_max_retries:
-            # This is treated as a *permanent* failure!
-            logging.error('Giving up: too many tries for queue item %s',
-                          queue_id)
-            self.mark_permanent_error(queue_id, 3)
-        else:
-            logging.info('Adding crawl delay to queue item %s', queue_id)
-            # Using the class constant DELAY_TRIES because it can be easily
-            # overwritten for automatic testing.
-            if num_tries == 1:
-                wait_time = self.DELAY_TRIES[0]  # 15 minutes
-            elif num_tries == 2:
-                wait_time = self.DELAY_TRIES[1]  # 30 minutes
-            elif num_tries == 3:
-                wait_time = self.DELAY_TRIES[2]  # 1 hour
-            elif num_tries == 4:
-                wait_time = self.DELAY_TRIES[3]  # 3 hours
-            elif num_tries > 4:
-                wait_time = self.DELAY_TRIES[4]  # 6 hours
-
-            # Add the same delay to all tasks accesing the same URL MariaDB /
-            # MySQL throws an error if the same table is specified
-            # both as a target for 'UPDATE' and a source for data.
-            # Therefore, two steps instead of a Sub-Select.
-            self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
-                             queue_id)
-            url_hash = (self.cur.fetchone())[0]
-            self.cur.execute('UPDATE queue ' +
-                             'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                             'WHERE urlHash = %s;',
-                             (wait_time, url_hash))
-            # Add the error type to the specific task that caused the delay
-            if error_type:
-                self.cur.execute('UPDATE queue ' +
-                                 'SET causesError = %s ' +
-                                 'WHERE id = %s;',
-                                 (error_type, queue_id))
-
-    def mark_permanent_error(self,
-                             queue_id: str,
-                             error: int):
-        """ Mark item in queue that causes a permanent error.
-        Without this exoskeleton would try to execute the
-        task over and over again."""
-
-        self.cur.execute('UPDATE queue ' +
-                         'SET causesError = %s, ' +
-                         'delayUntil = NULL ' +
-                         'WHERE id = %s;', (error, queue_id))
-        logging.info('Marked queue-item that caused a permanent problem.')
-
-    def forget_specific_error(self,
-                              specific_error: int):
-        """Treat all queued tasks, that are marked to cause a *specific*
-        error, as if they are new tasks by removing that mark and any delay.
-        The number of the error has to correspond to the errorType
-        database table."""
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0,"
-                         "delayUntil = NULL " +
-                         "WHERE causesError = %s;",
-                         specific_error)
-
-    def forget_error_group(self,
-                           permanent: bool):
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0, " +
-                         "delayUntil = NULL " +
-                         "WHERE causesError IN (" +
-                         "    SELECT id from errorType WHERE permanent = %s);",
-                         (1 if permanent else 0))
-
-    def forget_all_errors(self):
-        """Treat all queued tasks, that are marked to cause any type of
-        error, as if they are new tasks by removing that mark and any delay."""
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0, " +
-                         "delayUntil = NULL;")
-
-    def add_rate_limit(self,
-                       fqdn: str):
-        """If a bot receives the statuscode 429 ('too many requests') it hit
-        a rate limit. Adding the fully qualified domain name to the rate
-        limit list, ensures that this FQDN is not contacted for a
-        predefined time."""
-        msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
-               f"contact this host for {self.rate_limit_wait} seconds.")
-        logging.error(msg)
-        # Always use SEC_TO_TIME() to avoid unexpected behavior if
-        # just adding seconds as a plain number.
-        self.cur.execute('INSERT INTO rateLimits ' +
-                         '(fqdnHash, fqdn, noContactUntil) VALUES ' +
-                         '(SHA2(%s,256), %s, ADDTIME(NOW(), SEC_TO_TIME(%s))) ' +
-                         'ON DUPLICATE KEY UPDATE ' +
-                         'noContactUntil = ADDTIME(NOW(), SEC_TO_TIME(%s));',
-                         (fqdn, fqdn, self.rate_limit_wait,
-                          self.rate_limit_wait))
-
-    def forget_specific_rate_limit(self,
-                                   fqdn: str):
-        self.cur.execute('DELETE FROM rateLimits ' +
-                         'WHERE fqdnHash = SHA2(%s,256);',
-                         fqdn)
-
-    def forget_all_rate_limits(self):
-        self.cur.execute('TRUNCATE TABLE rateLimits;')
+    def check_is_milestone(self) -> bool:
+        """ Check if a milestone is reached."""
+        processed = self.stats.get_processed_counter()
+        # Check >0 in case the bot starts failing with the first item.
+        if (self.milestone and
+                processed > 0 and
+                (processed % self.milestone) == 0):
+            logging.info("Milestone reached: %s processed", str(processed))
+            return True
+        return False

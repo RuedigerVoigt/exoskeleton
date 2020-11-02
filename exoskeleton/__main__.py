@@ -15,16 +15,13 @@ from collections import Counter
 # noinspection PyUnresolvedReferences
 from collections import defaultdict
 import logging
-import time
 from typing import Union, Optional
-from urllib.parse import urlparse
 
-# 3rd party libraries:
-import pymysql
 # Sister projects:
 import userprovided
 
 # import other modules of this framework
+from .CrawlingErrorManager import CrawlingErrorManager
 from .DatabaseConnection import DatabaseConnection
 from .ExoActions import ExoActions
 from .FileManager import FileManager
@@ -110,41 +107,52 @@ class Exoskeleton:
 
         # Seconds until a connection times out:
         self.connection_timeout: int = userprovided.parameters.int_in_range(
-            "self.connection.timeout",
+            "self.connection_timeout",
             bot_behavior.get('connection_timeout', 60),
             1, 60, 50)
 
-        self.stop_if_queue_empty: bool = bot_behavior.get(
-            'stop_if_queue_empty', False)
-        if type(self.stop_if_queue_empty) != bool:
-            raise ValueError('The value for "stop_if_queue_empty" ' +
-                             'must be a boolean (True / False).')
-        # Time to wait after the queue is empty to check for new elements:
-        self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
-        self.queue_revisit = userprovided.parameters.int_in_range(
-            "queue_revisit", self.queue_revisit, 10, 50, 50)
-
         # Init Classes
 
-        self.tm = TimeManager(bot_behavior.get('wait_min', 5),
-                              bot_behavior.get('wait_max', 30))
+        self.tm = TimeManager(
+            bot_behavior.get('wait_min', 5),
+            bot_behavior.get('wait_max', 30))
 
-        self.qm = QueueManager(self.cur, self.tm, bot_behavior)
+        self.fm = FileManager(
+            self.cur,
+            target_directory,
+            filename_prefix)
 
-        self.fm = FileManager(self.cur,
-                              self.qm,
-                              target_directory,
-                              filename_prefix)
+        self.errorhandling = CrawlingErrorManager(
+            self.cur,
+            bot_behavior.get('queue_max_retries', 3),
+            bot_behavior.get('rate_limit_wait', 1860)
+            )
 
-        self.action = ExoActions(self.cur,
-                                 self.stats,
-                                 self.fm,
-                                 self.tm,
-                                 self.qm,
-                                 self.user_agent,
-                                 self.connection_timeout)
+        self.controlled_browser = RemoteControlChrome(
+            chrome_name,
+            self.errorhandling,
+            self.stats)
 
-        self.controlled_browser = RemoteControlChrome(chrome_name, self.qm)
+        self.action = ExoActions(
+            self.cur,
+            self.stats,
+            self.fm,
+            self.tm,
+            self.errorhandling,
+            self.controlled_browser,
+            self.user_agent,
+            self.connection_timeout)
+
+        self.qm = QueueManager(
+            self.db,
+            self.cur,
+            self.tm,
+            self.stats,
+            self.action,
+            self.notify,
+            bot_behavior,
+            self.milestone  # type: ignore[arg-type]
+            )
 
         self.jobs = JobManager(self.cur)
 
@@ -153,154 +161,21 @@ class Exoskeleton:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ACTIONS
+    #
+    # - Make some accessible from outside.
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    # make random_wait() accessible from outside
     def random_wait(self):
         self.tm.random_wait()
 
     def process_queue(self):
         """Process the queue"""
-        self.stats.log_queue_stats()
-
-        while True:
-            try:
-                next_in_queue = self.qm.get_next_task()
-            except pymysql.err.OperationalError as e:
-                if e.args[0] == 2013:  # errno
-                    # this error is unusual. Give the db some time:
-                    logging.error('Lost connection to database server. ' +
-                                  'Trying to restore it in 10 seconds ...')
-                    time.sleep(10)
-                    try:
-                        self.cur = self.db.get_cursor()
-                        next_in_queue = self.qm.get_next_task()
-                        logging.info('Succesfully restored connection ' +
-                                     'to database server!')
-                    except Exception:
-                        logging.error('Could not reestablish database ' +
-                                      'server connection!', exc_info=True)
-                        self.notify.send_msg('abort_lost_db')
-                        raise ConnectionError('Lost database connection and ' +
-                                              'could not restore it.')
-                else:
-                    logging.error('Unexpected Operational Error',
-                                  exc_info=True)
-                    raise
-
-            if next_in_queue is None:
-                # no actionable item in the queue
-                if self.stop_if_queue_empty:
-                    # Bot is configured to stop if queue is empty
-                    # => check if that is only temporary or everything is done
-                    self.cur.execute(
-                        'SELECT num_items_with_temporary_errors();')
-                    num_temp_errors = self.cur.fetchone()[0]
-                    if num_temp_errors > 0:
-                        # there are still tasks, but they have to wait
-                        logging.debug("Tasks with temporary errors: " +
-                                      "waiting %s seconds until next try.",
-                                      self.queue_revisit)
-                        time.sleep(self.queue_revisit)
-                        continue
-                    else:
-                        # Nothing left
-                        logging.info('Queue empty. Bot stops as configured.')
-
-                        self.cur.execute(
-                            'SELECT num_items_with_permanent_error();')
-                        num_permanent_errors = self.cur.fetchone()[0]
-                        if num_permanent_errors > 0:
-                            logging.error("%s permanent errors!",
-                                          num_permanent_errors)
-                        self.notify.send_finish_msg(num_permanent_errors)
-                    break
-                else:
-                    logging.debug("No actionable task: waiting %s seconds " +
-                                  "until next check", self.queue_revisit)
-                    time.sleep(self.queue_revisit)
-                    continue
-            else:
-                # got a task from the queue
-                queue_id = next_in_queue[0]
-                action = next_in_queue[1]
-                url = next_in_queue[2]
-                url_hash = next_in_queue[3]
-                prettify_html = True if next_in_queue[4] == 1 else False
-
-                # The FQDN might have been added to the blocklist *after*
-                # the task entered into the queue:
-                if self.qm.check_blocklist(urlparse(url).hostname):
-                    logging.error('Cannot process queue item as the FQDN ' +
-                                  'has meanwhile been added to the blocklist!')
-                    self.qm.delete_from_queue(queue_id)
-                    logging.info('Removed item from queue: FQDN on blocklist.')
-                else:
-                    if action == 1:
-                        # download file to disk
-                        self.action.get_object(queue_id, 'file', url, url_hash)
-                    elif action == 2:
-                        # save page code into database
-                        self.action.get_object(queue_id, 'content',
-                                               url, url_hash,
-                                               prettify_html)
-                    elif action == 3:
-                        # headless Chrome to create PDF
-                        self.__page_to_pdf(url, url_hash, queue_id)
-                    elif action == 4:
-                        # save page text into database
-                        self.action.get_object(queue_id, 'text',
-                                               url, url_hash,
-                                               prettify_html)
-                    else:
-                        logging.error('Unknown action id!')
-
-                    if self.milestone and self.check_is_milestone():
-                        stats = self.stats.queue_stats()
-                        remaining_tasks = (stats['tasks_without_error'] +
-                                           stats['tasks_with_temp_errors'])
-                        self.notify.send_milestone_msg(
-                            self.stats.get_processed_counter(),
-                            remaining_tasks,
-                            self.tm.estimate_remaining_time(
-                                self.stats.get_processed_counter(),
-                                remaining_tasks)
-                                )
-
-                    # wait some interval to avoid overloading the server
-                    self.tm.random_wait()
-
-    def __page_to_pdf(self,
-                      url: str,
-                      url_hash: str,
-                      queue_id: str):
-        """ Uses the Google Chrome or Chromium browser in headless mode
-        to print the page to PDF and stores that.
-        BEWARE: Some cookie-popups blank out the page and all what is stored
-        is the dialogue."""
-
-        filename = f"{self.fm.file_prefix}{queue_id}.pdf"
-        path = self.fm.target_dir.joinpath(filename)
-
-        self.controlled_browser.page_to_pdf(url, path, queue_id)
-
-        hash_value = self.fm.get_file_hash(path)
-
-        try:
-            self.cur.callproc('insert_file_SP',
-                              (url, url_hash, queue_id, 'application/pdf',
-                               str(self.fm.target_dir), filename,
-                               self.fm.get_file_size(path),
-                               self.fm.hash_method, hash_value, 3))
-        except pymysql.DatabaseError:
-            self.cnt['transaction_fail'] += 1
-            logging.error('Database Transaction failed: Could not add ' +
-                          'already downloaded file %s to the database!',
-                          path, exc_info=True)
+        self.qm.process_queue()
 
     def return_page_code(self,
                          url: str):
-        """Directly return a page's code. Do *not* store it in the database."""
+        """Immediately return a page's code.
+           Do *not* store it in the database."""
         self.action.return_page_code(url)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -406,18 +281,18 @@ class Exoskeleton:
         """Treat all queued tasks, that are marked to cause any type of
         error, as if they are new tasks by removing that mark and
         any delay."""
-        self.qm.forget_all_errors()
+        self.errorhandling.forget_all_errors()
 
     def forget_permanent_errors(self):
         """Treat all queued tasks, that are marked to cause a *permanent*
         error, as if they are new tasks by removing that mark and
         any delay."""
-        self.qm.forget_error_group(True)
+        self.errorhandling.forget_error_group(True)
 
     def forget_temporary_errors(self):
         """Treat all queued tasks, that are marked to cause a *temporary*
         error, as if they are new tasks by removing that mark and any delay."""
-        self.qm.forget_error_group(False)
+        self.errorhandling.forget_error_group(False)
 
     def forget_specific_error(self,
                               specific_error: int):
@@ -425,18 +300,7 @@ class Exoskeleton:
         error, as if they are new tasks by removing that mark and
         any delay. The number of the error has to correspond to the
         errorType database table."""
-        self.qm.forget_specific_error(specific_error)
-
-    def check_is_milestone(self) -> bool:
-        """ Check if a milestone is reached."""
-        processed = self.stats.get_processed_counter()
-        # Check >0 in case the bot starts failing with the first item.
-        if (self.milestone and
-                processed > 0 and
-                (processed % self.milestone) == 0):
-            logging.info("Milestone reached: %s processed", str(processed))
-            return True
-        return False
+        self.errorhandling.forget_specific_error(specific_error)
 
     def block_fqdn(self,
                    fqdn: str,
