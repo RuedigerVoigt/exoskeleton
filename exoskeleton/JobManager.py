@@ -26,7 +26,7 @@ class JobManager:
 
     def define_new(self,
                    job_name: str,
-                   start_url: str):
+                   start_url: str) -> None:
         """ Create a new crawl job identified by it name and an url
             to start crawling. """
         # no check for None or '' here as it is a required argument
@@ -63,7 +63,7 @@ class JobManager:
 
     def update_current_url(self,
                            job_name: str,
-                           current_url: str):
+                           current_url: str) -> None:
         """ Set the currentUrl for a specific job. """
 
         if job_name == '' or job_name is None:
@@ -111,7 +111,7 @@ class JobManager:
         return self.cur.fetchone()[0]
 
     def mark_as_finished(self,
-                         job_name: str):
+                         job_name: str) -> None:
         """ Mark a crawl job as finished. """
         if job_name == '' or job_name is None:
             raise ValueError

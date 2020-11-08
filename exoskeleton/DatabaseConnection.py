@@ -40,7 +40,7 @@ class DatabaseConnection:
               'storageTypes']
 
     def __init__(self,
-                 database_settings: dict):
+                 database_settings: dict) -> None:
         """Sets defaults"""
 
         if database_settings is None:
@@ -90,11 +90,11 @@ class DatabaseConnection:
 
         self.check_db_schema()
 
-    def __del__(self):
+    def __del__(self) -> None:
         # make sure the connection is closed instead of waiting for timeout:
         self.connection.close()
 
-    def establish_db_connection(self):
+    def establish_db_connection(self) -> None:
         """Establish a connection to MariaDB """
         try:
             logging.debug('Trying to connect to database.')
@@ -105,7 +105,7 @@ class DatabaseConnection:
                                               password=self.db_passphrase,
                                               autocommit=True)
 
-            logging.info('Established database connection.')
+            logging.info('Succesfully established database connection.')
 
         except pymysql.InterfaceError:
             logging.exception('Exception related to the database ' +
@@ -165,13 +165,13 @@ class DatabaseConnection:
                                'Missing Stored Procedures!')
         return True
 
-    def check_db_schema(self):
+    def check_db_schema(self) -> None:
         self.check_table_existence()
         self.check_stored_procedures()
-        logging.info('Database schema: found all / OK')
+        logging.info('Database schema: found all tables and procedures')
         self.check_schema_version()
 
-    def check_schema_version(self):
+    def check_schema_version(self) -> None:
         """Check if the database schema is compatible with this version
            of exoskeleton: Although check_table_existence and
            check_stored_procedures check if all expected tables and
@@ -196,7 +196,7 @@ class DatabaseConnection:
             logging.warning('Found no information about the version of the ' +
                             'database schema.')
 
-    def get_cursor(self):
+    def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.
         Try to reconnect if the connection is lost."""
         if self.cur:

@@ -29,7 +29,7 @@ class CrawlingErrorManager:
     def __init__(self,
                  db_cursor,
                  queue_max_retries,
-                 rate_limit_wait):
+                 rate_limit_wait) -> None:
         self.cur = db_cursor
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = queue_max_retries
@@ -42,7 +42,7 @@ class CrawlingErrorManager:
 
     def add_crawl_delay(self,
                         queue_id: str,
-                        error_type: Optional[int] = None):
+                        error_type: Optional[int] = None) -> None:
         """In case of a timeout or a temporary error increment the counter for
         the number of tries by one. If the configured maximum of tries
         was reached, mark it as a permanent error. Otherwise add a delay,
@@ -100,7 +100,7 @@ class CrawlingErrorManager:
 
     def mark_permanent_error(self,
                              queue_id: str,
-                             error: int):
+                             error: int) -> None:
         """ Mark item in queue that causes a permanent error.
         Without this exoskeleton would try to execute the
         task over and over again."""
@@ -112,7 +112,7 @@ class CrawlingErrorManager:
         logging.info('Marked queue-item that caused a permanent problem.')
 
     def forget_specific_error(self,
-                              specific_error: int):
+                              specific_error: int) -> None:
         """Treat all queued tasks, that are marked to cause a *specific*
         error, as if they are new tasks by removing that mark and any delay.
         The number of the error has to correspond to the errorType
@@ -125,7 +125,7 @@ class CrawlingErrorManager:
                          specific_error)
 
     def forget_error_group(self,
-                           permanent: bool):
+                           permanent: bool) -> None:
         self.cur.execute("UPDATE queue SET " +
                          "causesError = NULL, " +
                          "numTries = 0, " +
@@ -134,7 +134,7 @@ class CrawlingErrorManager:
                          "    SELECT id from errorType WHERE permanent = %s);",
                          (1 if permanent else 0))
 
-    def forget_all_errors(self):
+    def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
         error, as if they are new tasks by removing that mark and any delay."""
         self.cur.execute("UPDATE queue SET " +
@@ -143,11 +143,11 @@ class CrawlingErrorManager:
                          "delayUntil = NULL;")
 
     def add_rate_limit(self,
-                       fqdn: str):
+                       fqdn: str) -> None:
         """If a bot receives the statuscode 429 ('too many requests') it hit
-        a rate limit. Adding the fully qualified domain name to the rate
-        limit list, ensures that this FQDN is not contacted for a
-        predefined time."""
+           a rate limit. Adding the fully qualified domain name to the rate
+           limit list, ensures that this FQDN is not contacted for a
+           predefined time."""
         msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
                f"contact this host for {self.rate_limit_wait} seconds.")
         logging.error(msg)
@@ -162,10 +162,10 @@ class CrawlingErrorManager:
                           self.rate_limit_wait))
 
     def forget_specific_rate_limit(self,
-                                   fqdn: str):
+                                   fqdn: str) -> None:
         self.cur.execute('DELETE FROM rateLimits ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn)
 
-    def forget_all_rate_limits(self):
+    def forget_all_rate_limits(self) -> None:
         self.cur.execute('TRUNCATE TABLE rateLimits;')

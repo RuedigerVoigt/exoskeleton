@@ -16,7 +16,7 @@ class StatisticsManager:
     """Manage the statistics."""
 
     def __init__(self,
-                 db_cursor):
+                 db_cursor) -> None:
         self.cur = db_cursor
         self.cnt: Counter = Counter()
 
@@ -66,7 +66,7 @@ class StatisticsManager:
         }
         return stats
 
-    def log_queue_stats(self):
+    def log_queue_stats(self) -> None:
         """Log the queue statistics using logging - that means to the screen
         or into a file depending on your setup.
         Especially useful when a bot starts or resumes processing the queue."""
@@ -85,7 +85,7 @@ class StatisticsManager:
                                successful_requests: int,
                                temporary_problems: int,
                                permanent_errors: int,
-                               hit_rate_limit: int):
+                               hit_rate_limit: int) -> None:
         """ Updates the host based statistics. The URL gets shortened to
         the hostname. Increase the different counters."""
 
@@ -105,7 +105,7 @@ class StatisticsManager:
                           successful_requests, temporary_problems,
                           permanent_errors, hit_rate_limit))
 
-    def increment_processed_counter(self):
+    def increment_processed_counter(self) -> None:
         """Count the number of actions processed.
            This function is wrapping a Counter object
            to make it accesible from different objects."""

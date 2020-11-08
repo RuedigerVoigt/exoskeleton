@@ -73,30 +73,30 @@ class QueueManager:
 
     def block_fqdn(self,
                    fqdn: str,
-                   comment: Optional[str] = None):
+                   comment: Optional[str] = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
-        - like www.example.com - to the blocklist."""
+           - like www.example.com - to the blocklist."""
         if len(fqdn) > 255:
             raise ValueError('No valid FQDN can be longer than 255 ' +
                              'characters. Exoskeleton can only block ' +
                              'a FQDN but not URLs.')
-        else:
-            try:
-                self.cur.execute('INSERT INTO blockList ' +
-                                 '(fqdn, fqdnHash, comment) ' +
-                                 'VALUES (%s, SHA2(%s,256), %s);',
-                                 (fqdn.strip(), fqdn.strip(), comment))
-            except pymysql.err.IntegrityError:
-                logging.info('FQDN already on blocklist.')
+
+        try:
+            self.cur.execute('INSERT INTO blockList ' +
+                             '(fqdn, fqdnHash, comment) ' +
+                             'VALUES (%s, SHA2(%s,256), %s);',
+                             (fqdn.strip(), fqdn.strip(), comment))
+        except pymysql.err.IntegrityError:
+            logging.info('FQDN already on blocklist.')
 
     def unblock_fqdn(self,
-                     fqdn: str):
+                     fqdn: str) -> None:
         """Remove a specific fqdn from the blocklist."""
         self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn.strip())
 
-    def truncate_blocklist(self):
+    def truncate_blocklist(self) -> None:
         """Remove *all* entries from the blocklist."""
         logging.info("Truncating the blocklist.")
         self.cur.execute('TRUNCATE TABLE blockList;')
@@ -164,11 +164,10 @@ class QueueManager:
                     logging.info('File has already been processed ' +
                                  'in the same way. Skipping it.')
                     return None
-                else:
-                    # log and simply go on
-                    logging.debug('The file has already been processed, ' +
-                                  'BUT not in this way. ' +
-                                  'Adding task to the queue.')
+
+                # log and simply go on
+                logging.debug('The file has already been processed, BUT not ' +
+                              'in this way. Adding task to the queue.')
             else:
                 # File has not been processed yet.
                 # If the exact same task is *not* already in the queue,
@@ -213,8 +212,7 @@ class QueueManager:
         uuid_set: set = {uuid[0] for uuid in queue_uuids}
         if uuid_set:
             return uuid_set
-        else:
-            return set()
+        return set()
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
@@ -231,8 +229,7 @@ class QueueManager:
         id_in_file_master = self.cur.fetchone()
         if id_in_file_master:
             return id_in_file_master[0]
-        else:
-            return None
+        return None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # HANDLE LABELS
@@ -240,7 +237,7 @@ class QueueManager:
 
     def __define_new_label(self,
                            shortname: str,
-                           description: str = None):
+                           description: str = None) -> None:
         """ If the label is not already in use, define a new label
         and a description. """
         if len(shortname) > 31:
@@ -258,7 +255,7 @@ class QueueManager:
 
     def assign_labels_to_master(self,
                                 url: str,
-                                labels: Union[set, None]):
+                                labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels to the *fileMaster* entry.
         Removes duplicates and adds new labels to the label list
         if necessary."""
@@ -269,47 +266,47 @@ class QueueManager:
             return None
 
         if not labels:
-            return
-        else:
-            # Using a set to avoid duplicates. However, accept either
-            # a single string or a list type.
-            label_set = userprovided.parameters.convert_to_set(labels)
+            return None
 
-            for label in label_set:
-                # Make sure all labels are in the database table.
-                # -> If they already exist or malformed the command
-                # will be ignored by the dbms.
-                self.__define_new_label(label)
+        # Using a set to avoid duplicates. However, accept either
+        # a single string or a list type.
+        label_set = userprovided.parameters.convert_to_set(labels)
 
-            # Get all label-ids
-            id_list = self.get_label_ids(label_set)
+        for label in label_set:
+            # Make sure all labels are in the database table.
+            # -> If they already exist or malformed the command
+            # will be ignored by the dbms.
+            self.__define_new_label(label)
 
-            # Check whether some labels are already associated
-            # with the fileMaster entry.
-            self.cur.execute('SELECT labelID ' +
-                             'FROM labelToMaster ' +
-                             'WHERE urlHash = SHA2(%s,256);', url)
-            ids_found: Optional[tuple] = self.cur.fetchall()
-            ids_associated = set()
-            if ids_found:
-                ids_associated = set(ids_found)
+        # Get all label-ids
+        id_list = self.get_label_ids(label_set)
 
-            # ignore all labels already associated:
-            remaining_ids = tuple(id_list - ids_associated)
+        # Check whether some labels are already associated
+        # with the fileMaster entry.
+        self.cur.execute('SELECT labelID ' +
+                         'FROM labelToMaster ' +
+                         'WHERE urlHash = SHA2(%s,256);', url)
+        ids_found: Optional[tuple] = self.cur.fetchall()
+        ids_associated = set()
+        if ids_found:
+            ids_associated = set(ids_found)
 
-            if len(remaining_ids) > 0:
-                # Case: there are new labels
-                # Convert into a format to INSERT with executemany
-                insert_list = [(id, url) for id in remaining_ids]
-                # Add those associatons
-                self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
-                                     '(labelID, urlHash) ' +
-                                     'VALUES (%s, SHA2(%s,256));',
-                                     insert_list)
+        # ignore all labels already associated:
+        remaining_ids = tuple(id_list - ids_associated)
+
+        if len(remaining_ids) > 0:
+            # Case: there are new labels
+            # Convert into a format to INSERT with executemany
+            insert_list = [(id, url) for id in remaining_ids]
+            # Add those associatons
+            self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
+                                 '(labelID, urlHash) ' +
+                                 'VALUES (%s, SHA2(%s,256));',
+                                 insert_list)
 
     def assign_labels_to_uuid(self,
                               uuid: str,
-                              labels: Union[set, None]):
+                              labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels either to a specific
         version of a file.
         Removes duplicates and adds new labels to the label list
@@ -317,43 +314,43 @@ class QueueManager:
 
         if not labels:
             return
-        else:
-            # Using a set to avoid duplicates. However, accept either
-            # a single string or a list type.
-            label_set = userprovided.parameters.convert_to_set(labels)
 
-            for label in label_set:
-                # Make sure all labels are in the database table.
-                # -> If they already exist or malformed the command
-                # will be ignored by the dbms.
-                self.__define_new_label(label)
+        # Using a set to avoid duplicates. However, accept either
+        # a single string or a list type.
+        label_set = userprovided.parameters.convert_to_set(labels)
 
-            # Get all label-ids
-            id_list = self.get_label_ids(label_set)
+        for label in label_set:
+            # Make sure all labels are in the database table.
+            # -> If they already exist or malformed the command
+            # will be ignored by the dbms.
+            self.__define_new_label(label)
 
-            # Check if there are already labels assigned with the version
-            self.cur.execute('SELECT labelID ' +
-                             'FROM labelToVersion ' +
-                             'WHERE versionUUID = %s;', uuid)
-            ids_found = self.cur.fetchall()
-            ids_associated = set()
-            if ids_found:
-                ids_associated = set(ids_found)
-            # ignore all labels already associated:
-            remaining_ids = tuple(id_list - ids_associated)
+        # Get all label-ids
+        id_list = self.get_label_ids(label_set)
 
-            if len(remaining_ids) > 0:
-                # Case: there are new labels
-                # Convert into a format to INSERT with executemany
-                insert_list = [(id, uuid) for id in remaining_ids]
-                self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
-                                     '(labelID, versionUUID) ' +
-                                     'VALUES (%s, %s);', insert_list)
+        # Check if there are already labels assigned with the version
+        self.cur.execute('SELECT labelID ' +
+                         'FROM labelToVersion ' +
+                         'WHERE versionUUID = %s;', uuid)
+        ids_found = self.cur.fetchall()
+        ids_associated = set()
+        if ids_found:
+            ids_associated = set(ids_found)
+        # ignore all labels already associated:
+        remaining_ids = tuple(id_list - ids_associated)
+
+        if len(remaining_ids) > 0:
+            # Case: there are new labels
+            # Convert into a format to INSERT with executemany
+            insert_list = [(id, uuid) for id in remaining_ids]
+            self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
+                                 '(labelID, versionUUID) ' +
+                                 'VALUES (%s, %s);', insert_list)
 
     def get_label_ids(self,
                       label_set: Union[set, str]) -> set:
         """ Given a set of labels, this returns the corresponding ids
-        in the labels table. """
+            in the labels table. """
         if label_set:
             label_set = userprovided.parameters.convert_to_set(label_set)
             # The IN-Operator makes it necessary to construct the command
@@ -377,19 +374,19 @@ class QueueManager:
     # PROCESSING THE QUEUE
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def get_next_task(self):
+    def get_next_task(self) -> str:
         """ Get the next suitable task"""
         self.cur.execute('CALL next_queue_object_SP();')
         return self.cur.fetchone()
 
     def delete_from_queue(self,
-                          queue_id: str):
+                          queue_id: str) -> None:
         """Remove all label links from a queue item
         and then delete it from the queue."""
         # callproc expects a tuple. Do not remove the comma:
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
-    def process_queue(self):
+    def process_queue(self) -> None:
         """Process the queue"""
         self.stats.log_queue_stats()
 
@@ -456,7 +453,7 @@ class QueueManager:
                 action = next_in_queue[1]
                 url = next_in_queue[2]
                 url_hash = next_in_queue[3]
-                prettify_html = True if next_in_queue[4] == 1 else False
+                prettify_html = (next_in_queue[4] == 1)
 
                 # The FQDN might have been added to the blocklist *after*
                 # the task entered into the queue:

@@ -57,9 +57,9 @@ class RemoteControlChrome:
         """See if the executable name provided by the setup is in the path """
         return True if shutil.which(browser_name) else False
 
-    def suggest_executables(self):
+    def suggest_executables(self) -> None:
         """Check for all supported browsers if they are available on the
-           system. If so tell the user about it with a log message."""
+           system. If so tell the user about it with a log message (info)."""
         for browser in self.SUPPORTED_BROWSERS:
             if self.check_executable_existence(browser):
                 logging.info('Found supported browser in PATH to save pdf: %s',
@@ -89,7 +89,7 @@ class RemoteControlChrome:
     def page_to_pdf(self,
                     url: str,
                     file_path: pathlib.Path,
-                    queue_id: str):
+                    queue_id: str) -> None:
         """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
         BEWARE: Some cookie-popups blank out the page and all what is stored

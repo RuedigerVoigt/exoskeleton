@@ -41,7 +41,7 @@ class ExoActions:
                  crawling_error_manager_object,
                  remote_control_chrome_object,
                  user_agent: str,
-                 connection_timeout: int):
+                 connection_timeout: int) -> None:
         """ """
         self.cur = db_cursor
         self.stats = stats_manager_object
@@ -58,7 +58,7 @@ class ExoActions:
                    action_type: str,
                    url: str,
                    url_hash: str,
-                   prettify_html: bool = False):
+                   prettify_html: bool = False) -> None:
         """ Generic function to either download a file or
             store a page's content."""
         # pylint: disable=too-many-branches
@@ -195,7 +195,7 @@ class ExoActions:
             raise
 
     def return_page_code(self,
-                         url: str):
+                         url: str) -> str:
         """Directly return a page's code. Do *not* store it in the database."""
         if url == '' or url is None:
             raise ValueError('Missing url')
@@ -208,10 +208,9 @@ class ExoActions:
                              stream=False
                              )
 
-            if r.status_code == 200:
-                return r.text
-            else:
+            if r.status_code != 200:
                 raise RuntimeError('Cannot return page code')
+            return r.text
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
@@ -230,7 +229,7 @@ class ExoActions:
     def page_to_pdf(self,
                     url: str,
                     url_hash: str,
-                    queue_id: str):
+                    queue_id: str) -> None:
         """ Uses the Google Chrome or Chromium browser in headless mode
         to print the page to PDF and stores that.
         BEWARE: Some cookie-popups blank out the page and all what is stored
@@ -254,7 +253,6 @@ class ExoActions:
             logging.error('Database Transaction failed: Could not add ' +
                           'already downloaded file %s to the database!',
                           path, exc_info=True)
-
 
     def prettify_html(self,
                       content: str) -> str:

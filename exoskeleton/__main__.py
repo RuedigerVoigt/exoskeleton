@@ -165,18 +165,18 @@ class Exoskeleton:
     # - Make some accessible from outside.
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def random_wait(self):
+    def random_wait(self) -> None:
         self.tm.random_wait()
 
-    def process_queue(self):
+    def process_queue(self) -> None:
         """Process the queue"""
         self.qm.process_queue()
 
     def return_page_code(self,
-                         url: str):
+                         url: str) -> str:
         """Immediately return a page's code.
            Do *not* store it in the database."""
-        self.action.return_page_code(url)
+        return self.action.return_page_code(url)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # JOB MANAGEMENT
@@ -184,14 +184,14 @@ class Exoskeleton:
 
     def job_define_new(self,
                        job_name: str,
-                       start_url: str):
+                       start_url: str) -> None:
         """ Create a new crawl job identified by it name and an url
         to start crawling. """
         self.jobs.define_new(job_name, start_url)
 
     def job_update_current_url(self,
                                job_name: str,
-                               current_url: str):
+                               current_url: str) -> None:
         """ Set the currentUrl for a specific job. """
         self.jobs.update_current_url(job_name, current_url)
 
@@ -203,7 +203,7 @@ class Exoskeleton:
         return self.jobs.get_current_url(job_name)
 
     def job_mark_as_finished(self,
-                             job_name: str):
+                             job_name: str) -> None:
         """ Mark a crawl job as finished. """
         self.jobs.mark_as_finished(job_name)
 
@@ -272,30 +272,30 @@ class Exoskeleton:
         return self.qm.get_filemaster_id_by_url(url)
 
     def delete_from_queue(self,
-                          queue_id: str):
+                          queue_id: str) -> None:
         """Remove all label links from a queue item and then delete it
         from the queue."""
         self.qm.delete_from_queue(queue_id)
 
-    def forget_all_errors(self):
+    def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
         error, as if they are new tasks by removing that mark and
         any delay."""
         self.errorhandling.forget_all_errors()
 
-    def forget_permanent_errors(self):
+    def forget_permanent_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause a *permanent*
         error, as if they are new tasks by removing that mark and
         any delay."""
         self.errorhandling.forget_error_group(True)
 
-    def forget_temporary_errors(self):
+    def forget_temporary_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause a *temporary*
         error, as if they are new tasks by removing that mark and any delay."""
         self.errorhandling.forget_error_group(False)
 
     def forget_specific_error(self,
-                              specific_error: int):
+                              specific_error: int) -> None:
         """Treat all queued tasks, that are marked to cause a *specific*
         error, as if they are new tasks by removing that mark and
         any delay. The number of the error has to correspond to the
@@ -304,19 +304,19 @@ class Exoskeleton:
 
     def block_fqdn(self,
                    fqdn: str,
-                   comment: Optional[str] = None):
+                   comment: Optional[str] = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
         - like www.example.com - to the blocklist."""
         self.qm.block_fqdn(fqdn, comment)
 
     def unblock_fqdn(self,
-                     fqdn: str):
+                     fqdn: str) -> None:
         """Remove a specific fqdn from the blocklist."""
         self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn.strip())
 
-    def truncate_blocklist(self):
+    def truncate_blocklist(self) -> None:
         """Remove *all* entries from the blocklist."""
         self.qm.truncate_blocklist()
 
@@ -338,7 +338,7 @@ class Exoskeleton:
 
     def define_or_update_label(self,
                                shortname: str,
-                               description: str = None):
+                               description: str = None) -> None:
         """ Insert a new label into the database or update its
         description in case it already exists. Use __define_new_label
         if an update has to be avoided. """
@@ -468,7 +468,7 @@ class Exoskeleton:
 
     def remove_labels_from_uuid(self,
                                 uuid: str,
-                                labels_to_remove: set):
+                                labels_to_remove: set) -> None:
         """Detaches a label from a UUID / version."""
 
         # Using a set to avoid duplicates. However, accept either
