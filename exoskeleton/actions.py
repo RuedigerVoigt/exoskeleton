@@ -42,7 +42,7 @@ class ExoActions:
     HTTP_TEMP_ERRORS = (408, 500, 502, 503, 504, 509, 529, 598)
 
     def __init__(self,
-                 db_cursor,
+                 db_cursor: pymysql.cursors.Cursor,
                  stats_manager_object: StatisticsManager,
                  file_manager_object: FileManager,
                  time_manager_object: TimeManager,
