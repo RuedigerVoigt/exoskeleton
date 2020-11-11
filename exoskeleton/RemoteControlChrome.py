@@ -52,8 +52,8 @@ class RemoteControlChrome:
             if self.check_browser_support(self.browser_name):
                 self.browser_present = True
 
-    def check_executable_existence(self,
-                                   browser_name: str) -> bool:
+    @staticmethod
+    def check_executable_existence(browser_name: str) -> bool:
         """See if the executable name provided by the setup is in the path """
         return True if shutil.which(browser_name) else False
 

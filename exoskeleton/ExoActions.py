@@ -17,6 +17,12 @@ import urllib3  # type: ignore
 from urllib.parse import urlparse
 import userprovided
 
+from .CrawlingErrorManager import CrawlingErrorManager
+from .FileManager import FileManager
+from .RemoteControlChrome import RemoteControlChrome
+from .StatisticsManager import StatisticsManager
+from .TimeManager import TimeManager
+
 
 class ExoActions:
     """Manage actions (i.e. interactions with servers)
@@ -35,11 +41,11 @@ class ExoActions:
 
     def __init__(self,
                  db_cursor,
-                 stats_manager_object,
-                 file_manager_object,
-                 time_manager_object,
-                 crawling_error_manager_object,
-                 remote_control_chrome_object,
+                 stats_manager_object: StatisticsManager,
+                 file_manager_object: FileManager,
+                 time_manager_object: TimeManager,
+                 crawling_error_manager_object: CrawlingErrorManager,
+                 remote_control_chrome_object: RemoteControlChrome,
                  user_agent: str,
                  connection_timeout: int) -> None:
         """ """
@@ -255,8 +261,8 @@ class ExoActions:
                           'already downloaded file %s to the database!',
                           path, exc_info=True)
 
-    def prettify_html(self,
-                      content: str) -> str:
+    @staticmethod
+    def prettify_html(content: str) -> str:
         """Only use for HTML, not XML.
            Parse the HTML:
            * add a document structure if needed
