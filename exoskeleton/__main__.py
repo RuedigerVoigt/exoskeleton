@@ -113,11 +113,11 @@ class Exoskeleton:
 
         # Init Classes
 
-        self.tm = TimeManager(
+        self.time = TimeManager(
             bot_behavior.get('wait_min', 5),
             bot_behavior.get('wait_max', 30))
 
-        self.fm = FileManager(
+        self.file = FileManager(
             self.cur,
             target_directory,
             filename_prefix)
@@ -136,17 +136,17 @@ class Exoskeleton:
         self.action = ExoActions(
             self.cur,
             self.stats,
-            self.fm,
-            self.tm,
+            self.file,
+            self.time,
             self.errorhandling,
             self.controlled_browser,
             self.user_agent,
             self.connection_timeout)
 
-        self.qm = QueueManager(
+        self.queue = QueueManager(
             self.db,
             self.cur,
-            self.tm,
+            self.time,
             self.stats,
             self.action,
             self.notify,
@@ -166,11 +166,11 @@ class Exoskeleton:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def random_wait(self) -> None:
-        self.tm.random_wait()
+        self.time.random_wait()
 
     def process_queue(self) -> None:
         """Process the queue"""
-        self.qm.process_queue()
+        self.queue.process_queue()
 
     def return_page_code(self,
                          url: str) -> str:
@@ -217,9 +217,9 @@ class Exoskeleton:
                           labels_version: set = None,
                           force_new_version: bool = False) -> Optional[str]:
         """Add a file download URL to the queue """
-        uuid = self.qm.add_to_queue(url, 1, labels_master,
-                                    labels_version, False,
-                                    force_new_version)
+        uuid = self.queue.add_to_queue(url, 1, labels_master,
+                                       labels_version, False,
+                                       force_new_version)
         return uuid
 
     def add_save_page_code(self,
@@ -229,9 +229,9 @@ class Exoskeleton:
                            prettify_html: bool = False,
                            force_new_version: bool = False) -> Optional[str]:
         """Add an URL to the queue to save its HTML code into the database."""
-        uuid = self.qm.add_to_queue(url, 2, labels_master,
-                                    labels_version, prettify_html,
-                                    force_new_version)
+        uuid = self.queue.add_to_queue(url, 2, labels_master,
+                                       labels_version, prettify_html,
+                                       force_new_version)
         return uuid
 
     def add_page_to_pdf(self,
@@ -246,9 +246,9 @@ class Exoskeleton:
                             'Chrome or Chromium this task cannot run!' +
                             'Provide the path to the executable when you ' +
                             'initialize exoskeleton.')
-        uuid = self.qm.add_to_queue(url, 3, labels_master,
-                                    labels_version, False,
-                                    force_new_version)
+        uuid = self.queue.add_to_queue(url, 3, labels_master,
+                                       labels_version, False,
+                                       force_new_version)
         return uuid
 
     def add_save_page_text(self,
@@ -261,21 +261,21 @@ class Exoskeleton:
            This can be useful for some language processing tasks, but compared
            to add_save_page_code this removes the possiblity to work on a
            specific part using a CSS selector."""
-        uuid = self.qm.add_to_queue(url, 4, labels_master,
-                                    labels_version, True,
-                                    force_new_version)
+        uuid = self.queue.add_to_queue(url, 4, labels_master,
+                                       labels_version, True,
+                                       force_new_version)
         return uuid
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
         """Get the id of the filemaster entry associated with this URL."""
-        return self.qm.get_filemaster_id_by_url(url)
+        return self.queue.get_filemaster_id_by_url(url)
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
         """Remove all label links from a queue item and then delete it
         from the queue."""
-        self.qm.delete_from_queue(queue_id)
+        self.queue.delete_from_queue(queue_id)
 
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
@@ -307,7 +307,7 @@ class Exoskeleton:
                    comment: Optional[str] = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
         - like www.example.com - to the blocklist."""
-        self.qm.block_fqdn(fqdn, comment)
+        self.queue.block_fqdn(fqdn, comment)
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
@@ -318,7 +318,7 @@ class Exoskeleton:
 
     def truncate_blocklist(self) -> None:
         """Remove *all* entries from the blocklist."""
-        self.qm.truncate_blocklist()
+        self.queue.truncate_blocklist()
 
     def prettify_html(self,
                       content: str) -> str:
@@ -360,7 +360,7 @@ class Exoskeleton:
            If processed_only is set to True only UUIDs of
            already downloaded items are returned.
            Otherwise it contains queue objects with that label."""
-        returned_set = self.qm.get_label_ids(single_label)
+        returned_set = self.queue.get_label_ids(single_label)
         if returned_set == set():
             raise ValueError('Unknown label. Check for typo.')
 
@@ -475,7 +475,7 @@ class Exoskeleton:
             labels_to_remove)
 
         # Get all label-ids
-        id_list = self.qm.get_label_ids(labels_to_remove)
+        id_list = self.queue.get_label_ids(labels_to_remove)
 
         for label_id in id_list:
             self.cur.execute("DELETE FROM labelToVersion " +

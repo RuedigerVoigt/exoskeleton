@@ -43,7 +43,7 @@ class QueueManager:
         # Planned to be replaced with a connection pool. See issue #20
         self.db = db_connection
         self.cur = db_cursor
-        self.tm = time_manager_object
+        self.time = time_manager_object
         self.stats = stats_manager_object
         self.action = actions_object
         self.notify = notification_manager_object
@@ -496,13 +496,13 @@ class QueueManager:
                         self.notify.send_milestone_msg(
                             self.stats.get_processed_counter(),
                             remaining_tasks,
-                            self.tm.estimate_remaining_time(
+                            self.time.estimate_remaining_time(
                                 self.stats.get_processed_counter(),
                                 remaining_tasks)
                                 )
 
                     # wait some interval to avoid overloading the server
-                    self.tm.random_wait()
+                    self.time.random_wait()
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # MILESTONES
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
