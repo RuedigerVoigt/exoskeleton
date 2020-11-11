@@ -356,10 +356,10 @@ class Exoskeleton:
                                single_label: str,
                                processed_only: bool = False) -> set:
         """Get a list of UUIDs (in this context file versions)
-        which have *one* specific label attached to them.
-        If processed_only is set to True only UUIDs of
-        already downloaded items are returned.
-        Otherwise it contains queue objects with that label."""
+           which have *one* specific label attached to them.
+           If processed_only is set to True only UUIDs of
+           already downloaded items are returned.
+           Otherwise it contains queue objects with that label."""
         returned_set = self.qm.get_label_ids(single_label)
         if returned_set == set():
             raise ValueError('Unknown label. Check for typo.')
@@ -381,8 +381,8 @@ class Exoskeleton:
         version_ids = self.cur.fetchall()
         if not version_ids:
             return set()
-        version_ids = {(uuid[0]) for uuid in version_ids}
-        return version_ids
+        version_ids = {(uuid[0]) for uuid in version_ids}  # type: ignore[index, assignment]
+        return version_ids  # type: ignore[return-value]
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
@@ -400,7 +400,7 @@ class Exoskeleton:
         labels = self.cur.fetchall()
         if not labels:
             return set()
-        labels_set = {(label[0]) for label in labels}
+        labels_set = {(label[0]) for label in labels}  # type: ignore[index]
         return labels_set
 
     def get_filemaster_id(self,
@@ -414,8 +414,7 @@ class Exoskeleton:
         filemaster_id = self.cur.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")
-
-        return filemaster_id[0]
+        return filemaster_id[0]  # type: ignore[index]
 
     def filemaster_labels_by_id(self,
                                 filemaster_id: str) -> set:
@@ -432,7 +431,7 @@ class Exoskeleton:
         labels = self.cur.fetchall()
         if not labels:
             return set()
-        labels_set = {(label[0]) for label in labels}
+        labels_set = {(label[0]) for label in labels}  # type: ignore[index]
         return labels_set
 
     def filemaster_labels_by_url(self,
@@ -452,7 +451,7 @@ class Exoskeleton:
         labels = self.cur.fetchall()
         if not labels:
             return set()
-        labels_set = {(label[0]) for label in labels}
+        labels_set = {(label[0]) for label in labels}  # type: ignore[index]
         return labels_set
 
     def all_labels_by_uuid(self,

@@ -19,6 +19,7 @@ import uuid
 import pymysql
 import userprovided
 
+from .database_connection import DatabaseConnection
 from .time_manager import TimeManager
 from .statistics_manager import StatisticsManager
 from .actions import ExoActions
@@ -72,7 +73,7 @@ class QueueManager:
                          'WHERE fqdnhash = SHA2(%s,256);',
                          fqdn.strip())
         response = self.cur.fetchone()
-        count = int(response[0]) if response else 0
+        count = int(response[0]) if response else 0  # type: ignore[index]
         if count > 0:
             return True
         return False
@@ -215,10 +216,10 @@ class QueueManager:
                          'ORDER BY addedToQueue ASC;',
                          (url, action))
         queue_uuids = self.cur.fetchall()
-        uuid_set: set = {uuid[0] for uuid in queue_uuids}
-        if uuid_set:
-            return uuid_set
-        return set()
+        uuid_set = set()
+        if queue_uuids:
+            uuid_set = {uuid[0] for uuid in queue_uuids}  # type: ignore[index]
+        return uuid_set
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
@@ -234,7 +235,7 @@ class QueueManager:
                          url)
         id_in_file_master = self.cur.fetchone()
         if id_in_file_master:
-            return id_in_file_master[0]
+            return id_in_file_master[0]  # type: ignore[index]
         return None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -370,7 +371,7 @@ class QueueManager:
             label_id = self.cur.fetchall()
             label_set = set()
             if label_id:
-                label_set = {(id[0]) for id in label_id}
+                label_set = {(id[0]) for id in label_id}  # type: ignore[index]
 
             return set() if label_id is None else label_set
         logging.error('No labels provided to get_label_ids().')
@@ -383,7 +384,7 @@ class QueueManager:
     def get_next_task(self) -> Optional[str]:
         """ Get the next suitable task"""
         self.cur.execute('CALL next_queue_object_SP();')
-        return self.cur.fetchone()
+        return self.cur.fetchone()  # type: ignore[return-value]
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
@@ -428,7 +429,7 @@ class QueueManager:
                     # => check if that is only temporary or everything is done
                     self.cur.execute(
                         'SELECT num_items_with_temporary_errors();')
-                    num_temp_errors = self.cur.fetchone()[0]
+                    num_temp_errors = self.cur.fetchone()[0]  # type: ignore[index]
                     if num_temp_errors > 0:
                         # there are still tasks, but they have to wait
                         logging.debug("Tasks with temporary errors: " +
@@ -442,7 +443,7 @@ class QueueManager:
 
                         self.cur.execute(
                             'SELECT num_items_with_permanent_error();')
-                        num_permanent_errors = self.cur.fetchone()[0]
+                        num_permanent_errors = self.cur.fetchone()[0]  # type: ignore[index]
                         if num_permanent_errors > 0:
                             logging.error("%s permanent errors!",
                                           num_permanent_errors)

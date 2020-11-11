@@ -30,7 +30,7 @@ class StatisticsManager:
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
         response = self.cur.fetchone()
-        return int(response[0]) if response else None
+        return int(response[0]) if response else None  # type: ignore[index]
 
     def __num_tasks_w_permanent_errors(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a permanent
@@ -39,7 +39,7 @@ class StatisticsManager:
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 1);")
         response = self.cur.fetchone()
-        return int(response[0]) if response else None
+        return int(response[0]) if response else None  # type: ignore[index]
 
     def __num_tasks_w_temporary_errors(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a
@@ -48,7 +48,7 @@ class StatisticsManager:
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 0);")
         response = self.cur.fetchone()
-        return int(response[0]) if response else None
+        return int(response[0]) if response else None  # type: ignore[index]
 
     def __num_tasks_w_rate_limit(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a permanent
@@ -61,7 +61,7 @@ class StatisticsManager:
                          "    (SELECT fqdnhash FROM rateLimits " +
                          "     WHERE noContactUntil > NOW());")
         response = self.cur.fetchone()
-        return int(response[0]) if response else None
+        return int(response[0]) if response else None  # type: ignore[index]
 
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""

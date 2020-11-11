@@ -53,7 +53,8 @@ class JobManager:
             # Check if startURL is the same:
             self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
                              job_name)
-            existing_start_url = self.cur.fetchone()[0]
+            response = self.cur.fetchone()
+            existing_start_url = response[0] if response else None  # type: ignore[index]
             if existing_start_url != start_url:
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
@@ -91,7 +92,7 @@ class JobManager:
         # If the job exists, but the finished field has a value of NULL,
         # then MariaDB returns (None,)
         try:
-            job_state = job_state[0]
+            job_state = job_state[0]  # type: ignore[index]
         except TypeError:
             # Occurs if the the result was None, i.e. the job
             # does not exist.
@@ -107,7 +108,7 @@ class JobManager:
                          'FROM jobs ' +
                          'WHERE jobName = %s;',
                          job_name)
-        return self.cur.fetchone()[0]
+        return self.cur.fetchone()[0]  # type: ignore[index]
 
     def mark_as_finished(self,
                          job_name: str) -> None:

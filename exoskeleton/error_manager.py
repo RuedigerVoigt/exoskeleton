@@ -59,7 +59,7 @@ class CrawlingErrorManager:
         self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
                          queue_id)
         response = self.cur.fetchone()
-        num_tries = int(response[0]) if response else 0
+        num_tries = int(response[0]) if response else 0  # type: ignore[index]
 
         # Does the number of tries exceed the configured maximum?
         if num_tries == self.queue_max_retries:
@@ -89,7 +89,7 @@ class CrawlingErrorManager:
             self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
                              queue_id)
             response = self.cur.fetchone()
-            url_hash = response[0] if response else None
+            url_hash = response[0] if response else None  # type: ignore[index]
             if not url_hash:
                 raise ValueError('Missing urlHash. Cannot add crawl delay.')
 
