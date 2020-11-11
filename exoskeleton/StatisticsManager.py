@@ -112,4 +112,5 @@ class StatisticsManager:
         self.cnt['processed'] += 1
 
     def get_processed_counter(self) -> int:
+        """The number of processed tasks."""
         return self.cnt['processed']

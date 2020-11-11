@@ -130,13 +130,13 @@ class DatabaseConnection:
             logging.error('The database exists, but no tables found!')
             raise OSError('Database table structure missing. ' +
                           'Run generator script!')
-        else:
-            tables_found = [item[0] for item in tables]
-            for table in self.TABLES:
-                if table in tables_found:
-                    tables_count += 1
-                else:
-                    logging.error('Table %s not found.', table)
+
+        tables_found = [item[0] for item in tables]
+        for table in self.TABLES:
+            if table in tables_found:
+                tables_count += 1
+            else:
+                logging.error('Table %s not found.', table)
 
         if tables_count != len(self.TABLES):
             raise RuntimeError('Database Schema Incomplete: Missing Tables!')
@@ -144,7 +144,7 @@ class DatabaseConnection:
 
     def check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
-        is allowed to execute them. """
+           is allowed to execute them. """
         procedures_count = 0
         self.cur.execute('SELECT SPECIFIC_NAME ' +
                          'FROM INFORMATION_SCHEMA.ROUTINES ' +
@@ -166,6 +166,9 @@ class DatabaseConnection:
         return True
 
     def check_db_schema(self) -> None:
+        """Call the functions which check wheter all expected tables and
+           stored procedures are available in the database. Then look
+           for a version string in that database."""
         self.check_table_existence()
         self.check_stored_procedures()
         logging.info('Database schema: found all tables and procedures')
@@ -185,8 +188,7 @@ class DatabaseConnection:
                 logging.warning('Found no information about the version ' +
                                 'of the database schema.')
             elif schema[0] == '1.1.0':
-                logging.info('Database schema matches the version ' +
-                             'of exoskeleton.')
+                logging.info('Database schema matches version of exoskeleton.')
             else:
                 logging.warning(f"Mismatch between version of exoskeleton " +
                                 f" (1.1.0) and version of the database " +

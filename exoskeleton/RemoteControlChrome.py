@@ -74,7 +74,7 @@ class RemoteControlChrome:
             logging.info('Browser supported.')
         elif browser_name.lower() in self.UNSUPPORTED_BROWSERS:
             msg = (f"{browser_name} is unsupported. You must use Chromium " +
-                   f"or Google Chrome for the 'save as PDF' feature.")
+                   "or Google Chrome for the 'save as PDF' feature.")
             logging.exception(msg)
             self.suggest_executables()
             raise ValueError(msg)

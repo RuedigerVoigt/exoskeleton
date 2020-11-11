@@ -398,9 +398,8 @@ class Exoskeleton:
         labels = self.cur.fetchall()
         if not labels:
             return set()
-        else:
-            labels_set = {(label[0]) for label in labels}
-            return labels_set
+        labels_set = {(label[0]) for label in labels}
+        return labels_set
 
     def get_filemaster_id(self,
                           version_uuid: str) -> str:
@@ -413,8 +412,8 @@ class Exoskeleton:
         filemaster_id = self.cur.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")
-        else:
-            return filemaster_id[0]
+
+        return filemaster_id[0]
 
     def filemaster_labels_by_id(self,
                                 filemaster_id: str) -> set:
@@ -429,11 +428,10 @@ class Exoskeleton:
                          ');',
                          filemaster_id)
         labels = self.cur.fetchall()
-        if labels:
-            labels_set = {(label[0]) for label in labels}
-            return labels_set
-        else:
+        if not labels:
             return set()
+        labels_set = {(label[0]) for label in labels}
+        return labels_set
 
     def filemaster_labels_by_url(self,
                                  url: str) -> set:
@@ -450,11 +448,10 @@ class Exoskeleton:
                          ');',
                          url)
         labels = self.cur.fetchall()
-        if labels:
-            labels_set = {(label[0]) for label in labels}
-            return labels_set
-        else:
+        if not labels:
             return set()
+        labels_set = {(label[0]) for label in labels}
+        return labels_set
 
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
