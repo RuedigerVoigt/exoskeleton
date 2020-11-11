@@ -19,6 +19,11 @@ import uuid
 import pymysql
 import userprovided
 
+from .time_manager import TimeManager
+from .statistics_manager import StatisticsManager
+from .ExoActions import ExoActions
+from .notification_manager import NotificationManager
+
 
 class QueueManager:
     """Manage the queue and labels for the exoskeleton framework."""
@@ -26,10 +31,10 @@ class QueueManager:
     def __init__(self,
                  db_connection,
                  db_cursor: pymysql.cursors.Cursor,
-                 time_manager_object,
-                 stats_manager_object,
-                 actions_object,
-                 notification_manager_object,
+                 time_manager_object: TimeManager,
+                 stats_manager_object: StatisticsManager,
+                 actions_object: ExoActions,
+                 notification_manager_object: NotificationManager,
                  bot_behavior: dict,
                  milestone: int) -> None:
         # Connection object AND cursor for the queue manager to get a new
@@ -66,7 +71,8 @@ class QueueManager:
         self.cur.execute('SELECT COUNT(*) FROM blockList ' +
                          'WHERE fqdnhash = SHA2(%s,256);',
                          fqdn.strip())
-        count = (self.cur.fetchone())[0]
+        response = self.cur.fetchone()
+        count = int(response[0]) if response else 0
         if count > 0:
             return True
         return False

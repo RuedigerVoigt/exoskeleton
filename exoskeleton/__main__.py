@@ -21,16 +21,16 @@ from typing import Union, Optional
 import userprovided
 
 # import other modules of this framework
-from .CrawlingErrorManager import CrawlingErrorManager
-from .DatabaseConnection import DatabaseConnection
-from .ExoActions import ExoActions
-from .FileManager import FileManager
-from .JobManager import JobManager
-from .StatisticsManager import StatisticsManager
-from .TimeManager import TimeManager
-from .NotificationManager import NotificationManager
+from .error_manager import CrawlingErrorManager
+from .database_connection import DatabaseConnection
+from .actions import ExoActions
+from .file_manager import FileManager
+from .job_manager import JobManager
+from .statistics_manager import StatisticsManager
+from .time_manager import TimeManager
+from .notification_manager import NotificationManager
 from .QueueManager import QueueManager
-from .RemoteControlChrome import RemoteControlChrome
+from .remote_control_chrome import RemoteControlChrome
 
 
 class Exoskeleton:
