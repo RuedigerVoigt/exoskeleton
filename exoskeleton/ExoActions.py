@@ -9,12 +9,12 @@
 # standard library:
 from collections import Counter
 import logging
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup  # type: ignore
 import pymysql
 import requests
 import urllib3  # type: ignore
-from urllib.parse import urlparse
 import userprovided
 
 from .CrawlingErrorManager import CrawlingErrorManager
@@ -27,6 +27,8 @@ from .TimeManager import TimeManager
 class ExoActions:
     """Manage actions (i.e. interactions with servers)
        except remote control of the chromium browser. """
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments
 
     MAX_PATH_LENGTH = 255
 
@@ -51,8 +53,8 @@ class ExoActions:
         """ """
         self.cur = db_cursor
         self.stats = stats_manager_object
-        self.fm = file_manager_object
-        self.tm = time_manager_object
+        self.file = file_manager_object
+        self.time = time_manager_object
         self.errorhandling = crawling_error_manager_object
         self.controlled_browser = remote_control_chrome_object
         self.user_agent = user_agent
@@ -81,42 +83,45 @@ class ExoActions:
         if action_type not in ('content', 'text') and prettify_html:
             logging.error('Wrong action_type: prettify_html ignored.')
 
-        r = requests.Response()
+        response = requests.Response()
         try:
             if action_type == 'file':
                 logging.debug('starting download of queue id %s', queue_id)
-                r = requests.get(url,
-                                 headers={"User-agent": self.user_agent},
-                                 timeout=self.connection_timeout,
-                                 stream=True)
+                response = requests.get(
+                    url,
+                    headers={"User-agent": self.user_agent},
+                    timeout=self.connection_timeout,
+                    stream=True)
             elif action_type in('content', 'text'):
                 logging.debug('retrieving content of queue id %s', queue_id)
-                r = requests.get(url,
-                                 headers={"User-agent": self.user_agent},
-                                 timeout=self.connection_timeout,
-                                 stream=False
-                                 )
+                response = requests.get(
+                    url,
+                    headers={"User-agent": self.user_agent},
+                    timeout=self.connection_timeout,
+                    stream=False)
 
-            if r.status_code == 200:
+            if response.status_code == 200:
                 mime_type = ''
-                content_type = r.headers.get('content-type')
+                content_type = response.headers.get('content-type')
                 if content_type:
                     mime_type = (content_type).split(';')[0]
 
                 if action_type == 'file':
                     extension = userprovided.url.determine_file_extension(
                         url, mime_type)
-                    new_filename = f"{self.fm.file_prefix}{queue_id}{extension}"
-                    file_path = self.fm.write_response_to_file(r, new_filename)
-                    hash_value = self.fm.get_file_hash(file_path)
+                    new_filename = f"{self.file.file_prefix}{queue_id}{extension}"
+                    file_path = self.file.write_response_to_file(
+                        response, new_filename)
+                    hash_value = self.file.get_file_hash(file_path)
 
                     try:
                         self.cur.callproc('insert_file_SP',
                                           (url, url_hash, queue_id, mime_type,
-                                           str(self.fm.target_dir),
+                                           str(self.file.target_dir),
                                            new_filename,
-                                           self.fm.get_file_size(file_path),
-                                           self.fm.hash_method, hash_value, 1))
+                                           self.file.get_file_size(file_path),
+                                           self.file.hash_method,
+                                           hash_value, 1))
                     except pymysql.DatabaseError:
                         self.cnt['transaction_fail'] += 1
                         logging.error('Transaction failed: Could not add ' +
@@ -125,10 +130,10 @@ class ExoActions:
 
                 elif action_type in ('content', 'text'):
 
-                    detected_encoding = str(r.encoding)
+                    detected_encoding = str(response.encoding)
                     logging.debug('detected encoding: %s', detected_encoding)
 
-                    page_content = r.text
+                    page_content = response.text
 
                     if mime_type == 'text/html' and prettify_html:
                         page_content = self.prettify_html(page_content)
@@ -153,11 +158,11 @@ class ExoActions:
                 self.stats.increment_processed_counter()
                 self.stats.update_host_statistics(url, 1, 0, 0, 0)
 
-            elif r.status_code in self.HTTP_PERMANENT_ERRORS:
+            elif response.status_code in self.HTTP_PERMANENT_ERRORS:
                 self.errorhandling.mark_permanent_error(
-                    queue_id, r.status_code)
+                    queue_id, response.status_code)
                 self.stats.update_host_statistics(url, 0, 0, 1, 0)
-            elif r.status_code == 429:
+            elif response.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit! It queries too ' +
                               'fast => increase min_wait.')
@@ -165,11 +170,12 @@ class ExoActions:
                 if fqdn:
                     self.errorhandling.add_rate_limit(fqdn)
                 self.stats.update_host_statistics(url, 0, 0, 0, 1)
-            elif r.status_code in self.HTTP_TEMP_ERRORS:
+            elif response.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
-                self.errorhandling.add_crawl_delay(queue_id, r.status_code)
+                self.errorhandling.add_crawl_delay(
+                    queue_id, response.status_code)
             else:
-                logging.error('Unhandled return code %s', r.status_code)
+                logging.error('Unhandled return code %s', response.status_code)
                 self.stats.update_host_statistics(url, 0, 0, 1, 0)
 
         except TimeoutError:
@@ -186,7 +192,7 @@ class ExoActions:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
             self.stats.update_host_statistics(url, 0, 0, 0, 1)
-            self.tm.increase_wait()
+            self.time.increase_wait()
 
         except requests.exceptions.MissingSchema:
             logging.error('Missing Schema Exception. Does your URL contain ' +
@@ -208,15 +214,15 @@ class ExoActions:
         url = url.strip()
 
         try:
-            r = requests.get(url,
-                             headers={"User-agent": str(self.user_agent)},
-                             timeout=self.connection_timeout,
-                             stream=False
-                             )
+            response = requests.get(
+                url,
+                headers={"User-agent": str(self.user_agent)},
+                timeout=self.connection_timeout,
+                stream=False)
 
-            if r.status_code != 200:
+            if response.status_code != 200:
                 raise RuntimeError('Cannot return page code')
-            return r.text
+            return response.text
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
@@ -242,19 +248,19 @@ class ExoActions:
         BEWARE: Some cookie-popups blank out the page and all what is stored
         is the dialogue."""
 
-        filename = f"{self.fm.file_prefix}{queue_id}.pdf"
-        path = self.fm.target_dir.joinpath(filename)
+        filename = f"{self.file.file_prefix}{queue_id}.pdf"
+        path = self.file.target_dir.joinpath(filename)
 
         self.controlled_browser.page_to_pdf(url, path, queue_id)
 
-        hash_value = self.fm.get_file_hash(path)
+        hash_value = self.file.get_file_hash(path)
 
         try:
             self.cur.callproc('insert_file_SP',
                               (url, url_hash, queue_id, 'application/pdf',
-                               str(self.fm.target_dir), filename,
-                               self.fm.get_file_size(path),
-                               self.fm.hash_method, hash_value, 3))
+                               str(self.file.target_dir), filename,
+                               self.file.get_file_size(path),
+                               self.file.hash_method, hash_value, 3))
         except pymysql.DatabaseError:
             self.cnt['transaction_fail'] += 1
             logging.error('Database Transaction failed: Could not add ' +
