@@ -21,7 +21,7 @@ import userprovided
 
 from .time_manager import TimeManager
 from .statistics_manager import StatisticsManager
-from .ExoActions import ExoActions
+from .actions import ExoActions
 from .notification_manager import NotificationManager
 
 

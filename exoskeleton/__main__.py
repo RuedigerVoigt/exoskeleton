@@ -29,7 +29,7 @@ from .job_manager import JobManager
 from .statistics_manager import StatisticsManager
 from .time_manager import TimeManager
 from .notification_manager import NotificationManager
-from .QueueManager import QueueManager
+from .queue_manager import QueueManager
 from .remote_control_chrome import RemoteControlChrome
 
 

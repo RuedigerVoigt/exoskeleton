@@ -17,11 +17,11 @@ import requests
 import urllib3  # type: ignore
 import userprovided
 
-from .CrawlingErrorManager import CrawlingErrorManager
-from .FileManager import FileManager
-from .RemoteControlChrome import RemoteControlChrome
-from .StatisticsManager import StatisticsManager
-from .TimeManager import TimeManager
+from .error_manager import CrawlingErrorManager
+from .file_manager import FileManager
+from .remote_control_chrome import RemoteControlChrome
+from .statistics_manager import StatisticsManager
+from .time_manager import TimeManager
 
 
 class ExoActions:
