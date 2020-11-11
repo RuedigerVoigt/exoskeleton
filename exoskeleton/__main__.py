@@ -379,8 +379,10 @@ class Exoskeleton:
                              "WHERE labelID = %s;",
                              label_id)
         version_ids = self.cur.fetchall()
+        if not version_ids:
+            return set()
         version_ids = {(uuid[0]) for uuid in version_ids}
-        return set() if not version_ids else version_ids
+        return version_ids
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
