@@ -55,9 +55,9 @@ class NotificationManager:
                 logging.info('Will send notification once the bot is done.')
 
     def send_msg(self,
-                 reason: str):
+                 reason: str) -> None:
         """Send a prepared message if the bot is configured
-        and able to do so."""
+           and able to do so."""
         messages = {
             'start': {
                 'subject': f"Project {self.project_name} just started.",
@@ -82,9 +82,9 @@ class NotificationManager:
     def send_milestone_msg(self,
                            processed: int,
                            remaining: int,
-                           time_to_finish_seconds: int):
+                           time_to_finish_seconds: int) -> None:
         """Once a milestone is reached, send an email with an estimate
-        how long it will take for the bot to finish."""
+           how long it will take for the bot to finish."""
         # TO DO: more precise estimate requires to account for rate limits
         subject = (f"Project {self.project_name} Milestone: " +
                    f"{processed} processed")
@@ -95,7 +95,7 @@ class NotificationManager:
         self.mailer.send_mail(subject, body)
 
     def send_finish_msg(self,
-                        num_permanent_errors: int):
+                        num_permanent_errors: int) -> None:
         if self.send_mails and self.do_send_finish_msg:
             subject = f"{self.project_name}: queue empty / bot stopped"
             body = (f"The queue is empty. The bot " +
@@ -105,7 +105,7 @@ class NotificationManager:
 
     def send_custom_msg(self,
                         subject: str,
-                        body: str):
+                        body: str) -> None:
         """Send a custom message if the bot is configured and able to do so."""
         if self.send_mails:
             self.mailer.send_mail(subject, body)

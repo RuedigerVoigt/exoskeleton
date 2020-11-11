@@ -225,6 +225,7 @@ class ExoActions:
         except Exception:
             logging.exception('Exception while trying to get page-code',
                               exc_info=True)
+            raise
 
     def page_to_pdf(self,
                     url: str,

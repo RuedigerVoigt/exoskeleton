@@ -380,7 +380,7 @@ class Exoskeleton:
                              label_id)
         version_ids = self.cur.fetchall()
         version_ids = {(uuid[0]) for uuid in version_ids}
-        return set() if version_ids is None else version_ids
+        return set() if not version_ids else version_ids
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:

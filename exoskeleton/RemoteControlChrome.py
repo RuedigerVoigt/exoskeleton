@@ -30,7 +30,7 @@ class RemoteControlChrome:
     def __init__(self,
                  browser_name: str,
                  crawling_error_manager_object,
-                 stats_manager_object):
+                 stats_manager_object) -> None:
         """Check the path of the executable and if it is supported. """
 
         self.browser_name = ''
@@ -38,9 +38,9 @@ class RemoteControlChrome:
         self.errorhandling = crawling_error_manager_object
         self.stats = stats_manager_object
 
-        if browser_name is None or browser_name == '':
-            logging.warning('You have not provided a browser name. So you ' +
-                            'cannot use the save as PDF feature.')
+        if not browser_name:
+            logging.warning('You have not provided a browser name. Therefore' +
+                            ' you cannot use the save as PDF feature.')
         else:
             self.browser_name = browser_name.strip()
             if not self.check_executable_existence(self.browser_name):

@@ -19,7 +19,7 @@ class JobManager:
        By doing this you can restart a paused job without starting all over."""
 
     def __init__(self,
-                 db_cursor):
+                 db_cursor: pymysql.cursors.Cursor) -> None:
         """Sets defaults"""
 
         self.cur = db_cursor
@@ -54,12 +54,11 @@ class JobManager:
             self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
                              job_name)
             existing_start_url = self.cur.fetchone()[0]
-            if existing_start_url == start_url:
-                logging.warning('A job with identical name and startURL ' +
-                                'is already defined.')
-            else:
+            if existing_start_url != start_url:
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
+            logging.warning('A job with identical name and startURL ' +
+                            'is already defined.')     
 
     def update_current_url(self,
                            job_name: str,

@@ -12,6 +12,7 @@ import pathlib
 
 
 # external dependencies:
+import pymysql
 import requests
 import userprovided
 
@@ -20,10 +21,10 @@ class FileManager:
     """File handling for the exoskeleton framework"""
 
     def __init__(self,
-                 db_cursor,
+                 db_cursor: pymysql.cursors.Cursor,
                  target_directory: str,
                  filename_prefix: str
-                 ):
+                 ) -> None:
         self.cur = db_cursor
         self.target_dir = self.__check_target_directory(target_directory)
         self.file_prefix = self.__clean_prefix(filename_prefix)
@@ -34,14 +35,14 @@ class FileManager:
                              'your system.')
 
     def __check_target_directory(self,
-                                 target_directory) -> pathlib.Path:
+                                 target_directory: str) -> pathlib.Path:
         """Check if a target directory is set to write files to.
            If not fallback to the current working directory.
-           If a directory is set, but not accesible, fail early."""
+           If a directory is set, but not accessible, fail early."""
 
         target_dir = pathlib.Path.cwd()
 
-        if target_directory is None or target_directory.strip() == '':
+        if not target_directory or target_directory.strip() == '':
             logging.warning("Target directory is not set. " +
                             "Using the current working directory " +
                             "%s to store files!",
@@ -61,7 +62,7 @@ class FileManager:
 
     def __clean_prefix(self,
                        file_prefix: str) -> str:
-        """Remove whitespace around the filenam prefix and check if it is
+        """Remove whitespace around the filename prefix and check if it is
            not longer than 16 characters."""
         file_prefix = file_prefix.strip()
         # Limit the prefix length as on many systems the path must not be
@@ -76,12 +77,12 @@ class FileManager:
         return file_prefix
 
     def write_response_to_file(self,
-                               r: requests.Response,
+                               response: requests.Response,
                                file_name: str) -> pathlib.Path:
-        """Write the servers response (request.Response()) into a file."""
+        """Write the server's response into a file."""
         target_path = self.target_dir.joinpath(file_name)
         with open(target_path, 'wb') as file_handle:
-            for block in r.iter_content(1024):
+            for block in response.iter_content(1024):
                 file_handle.write(block)
             logging.debug('file written to disk')
 

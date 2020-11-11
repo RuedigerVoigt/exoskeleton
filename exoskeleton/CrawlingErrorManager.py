@@ -12,6 +12,7 @@ from typing import Optional
 
 # external dependencies:
 import userprovided
+import pymysql
 
 
 class CrawlingErrorManager:
@@ -27,9 +28,9 @@ class CrawlingErrorManager:
     DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
 
     def __init__(self,
-                 db_cursor,
-                 queue_max_retries,
-                 rate_limit_wait) -> None:
+                 db_cursor: pymysql.cursors.Cursor,
+                 queue_max_retries: int,
+                 rate_limit_wait_seconds: int) -> None:
         self.cur = db_cursor
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = queue_max_retries
@@ -38,7 +39,7 @@ class CrawlingErrorManager:
 
         # Seconds to wait before contacting the same FQDN again, after the bot
         # hit a rate limit. Defaults to 1860 seconds (i.e. 31 minutes):
-        self.rate_limit_wait: int = rate_limit_wait
+        self.rate_limit_wait: int = rate_limit_wait_seconds
 
     def add_crawl_delay(self,
                         queue_id: str,
@@ -57,7 +58,8 @@ class CrawlingErrorManager:
         # How many times this task was tried?
         self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
                          queue_id)
-        num_tries = int((self.cur.fetchone())[0])
+        response = self.cur.fetchone()
+        num_tries = int(response[0]) if response else 0
 
         # Does the number of tries exceed the configured maximum?
         if num_tries == self.queue_max_retries:
@@ -86,7 +88,11 @@ class CrawlingErrorManager:
             # Therefore, two steps instead of a Sub-Select.
             self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
                              queue_id)
-            url_hash = (self.cur.fetchone())[0]
+            response = self.cur.fetchone()
+            url_hash = response[0] if response else None
+            if not url_hash:
+                raise ValueError('Missing urlHash. Cannot add crawl delay.')
+
             self.cur.execute('UPDATE queue ' +
                              'SET delayUntil = ADDTIME(NOW(), %s) ' +
                              'WHERE urlHash = %s;',
@@ -102,14 +108,15 @@ class CrawlingErrorManager:
                              queue_id: str,
                              error: int) -> None:
         """ Mark item in queue that causes a permanent error.
-        Without this exoskeleton would try to execute the
-        task over and over again."""
+            Without this exoskeleton would try to execute the
+            task over and over again."""
 
         self.cur.execute('UPDATE queue ' +
                          'SET causesError = %s, ' +
                          'delayUntil = NULL ' +
                          'WHERE id = %s;', (error, queue_id))
-        logging.info('Marked queue-item that caused a permanent problem.')
+        logging.info('Marked queue-item %s as causing a permanent problem.',
+                     queue_id)
 
     def forget_specific_error(self,
                               specific_error: int) -> None:
@@ -126,6 +133,8 @@ class CrawlingErrorManager:
 
     def forget_error_group(self,
                            permanent: bool) -> None:
+        """Forget all errors that are permanent if that parameter is True,
+           else forget all that are NOT permanent."""
         self.cur.execute("UPDATE queue SET " +
                          "causesError = NULL, " +
                          "numTries = 0, " +
@@ -163,9 +172,11 @@ class CrawlingErrorManager:
 
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:
+        """Forget that the bot hit a rate limit for a specific FQDN."""
         self.cur.execute('DELETE FROM rateLimits ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
                          fqdn)
 
     def forget_all_rate_limits(self) -> None:
+        """Forget all rate limits the bot hit."""
         self.cur.execute('TRUNCATE TABLE rateLimits;')

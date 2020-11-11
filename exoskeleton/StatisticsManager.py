@@ -9,42 +9,48 @@
 # standard library:
 from collections import Counter
 import logging
+from typing import Optional
 from urllib.parse import urlparse
+
+import pymysql
 
 
 class StatisticsManager:
     """Manage the statistics."""
 
     def __init__(self,
-                 db_cursor) -> None:
+                 db_cursor: pymysql.cursors.Cursor) -> None:
         self.cur = db_cursor
         self.cnt: Counter = Counter()
 
-    def __num_tasks_wo_errors(self) -> int:
+    def __num_tasks_wo_errors(self) -> Optional[int]:
         """Number of tasks left in the queue which are *not* marked as
         causing any kind of error. """
         # How many are left in the queue?
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IS NULL;")
-        return int(self.cur.fetchone()[0])
+        response = self.cur.fetchone()
+        return int(response[0]) if response else None
 
-    def __num_tasks_w_permanent_errors(self) -> int:
+    def __num_tasks_w_permanent_errors(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a permanent
         error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 1);")
-        return int(self.cur.fetchone()[0])
+        response = self.cur.fetchone()
+        return int(response[0]) if response else None
 
-    def __num_tasks_w_temporary_errors(self) -> int:
+    def __num_tasks_w_temporary_errors(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a
         temporary error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 0);")
-        return int(self.cur.fetchone()[0])
+        response = self.cur.fetchone()
+        return int(response[0]) if response else None
 
-    def __num_tasks_w_rate_limit(self) -> int:
+    def __num_tasks_w_rate_limit(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a permanent
         error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
@@ -54,7 +60,8 @@ class StatisticsManager:
                          "AND fqdnhash IN " +
                          "    (SELECT fqdnhash FROM rateLimits " +
                          "     WHERE noContactUntil > NOW());")
-        return int(self.cur.fetchone()[0])
+        response = self.cur.fetchone()
+        return int(response[0]) if response else None
 
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""

@@ -25,13 +25,13 @@ class QueueManager:
 
     def __init__(self,
                  db_connection,
-                 db_cursor,
+                 db_cursor: pymysql.cursors.Cursor,
                  time_manager_object,
                  stats_manager_object,
                  actions_object,
                  notification_manager_object,
                  bot_behavior: dict,
-                 milestone: int):
+                 milestone: int) -> None:
         # Connection object AND cursor for the queue manager to get a new
         # cursor in case there is a problem.
         # Planned to be replaced with a connection pool. See issue #20
