@@ -380,7 +380,7 @@ class QueueManager:
     # PROCESSING THE QUEUE
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def get_next_task(self) -> str:
+    def get_next_task(self) -> Optional[str]:
         """ Get the next suitable task"""
         self.cur.execute('CALL next_queue_object_SP();')
         return self.cur.fetchone()
