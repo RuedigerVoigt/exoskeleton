@@ -315,7 +315,7 @@ class Exoskeleton:
         """Remove a specific fqdn from the blocklist."""
         self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
-                         fqdn.strip())
+                         (fqdn.strip(), ))
 
     def truncate_blocklist(self) -> None:
         """Remove *all* entries from the blocklist."""
@@ -373,12 +373,12 @@ class Exoskeleton:
                              "EXISTS ( " +
                              "    SELECT fv.id FROM fileVersions AS fv " +
                              "    WHERE fv.id = lv.versionUUID);",
-                             label_id)
+                             (label_id, ))
         else:
             self.cur.execute("SELECT versionUUID " +
                              "FROM labelToVersion " +
                              "WHERE labelID = %s;",
-                             label_id)
+                             (label_id, ))
         version_ids = self.cur.fetchall()
         if not version_ids:
             return set()
@@ -397,7 +397,7 @@ class Exoskeleton:
                          '  FROM labelToVersion ' +
                          '  WHERE versionUUID = %s' +
                          ');',
-                         version_uuid)
+                         (version_uuid, ))
         labels = self.cur.fetchall()
         if not labels:
             return set()
@@ -411,7 +411,7 @@ class Exoskeleton:
         self.cur.execute('SELECT fileMasterID ' +
                          'FROM exoskeleton.fileVersions ' +
                          'WHERE id = %s;',
-                         version_uuid)
+                         (version_uuid, ))
         filemaster_id = self.cur.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")
@@ -428,7 +428,7 @@ class Exoskeleton:
                          '  FROM labelToMaster ' +
                          '  WHERE labelID = %s' +
                          ');',
-                         filemaster_id)
+                         (filemaster_id, ))
         labels = self.cur.fetchall()
         if not labels:
             return set()
@@ -448,7 +448,7 @@ class Exoskeleton:
                          '  FROM labelToMaster ' +
                          '  WHERE urlHash = SHA2(%s,256)' +
                          ');',
-                         url)
+                         (url, ))
         labels = self.cur.fetchall()
         if not labels:
             return set()

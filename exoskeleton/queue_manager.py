@@ -73,7 +73,7 @@ class QueueManager:
 
         self.cur.execute('SELECT COUNT(*) FROM blockList ' +
                          'WHERE fqdnhash = SHA2(%s,256);',
-                         fqdn.strip())
+                         (fqdn.strip(), ))
         response = self.cur.fetchone()
         count = int(response[0]) if response else 0  # type: ignore[index]
         if count > 0:
@@ -103,7 +103,7 @@ class QueueManager:
         """Remove a specific fqdn from the blocklist."""
         self.cur.execute('DELETE FROM blockList ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
-                         fqdn.strip())
+                         (fqdn.strip(), ))
 
     def truncate_blocklist(self) -> None:
         """Remove *all* entries from the blocklist."""
@@ -235,7 +235,7 @@ class QueueManager:
 
         self.cur.execute('SELECT id FROM fileMaster ' +
                          'WHERE urlHash = SHA2(%s,256);',
-                         url)
+                         (url, ))
         id_in_file_master = self.cur.fetchone()
         if id_in_file_master:
             return id_in_file_master[0]  # type: ignore[index]
@@ -295,7 +295,7 @@ class QueueManager:
         # with the fileMaster entry.
         self.cur.execute('SELECT labelID ' +
                          'FROM labelToMaster ' +
-                         'WHERE urlHash = SHA2(%s,256);', url)
+                         'WHERE urlHash = SHA2(%s,256);', (url, ))
         ids_found: Optional[tuple] = self.cur.fetchall()
         ids_associated = set()
         if ids_found:
@@ -342,7 +342,7 @@ class QueueManager:
         # Check if there are already labels assigned with the version
         self.cur.execute('SELECT labelID ' +
                          'FROM labelToVersion ' +
-                         'WHERE versionUUID = %s;', uuid)
+                         'WHERE versionUUID = %s;', (uuid, ))
         ids_found = self.cur.fetchall()
         ids_associated = set()
         if ids_found:

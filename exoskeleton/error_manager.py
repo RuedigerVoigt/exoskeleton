@@ -54,10 +54,10 @@ class CrawlingErrorManager:
         # Increase the tries counter
         self.cur.execute('UPDATE queue ' +
                          'SET numTries = numTries + 1 ' +
-                         'WHERE id =%s;', queue_id)
+                         'WHERE id =%s;', (queue_id, ))
         # How many times this task was tried?
         self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
-                         queue_id)
+                         (queue_id, ))
         response = self.cur.fetchone()
         num_tries = int(response[0]) if response else 0  # type: ignore[index]
 
@@ -87,7 +87,7 @@ class CrawlingErrorManager:
             # as a target for 'UPDATE' and a source for data.
             # Therefore, two steps instead of a Sub-Select.
             self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
-                             queue_id)
+                             (queue_id, ))
             response = self.cur.fetchone()
             url_hash = response[0] if response else None  # type: ignore[index]
             if not url_hash:
@@ -129,7 +129,7 @@ class CrawlingErrorManager:
                          "numTries = 0,"
                          "delayUntil = NULL " +
                          "WHERE causesError = %s;",
-                         specific_error)
+                         (specific_error, ))
 
     def forget_error_group(self,
                            permanent: bool) -> None:
@@ -141,7 +141,7 @@ class CrawlingErrorManager:
                          "delayUntil = NULL " +
                          "WHERE causesError IN (" +
                          "    SELECT id from errorType WHERE permanent = %s);",
-                         (1 if permanent else 0))
+                         (1 if permanent else 0, ))
 
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
@@ -175,7 +175,7 @@ class CrawlingErrorManager:
         """Forget that the bot hit a rate limit for a specific FQDN."""
         self.cur.execute('DELETE FROM rateLimits ' +
                          'WHERE fqdnHash = SHA2(%s,256);',
-                         fqdn)
+                         (fqdn, ))
 
     def forget_all_rate_limits(self) -> None:
         """Forget all rate limits the bot hit."""
