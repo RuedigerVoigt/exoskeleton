@@ -22,9 +22,8 @@ def check_queue_count(correct_number: int):
     stats = exo.stats.queue_stats()
     found = stats['tasks_without_error']
     if found != correct_number:
-        raise Exception(f"Wrong number of items in the queue " +
-                        f"({found} found / " +
-                        f"{correct_number} expected).")
+        raise Exception("Wrong number of items in the queue: " +
+                        f"({found} found / {correct_number} expected).")
     else:
         logging.info('Number of queue items correct')
 
@@ -522,8 +521,8 @@ logging.info('Check that a rate limited FQDN does not show up as next item.')
 exo.errorhandling.add_rate_limit('www.ruediger-voigt.eu')
 exo.cur.execute('TRUNCATE TABLE queue;')
 exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
-print(exo.qm.get_next_task())
-if exo.qm.get_next_task() is None:
+print(exo.queue.get_next_task())
+if exo.queue.get_next_task() is None:
     logging.info('As expected FQDN did not show up as next task')
 else:
     raise Exception('Rate limited task showed up as next')
