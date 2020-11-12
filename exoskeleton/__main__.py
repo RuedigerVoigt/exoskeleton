@@ -13,7 +13,7 @@ Released under the Apache License 2.0
 # python standard library:
 from collections import Counter
 # noinspection PyUnresolvedReferences
-from collections import defaultdict
+from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 from typing import Union, Optional
 
@@ -166,6 +166,7 @@ class Exoskeleton:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def random_wait(self) -> None:
+        """Wait for a random time within the limits set to init TimeManager"""
         self.time.random_wait()
 
     def process_queue(self) -> None:

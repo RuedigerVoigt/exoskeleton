@@ -7,7 +7,7 @@ Database connection management for the exoskeleton framework.
 
 """
 # standard library:
-from collections import defaultdict
+from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 import time
 from typing import Union, Optional
@@ -28,6 +28,8 @@ from .notification_manager import NotificationManager
 
 class QueueManager:
     """Manage the queue and labels for the exoskeleton framework."""
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-arguments
 
     def __init__(self,
                  db_connection,
@@ -140,6 +142,7 @@ class QueueManager:
         try:
             url = userprovided.url.normalize_url(url)
         except ValueError:
+            logging.error('Could not add url.')
             return None
 
         # Check if the scheme is either http or https
@@ -310,6 +313,7 @@ class QueueManager:
                                  '(labelID, urlHash) ' +
                                  'VALUES (%s, SHA2(%s,256));',
                                  insert_list)
+        return None
 
     def assign_labels_to_uuid(self,
                               uuid: str,

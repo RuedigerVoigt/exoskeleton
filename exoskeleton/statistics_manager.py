@@ -82,9 +82,9 @@ class StatisticsManager:
                             stats['tasks_with_temp_errors'])
         message = (f"The queue contains {overall_workable} tasks waiting " +
                    f"to be executed. {stats['tasks_blocked_by_rate_limit']} " +
-                   f"of those are stalled as the bot hit a rate limit. " +
+                   "of those are stalled as the bot hit a rate limit. " +
                    f"{stats['tasks_with_permanent_errors']} cannot be " +
-                   f"executed due to permanent errors.")
+                   "executed due to permanent errors.")
         logging.info(message)
 
     def update_host_statistics(self,

@@ -7,7 +7,7 @@ Database connection management for the exoskeleton framework.
 
 """
 # standard library:
-from collections import defaultdict
+from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 
 
@@ -190,8 +190,8 @@ class DatabaseConnection:
             elif schema[0] == '1.1.0':
                 logging.info('Database schema matches version of exoskeleton.')
             else:
-                logging.warning(f"Mismatch between version of exoskeleton " +
-                                f" (1.1.0) and version of the database " +
+                logging.warning("Mismatch between version of exoskeleton " +
+                                " (1.1.0) and version of the database " +
                                 f"schema ({schema[0]}).")
         except pymysql.ProgrammingError:
             # means: the table does not exist (i.e. before version 1.1.0)
@@ -203,8 +203,7 @@ class DatabaseConnection:
         Try to reconnect if the connection is lost."""
         if self.cur:
             return self.cur
-        else:
-            logging.info("Lost database connection. Trying to reconnect...")
-            self.establish_db_connection()
-            self.cur = self.connection.cursor()
-            return self.cur
+        logging.info("Lost database connection. Trying to reconnect...")
+        self.establish_db_connection()
+        self.cur = self.connection.cursor()
+        return self.cur

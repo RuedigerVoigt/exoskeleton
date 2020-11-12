@@ -6,11 +6,9 @@ Notification Management for the Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
 
 """
-# standard library:
-from collections import defaultdict
+from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 
-# external dependencies:
 import bote
 import userprovided
 
@@ -90,17 +88,18 @@ class NotificationManager:
                    f"{processed} processed")
         body = (f"{processed} processed.\n" +
                 f"{remaining} tasks remaining in the queue.\n" +
-                f"Estimated time to complete queue: " +
+                "Estimated time to complete queue: " +
                 f"{round(time_to_finish_seconds / 60)} minutes.\n")
         self.mailer.send_mail(subject, body)
 
     def send_finish_msg(self,
                         num_permanent_errors: int) -> None:
+        """If configured so, send an email once the queue is empty
+           and the bot stopped."""
         if self.send_mails and self.do_send_finish_msg:
             subject = f"{self.project_name}: queue empty / bot stopped"
-            body = (f"The queue is empty. The bot " +
-                    f"{self.project_name} stopped as configured. " +
-                    f"{num_permanent_errors} errors.")
+            body = (f"The queue is empty. The bot {self.project_name} " +
+                    f"stopped as configured. {num_permanent_errors} errors.")
             self.mailer.send_mail(subject, body)
 
     def send_custom_msg(self,

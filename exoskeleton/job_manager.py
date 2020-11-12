@@ -17,6 +17,7 @@ class JobManager:
     """Jobs are used to crawl multi-page results like search engine queries.
        You provide a start URL and update it while looping through pagination.
        By doing this you can restart a paused job without starting all over."""
+    # pylint: disable=raise-missing-from
 
     def __init__(self,
                  db_cursor: pymysql.cursors.Cursor) -> None:
@@ -59,7 +60,7 @@ class JobManager:
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
             logging.warning('A job with identical name and startURL ' +
-                            'is already defined.')     
+                            'is already defined.')
 
     def update_current_url(self,
                            job_name: str,
