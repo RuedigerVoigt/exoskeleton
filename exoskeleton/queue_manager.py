@@ -32,7 +32,7 @@ class QueueManager:
     # pylint: disable=too-many-arguments
 
     def __init__(self,
-                 db_connection,
+                 db_connection: DatabaseConnection,
                  db_cursor: pymysql.cursors.Cursor,
                  time_manager_object: TimeManager,
                  stats_manager_object: StatisticsManager,
@@ -467,8 +467,11 @@ class QueueManager:
                 prettify_html = (next_in_queue[4] == 1)
 
                 # The FQDN might have been added to the blocklist *after*
-                # the task entered into the queue:
-                if self.check_blocklist(urlparse(url).hostname):
+                # the task entered into the queue!
+                # (We now that hostname is not None, as the URL was checked for
+                # validity before beeing added: so ignore for mypy is OK)
+                if self.check_blocklist(
+                        urlparse(url).hostname):  # type: ignore[arg-type]
                     logging.error('Cannot process queue item as the FQDN ' +
                                   'has meanwhile been added to the blocklist!')
                     self.delete_from_queue(queue_id)

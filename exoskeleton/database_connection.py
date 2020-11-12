@@ -103,7 +103,8 @@ class DatabaseConnection:
                                               database=self.db_name,
                                               user=self.db_username,
                                               password=self.db_passphrase,
-                                              autocommit=True)
+                                              autocommit=True
+                                              )  # type: ignore[assignment]
 
             logging.info('Succesfully established database connection.')
 
@@ -205,5 +206,5 @@ class DatabaseConnection:
             return self.cur
         logging.info("Lost database connection. Trying to reconnect...")
         self.establish_db_connection()
-        self.cur = self.connection.cursor()
+        self.cur = self.connection.cursor()  # type: ignore[attr-defined]
         return self.cur
