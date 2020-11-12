@@ -53,7 +53,7 @@ class JobManager:
             # A job with this name already exists
             # Check if startURL is the same:
             self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
-                             job_name)
+                             (job_name))
             response = self.cur.fetchone()
             existing_start_url = response[0] if response else None  # type: ignore[index]
             if existing_start_url != start_url:
@@ -87,7 +87,7 @@ class JobManager:
 
         self.cur.execute('SELECT finished FROM jobs ' +
                          'WHERE jobName = %s;',
-                         job_name)
+                         (job_name))
         job_state = self.cur.fetchone()
         # If the job does not exist at all, then MariaDB returns None.
         # If the job exists, but the finished field has a value of NULL,
@@ -108,7 +108,7 @@ class JobManager:
         self.cur.execute('SELECT COALESCE(currentUrl, startUrl) ' +
                          'FROM jobs ' +
                          'WHERE jobName = %s;',
-                         job_name)
+                         (job_name))
         return self.cur.fetchone()[0]  # type: ignore[index]
 
     def mark_as_finished(self,
@@ -120,7 +120,7 @@ class JobManager:
         affected_rows = self.cur.execute('UPDATE jobs SET ' +
                                          'finished = CURRENT_TIMESTAMP() ' +
                                          'WHERE jobName = %s;',
-                                         job_name)
+                                         (job_name))
         if affected_rows == 0:
             raise ValueError('A job with this name is not known.')
         logging.debug('Marked job %s as finished.', job_name)
