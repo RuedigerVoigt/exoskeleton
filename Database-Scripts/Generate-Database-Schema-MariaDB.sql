@@ -431,7 +431,7 @@ q.causesError,
 e.permanent,
 e.short as error,
 e.description as errorDescription
-FROM exoskeleton.queue as q
+FROM queue as q
 LEFT JOIN errorType as e ON q.causesError = e.id
 LEFT JOIN actions as a ON q.action = a.id
 WHERE q.causesError IS NOT NULL;
@@ -576,7 +576,7 @@ DELIMITER ;
 -- --------------------------------------------------------
 -- next_queue_object_SP:
 -- A stored procedure to return the next object in the queue.
--- It does not return URLs which are temoprarily blocked or
+-- It does not return URLs which are temporarily blocked or
 -- cause errors.
 -- --------------------------------------------------------
 DELIMITER $$
