@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-
+Manage the host statistics for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
 from collections import Counter
@@ -16,7 +17,7 @@ import pymysql
 
 
 class StatisticsManager:
-    """Manage the statistics."""
+    """Manage the statistics like counting requests and errors,"""
 
     def __init__(self,
                  db_cursor: pymysql.cursors.Cursor) -> None:

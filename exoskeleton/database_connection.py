@@ -4,7 +4,8 @@
 """
 Database connection management for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
 from collections import defaultdict  # noqa # pylint: disable=unused-import

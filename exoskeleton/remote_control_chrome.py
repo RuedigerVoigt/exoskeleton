@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Notification Management for the Exoskeleton Crawler Framework
+Control an instance of headless Chrome.
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
 import logging

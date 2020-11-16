@@ -4,7 +4,8 @@
 """
 Notification Management for the Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging

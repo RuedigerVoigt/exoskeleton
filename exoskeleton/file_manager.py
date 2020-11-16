@@ -4,7 +4,8 @@
 """
 File handling for the exoskeleton framework
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
 import logging

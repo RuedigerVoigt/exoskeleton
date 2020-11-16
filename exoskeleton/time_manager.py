@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
+"""
+
 import logging
 import random
 import time
 
 
 class TimeManager:
-    """ Time management for the exoskeleton crawler framework. """
+    """ Time management for the exoskeleton crawler framework:
+        * Manage wait time
+        * measure run time
+        * estimate time need """
 
     def __init__(self,
                  wait_min: int = 5,

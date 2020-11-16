@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
+The class class ExoActions manages actions like downloading
+a file or page content.
 
-~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
 from collections import Counter
@@ -92,7 +94,7 @@ class ExoActions:
                     headers={"User-agent": self.user_agent},
                     timeout=self.connection_timeout,
                     stream=True)
-            elif action_type in('content', 'text'):
+            elif action_type in ('content', 'text'):
                 logging.debug('retrieving content of queue id %s', queue_id)
                 response = requests.get(
                     url,

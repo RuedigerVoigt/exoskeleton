@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-
+The class CrawlingErrorManager manages errors that occur while
+crawling. It marks permanent errors and adds delays.
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
 import logging
