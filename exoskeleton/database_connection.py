@@ -4,10 +4,11 @@
 """
 Database connection management for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
 # standard library:
-from collections import defaultdict
+from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 
 
@@ -19,8 +20,28 @@ import userprovided
 class DatabaseConnection:
     """Database connection management for the exoskeleton framework."""
 
+    PROCEDURES = ['delete_all_versions_SP',
+                  'delete_from_queue_SP',
+                  'insert_content_SP',
+                  'insert_file_SP',
+                  'next_queue_object_SP']
+
+    TABLES = ['actions',
+              'blockList',
+              'errorType',
+              'fileContent',
+              'fileMaster',
+              'fileVersions',
+              'jobs',
+              'labels',
+              'labelToMaster',
+              'labelToVersion',
+              'queue',
+              'statisticsHosts',
+              'storageTypes']
+
     def __init__(self,
-                 database_settings: dict):
+                 database_settings: dict) -> None:
         """Sets defaults"""
 
         if database_settings is None:
@@ -68,16 +89,13 @@ class DatabaseConnection:
         # establish_db_connection would have failed before:
         self.cur = self.connection.cursor()  # type: ignore
 
-        # Check the schema:
-        self.check_table_existence(self.cur)
-        self.check_stored_procedures(self.cur)
-        self.check_schema_version(self.cur)
+        self.check_db_schema()
 
-    def __del__(self):
+    def __del__(self) -> None:
         # make sure the connection is closed instead of waiting for timeout:
-        self.connection.close()
+        self.connection.close()  # type: ignore[attr-defined]
 
-    def establish_db_connection(self):
+    def establish_db_connection(self) -> None:
         """Establish a connection to MariaDB """
         try:
             logging.debug('Trying to connect to database.')
@@ -86,9 +104,10 @@ class DatabaseConnection:
                                               database=self.db_name,
                                               user=self.db_username,
                                               password=self.db_passphrase,
-                                              autocommit=True)
+                                              autocommit=True
+                                              )  # type: ignore[assignment]
 
-            logging.info('Established database connection.')
+            logging.info('Succesfully established database connection.')
 
         except pymysql.InterfaceError:
             logging.exception('Exception related to the database ' +
@@ -104,112 +123,91 @@ class DatabaseConnection:
                               exc_info=True)
             raise
 
-    def check_table_existence(self,
-                              db_cursor) -> bool:
+    def check_table_existence(self) -> bool:
         """Check if all expected tables exist."""
-        logging.debug('Checking if the database table structure is complete.')
-        expected_tables = ['actions',
-                           'blockList',
-                           'errorType',
-                           'fileContent',
-                           'fileMaster',
-                           'fileVersions',
-                           'jobs',
-                           'labels',
-                           'labelToMaster',
-                           'labelToVersion',
-                           'queue',
-                           'statisticsHosts',
-                           'storageTypes']
         tables_count = 0
-
-        db_cursor.execute('SHOW TABLES;')
-        tables = db_cursor.fetchall()
+        self.cur.execute('SHOW TABLES;')
+        tables = self.cur.fetchall()
         if not tables:
             logging.error('The database exists, but no tables found!')
             raise OSError('Database table structure missing. ' +
                           'Run generator script!')
-        else:
-            tables_found = [item[0] for item in tables]
-            for table in expected_tables:
-                if table in tables_found:
-                    tables_count += 1
-                    logging.debug('Found table %s', table)
-                else:
-                    logging.error('Table %s not found.', table)
 
-        if tables_count != len(expected_tables):
+        tables_found = [item[0] for item in tables]
+        for table in self.TABLES:
+            if table in tables_found:
+                tables_count += 1
+            else:
+                logging.error('Table %s not found.', table)
+
+        if tables_count != len(self.TABLES):
             raise RuntimeError('Database Schema Incomplete: Missing Tables!')
-
-        logging.info("Found all expected tables.")
         return True
 
-    def check_stored_procedures(self,
-                                db_cursor) -> bool:
+    def check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
-        is allowed to execute them. """
-        logging.debug('Checking if stored procedures exist.')
-        expected_procedures = ['delete_all_versions_SP',
-                               'delete_from_queue_SP',
-                               'insert_content_SP',
-                               'insert_file_SP',
-                               'next_queue_object_SP']
-
+           is allowed to execute them. """
         procedures_count = 0
-        db_cursor.execute('SELECT SPECIFIC_NAME ' +
-                          'FROM INFORMATION_SCHEMA.ROUTINES ' +
-                          'WHERE ROUTINE_SCHEMA = %s;',
-                          self.db_name)
-        procedures = db_cursor.fetchall()
+        self.cur.execute('SELECT SPECIFIC_NAME ' +
+                         'FROM INFORMATION_SCHEMA.ROUTINES ' +
+                         'WHERE ROUTINE_SCHEMA = %s;',
+                         self.db_name)
+        procedures = self.cur.fetchall()
         procedures_found = [item[0] for item in procedures]
-        for procedure in expected_procedures:
+        for procedure in self.PROCEDURES:
             if procedure in procedures_found:
                 procedures_count += 1
-                logging.debug('Found stored procedure %s', procedure)
             else:
                 logging.error('Stored Procedure %s is missing (create it ' +
                               'with the database script) or the user lacks ' +
                               'permissions to use it.', procedure)
 
-        if procedures_count != len(expected_procedures):
+        if procedures_count != len(self.PROCEDURES):
             raise RuntimeError('Database Schema Incomplete: ' +
                                'Missing Stored Procedures!')
-
-        logging.info("Found all expected stored procedures.")
         return True
 
-    def check_schema_version(self, db_cursor):
+    def check_db_schema(self) -> None:
+        """Call the functions which check wheter all expected tables and
+           stored procedures are available in the database. Then look
+           for a version string in that database."""
+        self.check_table_existence()
+        self.check_stored_procedures()
+        logging.info('Database schema: found all tables and procedures')
+        self.check_schema_version()
+
+    def check_schema_version(self) -> None:
         """Check if the database schema is compatible with this version
            of exoskeleton: Although check_table_existence and
            check_stored_procedures check if all expected tables and
            stored procedures exist, there might have been changes to
            the structure of those. This can alert the user."""
         try:
-            db_cursor.execute("SELECT exoValue FROM exoInfo " +
-                              "WHERE exoKey ='schema';")
-            schema = db_cursor.fetchone()
+            self.cur.execute("SELECT exoValue FROM exoInfo " +
+                             "WHERE exoKey ='schema';")
+            schema = self.cur.fetchone()
             if not schema:
-                logging.warning('Found no information about the version ' +
-                                'of the database schema.')
-            elif schema[0] == '1.1.0':
-                logging.info('Database schema matches the version ' +
-                             'of exoskeleton.')
+                logging.error('Found no information about the version ' +
+                              'of the database schema.')
+            elif schema[0] == '1.2.0':
+                logging.info('Database schema matches version of exoskeleton.')
             else:
-                logging.warning(f"Mismatch between version of exoskeleton " +
-                                f" (1.1.0) and version of the database " +
+                logging.warning("Mismatch between version of exoskeleton " +
+                                " (1.2.0) and version of the database " +
                                 f"schema ({schema[0]}).")
         except pymysql.ProgrammingError:
             # means: the table does not exist (i.e. before version 1.1.0)
             logging.warning('Found no information about the version of the ' +
-                            'database schema.')
+                            'database schema. this means the view ' +
+                            'v_errors_in_queue contains an error. Please ' +
+                            'look at the end of the updated database script.')
 
-    def get_cursor(self):
+    def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.
         Try to reconnect if the connection is lost."""
         if self.cur:
             return self.cur
-        else:
-            logging.info("Lost database connection. Trying to reconnect...")
-            self.establish_db_connection()
-            self.cur = self.connection.cursor()
-            return self.cur
+        logging.info("Lost database connection. Trying to reconnect...")
+        self.establish_db_connection()
+        self.cur = self.connection.cursor()  # type: ignore[attr-defined]
+        return self.cur

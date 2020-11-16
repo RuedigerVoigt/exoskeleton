@@ -19,12 +19,11 @@ logging.basicConfig(level=logging.DEBUG)
 def check_queue_count(correct_number: int):
     u"""Check if the number of items in the queue equals
         the expected number. """
-    stats = exo.qm.queue_stats()
+    stats = exo.stats.queue_stats()
     found = stats['tasks_without_error']
     if found != correct_number:
-        raise Exception(f"Wrong number of items in the queue " +
-                        f"({found} found / " +
-                        f"{correct_number} expected).")
+        raise Exception("Wrong number of items in the queue: " +
+                        f"({found} found / {correct_number} expected).")
     else:
         logging.info('Number of queue items correct')
 
@@ -96,8 +95,8 @@ check_label_count(0)
 # to 6 hours between new tries. To test this without
 # astronomical runtimes, change that:
 
-exo.qm.DELAY_TRIES = (1, 1, 1, 1, 1)
-delay_steps = f"DELAY_TRIES: {exo.qm.DELAY_TRIES}"
+exo.errorhandling.DELAY_TRIES = (1, 1, 1, 1, 1)
+delay_steps = f"DELAY_TRIES: {exo.errorhandling.DELAY_TRIES}"
 logging.info(delay_steps)
 
 # ############################################
@@ -338,7 +337,6 @@ check_queue_count(num_expected_queue_items)
 check_label_count(num_expected_labels)
 
 
-
 # ################## TEST 2: FINAL ##################
 
 logging.info('Test 2: final: process the queue')
@@ -487,7 +485,7 @@ def count_rate_limit() -> int:
 
 
 logging.info('Add a single rate limit')
-exo.qm.add_rate_limit('www.example.com')
+exo.errorhandling.add_rate_limit('www.example.com')
 
 if count_rate_limit() == 1:
     logging.info('Rate limit was added.')
@@ -495,7 +493,7 @@ else:
     raise Exception('Did not add rate limit!')
 
 logging.info('Forget this rate limit')
-exo.qm.forget_specific_rate_limit('www.example.com')
+exo.errorhandling.forget_specific_rate_limit('www.example.com')
 
 if count_rate_limit() == 0:
     logging.info('Rate limit was removed.')
@@ -503,9 +501,9 @@ else:
     raise Exception('Did not remove rate limit!')
 
 logging.info('Add tow rate limits, but duplicate one.')
-exo.qm.add_rate_limit('www.example.com')
-exo.qm.add_rate_limit('www.example.com')
-exo.qm.add_rate_limit('www.ruediger-voigt.eu')
+exo.errorhandling.add_rate_limit('www.example.com')
+exo.errorhandling.add_rate_limit('www.example.com')
+exo.errorhandling.add_rate_limit('www.ruediger-voigt.eu')
 
 if count_rate_limit() == 2:
     logging.info('Rate limit was not falsely duplicated.')
@@ -513,22 +511,22 @@ else:
     raise Exception('Duplicate rate limit in database!')
 
 logging.info('Forget all rate limits')
-exo.qm.forget_all_rate_limits()
+exo.errorhandling.forget_all_rate_limits()
 if count_rate_limit() == 0:
     logging.info('All rate limits were removed.')
 else:
     raise Exception('Removing all rate limits did not work')
 
 logging.info('Check that a rate limited FQDN does not show up as next item.')
-exo.qm.add_rate_limit('www.ruediger-voigt.eu')
+exo.errorhandling.add_rate_limit('www.ruediger-voigt.eu')
 exo.cur.execute('TRUNCATE TABLE queue;')
 exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
-print(exo.qm.get_next_task())
-if exo.qm.get_next_task() is None:
+print(exo.queue.get_next_task())
+if exo.queue.get_next_task() is None:
     logging.info('As expected FQDN did not show up as next task')
 else:
     raise Exception('Rate limited task showed up as next')
-exo.qm.forget_all_rate_limits()
+exo.errorhandling.forget_all_rate_limits()
 
 
 print('Passed all tests. Done!')

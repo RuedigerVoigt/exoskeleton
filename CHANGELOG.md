@@ -1,5 +1,15 @@
 # Changelog / History
 
+## version 1.2.0 stable (2020-11-16)
+
+* The code has been refactored to make it easier to maintain.
+* Make the methods `assign_labels_to_master`, `assign_labels_to_uuid`, and `get_label_ids` directly accessible again. (With an alias in the main class as they are sometimes useful in direct access.)
+
+Bugfixes:
+
+* The database script for version 1.0.0 onward contained the database name `exoskeleton` hardcoded in the view `v_errors_in_queue`. So the create script would not complete if your database had another name.
+* The dependency `userprovided` has been updated from version 0.7.5 to 0.8.0 as some not RFC compliant URLs caused exceptions.
+
 ## version 1.1.0 stable (2020-10-29)
 
 * The [agg](https://github.com/RuedigerVoigt/agg) package has been added as an dependency for a planned feature.  Its functionality is joining multiple CSV files into one. As a sister project of exoskeleton it follows the same development steps.

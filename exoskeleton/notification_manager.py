@@ -4,13 +4,12 @@
 """
 Notification Management for the Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
-
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
 """
-# standard library:
-from collections import defaultdict
+from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 
-# external dependencies:
 import bote
 import userprovided
 
@@ -55,9 +54,9 @@ class NotificationManager:
                 logging.info('Will send notification once the bot is done.')
 
     def send_msg(self,
-                 reason: str):
+                 reason: str) -> None:
         """Send a prepared message if the bot is configured
-        and able to do so."""
+           and able to do so."""
         messages = {
             'start': {
                 'subject': f"Project {self.project_name} just started.",
@@ -82,30 +81,31 @@ class NotificationManager:
     def send_milestone_msg(self,
                            processed: int,
                            remaining: int,
-                           time_to_finish_seconds: int):
+                           time_to_finish_seconds: int) -> None:
         """Once a milestone is reached, send an email with an estimate
-        how long it will take for the bot to finish."""
+           how long it will take for the bot to finish."""
         # TO DO: more precise estimate requires to account for rate limits
         subject = (f"Project {self.project_name} Milestone: " +
                    f"{processed} processed")
         body = (f"{processed} processed.\n" +
                 f"{remaining} tasks remaining in the queue.\n" +
-                f"Estimated time to complete queue: " +
+                "Estimated time to complete queue: " +
                 f"{round(time_to_finish_seconds / 60)} minutes.\n")
         self.mailer.send_mail(subject, body)
 
     def send_finish_msg(self,
-                        num_permanent_errors: int):
+                        num_permanent_errors: int) -> None:
+        """If configured so, send an email once the queue is empty
+           and the bot stopped."""
         if self.send_mails and self.do_send_finish_msg:
             subject = f"{self.project_name}: queue empty / bot stopped"
-            body = (f"The queue is empty. The bot " +
-                    f"{self.project_name} stopped as configured. " +
-                    f"{num_permanent_errors} errors.")
+            body = (f"The queue is empty. The bot {self.project_name} " +
+                    f"stopped as configured. {num_permanent_errors} errors.")
             self.mailer.send_mail(subject, body)
 
     def send_custom_msg(self,
                         subject: str,
-                        body: str):
+                        body: str) -> None:
         """Send a custom message if the bot is configured and able to do so."""
         if self.send_mails:
             self.mailer.send_mail(subject, body)

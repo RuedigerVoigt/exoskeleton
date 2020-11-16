@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Source: https://github.com/RuedigerVoigt/exoskeleton
+Released under the Apache License 2.0
+"""
+
 import logging
 import random
 import time
 
 
 class TimeManager:
-    """ Time management for the exoskeleton crawler framework. """
+    """ Time management for the exoskeleton crawler framework:
+        * Manage wait time
+        * measure run time
+        * estimate time need """
 
     def __init__(self,
                  wait_min: int = 5,
@@ -29,20 +37,19 @@ class TimeManager:
         self.process_time_start = time.process_time()
         logging.debug('started timers')
 
-    def random_wait(self):
+    def random_wait(self) -> None:
         """Waits for a random time between actions
-        (within the interval preset at initialization).
-        This is done to avoid to accidentally overload the queried host.
-        Some host actually enforce limits through IP blocking."""
+           (within the interval preset at initialization).
+           This is done to avoid to accidentally overload the queried host.
+           Some host actually enforce limits through IP blocking."""
         query_delay = random.randint(self.wait_min, self.wait_max)  # nosec
         logging.debug("%s seconds delay until next action", query_delay)
         time.sleep(query_delay)
-        return
 
-    def increase_wait(self):
+    def increase_wait(self) -> None:
         """ Increases minimum and maximum wait time by one second each.
-         Limited to a minimum wait time of 30 seconds
-         and a maximum wait time of 50."""
+            Limited to a minimum wait time of 30 seconds
+            and a maximum wait time of 50."""
         if self.wait_min < 30:
             self.wait_min = self.wait_min + 1
             logging.info("increased minimum wait time by 1 second.")
@@ -67,6 +74,5 @@ class TimeManager:
             time_each = time_so_far / already_processed
             return round(num_items_in_queue * time_each)
 
-        logging.warning('Cannot estimate remaining time ' +
-                        'as there are no data so far.')
+        logging.warning('Cannot estimate remaining time. Not enough data.')
         return -1

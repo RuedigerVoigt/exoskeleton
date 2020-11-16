@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 1.1.0 of exoskeleton
+-- for version 1.2.0 of exoskeleton
 -- © 2019-2020 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -431,7 +431,7 @@ q.causesError,
 e.permanent,
 e.short as error,
 e.description as errorDescription
-FROM exoskeleton.queue as q
+FROM queue as q
 LEFT JOIN errorType as e ON q.causesError = e.id
 LEFT JOIN actions as a ON q.action = a.id
 WHERE q.causesError IS NOT NULL;
@@ -576,7 +576,7 @@ DELIMITER ;
 -- --------------------------------------------------------
 -- next_queue_object_SP:
 -- A stored procedure to return the next object in the queue.
--- It does not return URLs which are temoprarily blocked or
+-- It does not return URLs which are temporarily blocked or
 -- cause errors.
 -- --------------------------------------------------------
 DELIMITER $$
@@ -640,3 +640,31 @@ CREATE TABLE IF NOT EXISTS exoInfo (
 -- fulfills the basic reuirements for the version:
 INSERT INTO exoInfo VALUES ('schema', '1.1.0') 
 ON DUPLICATE KEY UPDATE exoValue = '1.1.0';
+
+-- ----------------------------------------------------------
+-- ----------------------------------------------------------
+-- BELOW CHANGES FOR EXOSKELETON VERSION 1.2.0
+-- ----------------------------------------------------------
+-- ----------------------------------------------------------
+
+INSERT INTO exoInfo VALUES ('schema', '1.2.0') 
+ON DUPLICATE KEY UPDATE exoValue = '1.2.0';
+
+
+-- The view v_errors_in_queue had the database name exoskeleton hardcoded.
+-- Drop it and recreate it.
+DROP VIEW IF EXISTS v_errors_in_queue;
+
+CREATE VIEW v_errors_in_queue AS
+SELECT
+q.id as queueID,
+q.url as URL,
+a.description as action,
+q.causesError,
+e.permanent,
+e.short as error,
+e.description as errorDescription
+FROM queue as q
+LEFT JOIN errorType as e ON q.causesError = e.id
+LEFT JOIN actions as a ON q.action = a.id
+WHERE q.causesError IS NOT NULL;
