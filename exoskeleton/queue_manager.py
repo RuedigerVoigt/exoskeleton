@@ -249,7 +249,7 @@ class QueueManager:
                            shortname: str,
                            description: str = None) -> None:
         """ If the label is not already in use, define a new label
-        and a description. """
+            and a description. """
         if len(shortname) > 31:
             logging.error("Labelname exceeds max length of 31 " +
                           "characters. Cannot add it.")
@@ -267,8 +267,8 @@ class QueueManager:
                                 url: str,
                                 labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels to the *fileMaster* entry.
-        Removes duplicates and adds new labels to the label list
-        if necessary."""
+            Removes duplicates and adds new labels to the label list
+            if necessary."""
 
         try:
             url = userprovided.url.normalize_url(url)
@@ -319,9 +319,9 @@ class QueueManager:
                               uuid: str,
                               labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels either to a specific
-        version of a file.
-        Removes duplicates and adds new labels to the label list
-        if necessary.."""
+            version of a file.
+            Removes duplicates and adds new labels to the label list
+            if necessary.."""
 
         if not labels:
             return
