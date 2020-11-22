@@ -13,8 +13,9 @@ import pathlib
 import shutil
 import subprocess
 
-from .error_manager import CrawlingErrorManager
-from .statistics_manager import StatisticsManager
+from exoskeleton import error_manager
+from exoskeleton import statistics_manager
+
 
 class RemoteControlChrome:
     """Using headless Chrome instead of Selenium for the following reasons:
@@ -30,10 +31,12 @@ class RemoteControlChrome:
     SUPPORTED_BROWSERS = {'google-chrome', 'chrome', 'chromium',
                           'chromium-browser'}
 
-    def __init__(self,
-                 browser_name: str,
-                 crawling_error_manager_object: CrawlingErrorManager,
-                 stats_manager_object: StatisticsManager) -> None:
+    def __init__(
+            self,
+            browser_name: str,
+            crawling_error_manager_object: error_manager.CrawlingErrorManager,
+            stats_manager_object: statistics_manager.StatisticsManager
+            ) -> None:
         """Check the path of the executable and if it is supported. """
 
         self.browser_name = ''

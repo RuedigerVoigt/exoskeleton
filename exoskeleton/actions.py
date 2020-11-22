@@ -19,11 +19,11 @@ import requests
 import urllib3  # type: ignore
 import userprovided
 
-from .error_manager import CrawlingErrorManager
-from .file_manager import FileManager
-from .remote_control_chrome import RemoteControlChrome
-from .statistics_manager import StatisticsManager
-from .time_manager import TimeManager
+from exoskeleton import error_manager
+from exoskeleton import file_manager
+from exoskeleton import remote_control_chrome
+from exoskeleton import statistics_manager
+from exoskeleton import time_manager
 
 
 class ExoActions:
@@ -43,15 +43,16 @@ class ExoActions:
     # 429 (Rate Limit) is handeled separately:
     HTTP_TEMP_ERRORS = (408, 500, 502, 503, 504, 509, 529, 598)
 
-    def __init__(self,
-                 db_cursor: pymysql.cursors.Cursor,
-                 stats_manager_object: StatisticsManager,
-                 file_manager_object: FileManager,
-                 time_manager_object: TimeManager,
-                 crawling_error_manager_object: CrawlingErrorManager,
-                 remote_control_chrome_object: RemoteControlChrome,
-                 user_agent: str,
-                 connection_timeout: int) -> None:
+    def __init__(
+            self,
+            db_cursor: pymysql.cursors.Cursor,
+            stats_manager_object: statistics_manager.StatisticsManager,
+            file_manager_object: file_manager.FileManager,
+            time_manager_object: time_manager.TimeManager,
+            crawling_error_manager_object: error_manager.CrawlingErrorManager,
+            remote_control_chrome_object: remote_control_chrome.RemoteControlChrome,
+            user_agent: str,
+            connection_timeout: int) -> None:
         """ """
         self.cur = db_cursor
         self.stats = stats_manager_object

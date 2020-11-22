@@ -21,16 +21,16 @@ from typing import Union, Optional
 import userprovided
 
 # import other modules of this framework
-from .error_manager import CrawlingErrorManager
-from .database_connection import DatabaseConnection
-from .actions import ExoActions
-from .file_manager import FileManager
-from .job_manager import JobManager
-from .statistics_manager import StatisticsManager
-from .time_manager import TimeManager
-from .notification_manager import NotificationManager
-from .queue_manager import QueueManager
-from .remote_control_chrome import RemoteControlChrome
+from exoskeleton import actions
+from exoskeleton import database_connection
+from exoskeleton import error_manager
+from exoskeleton import file_manager
+from exoskeleton import job_manager
+from exoskeleton import notification_manager
+from exoskeleton import queue_manager
+from exoskeleton import remote_control_chrome
+from exoskeleton import statistics_manager
+from exoskeleton import time_manager
 
 
 class Exoskeleton:
@@ -64,10 +64,10 @@ class Exoskeleton:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         # Init database Connection
-        self.db = DatabaseConnection(database_settings)
+        self.db = database_connection.DatabaseConnection(database_settings)
         self.cur = self.db.get_cursor()
 
-        self.stats = StatisticsManager(self.cur)
+        self.stats = statistics_manager.StatisticsManager(self.cur)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Mail / Notification Setup
@@ -82,7 +82,7 @@ class Exoskeleton:
             if not isinstance(self.milestone, int):
                 raise ValueError('milestone_num must be integer!')
 
-        self.notify = NotificationManager(
+        self.notify = notification_manager.NotificationManager(
             self.project, mail_settings, mail_behavior)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,27 +113,27 @@ class Exoskeleton:
 
         # Init Classes
 
-        self.time = TimeManager(
+        self.time = time_manager.TimeManager(
             bot_behavior.get('wait_min', 5),
             bot_behavior.get('wait_max', 30))
 
-        self.file = FileManager(
+        self.file = file_manager.FileManager(
             self.cur,
             target_directory,
             filename_prefix)
 
-        self.errorhandling = CrawlingErrorManager(
+        self.errorhandling = error_manager.CrawlingErrorManager(
             self.cur,
             bot_behavior.get('queue_max_retries', 3),
             bot_behavior.get('rate_limit_wait', 1860)
             )
 
-        self.controlled_browser = RemoteControlChrome(
+        self.controlled_browser = remote_control_chrome.RemoteControlChrome(
             chrome_name,
             self.errorhandling,
             self.stats)
 
-        self.action = ExoActions(
+        self.action = actions.ExoActions(
             self.cur,
             self.stats,
             self.file,
@@ -143,7 +143,7 @@ class Exoskeleton:
             self.user_agent,
             self.connection_timeout)
 
-        self.queue = QueueManager(
+        self.queue = queue_manager.QueueManager(
             self.db,
             self.cur,
             self.time,
@@ -154,7 +154,7 @@ class Exoskeleton:
             self.milestone  # type: ignore[arg-type]
             )
 
-        self.jobs = JobManager(self.cur)
+        self.jobs = job_manager.JobManager(self.cur)
 
         # Create other objects
         self.cnt: Counter = Counter()

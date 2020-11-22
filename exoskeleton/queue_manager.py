@@ -20,11 +20,11 @@ import uuid
 import pymysql
 import userprovided
 
-from .database_connection import DatabaseConnection
-from .time_manager import TimeManager
-from .statistics_manager import StatisticsManager
-from .actions import ExoActions
-from .notification_manager import NotificationManager
+from exoskeleton import actions
+from exoskeleton import database_connection
+from exoskeleton import notification_manager
+from exoskeleton import statistics_manager
+from exoskeleton import time_manager
 
 
 class QueueManager:
@@ -32,15 +32,16 @@ class QueueManager:
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
 
-    def __init__(self,
-                 db_connection: DatabaseConnection,
-                 db_cursor: pymysql.cursors.Cursor,
-                 time_manager_object: TimeManager,
-                 stats_manager_object: StatisticsManager,
-                 actions_object: ExoActions,
-                 notification_manager_object: NotificationManager,
-                 bot_behavior: dict,
-                 milestone: int) -> None:
+    def __init__(
+            self,
+            db_connection: database_connection.DatabaseConnection,
+            db_cursor: pymysql.cursors.Cursor,
+            time_manager_object: time_manager.TimeManager,
+            stats_manager_object: statistics_manager.StatisticsManager,
+            actions_object: actions.ExoActions,
+            notification_manager_object: notification_manager.NotificationManager,
+            bot_behavior: dict,
+            milestone: int) -> None:
         # Connection object AND cursor for the queue manager to get a new
         # cursor in case there is a problem.
         # Planned to be replaced with a connection pool. See issue #20
