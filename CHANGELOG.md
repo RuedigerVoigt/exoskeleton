@@ -2,7 +2,7 @@
 
 ## version 1.2.1 stable (upcoming)
 
-* Require lxml version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability.
+* Require lxml version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability *and* works with Python 3.9.
 
 ## version 1.2.0 stable (2020-11-16)
 
