@@ -21,7 +21,7 @@ setuptools.setup(
     install_requires=["agg>=0.3.0",
                       "beautifulsoup4>=4.8.2",
                       "bote>=0.9.1",
-                      "lxml",
+                      "lxml>=4.6.2",
                       "pymysql>=0.9.3",
                       "requests",
                       "urllib3",

@@ -1,5 +1,9 @@
 # Changelog / History
 
+## version 1.2.1 stable (upcoming)
+
+* Require lxml version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability.
+
 ## version 1.2.0 stable (2020-11-16)
 
 * The code has been refactored to make it easier to maintain.
