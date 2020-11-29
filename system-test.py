@@ -73,7 +73,7 @@ exo = exoskeleton.Exoskeleton(
                   'stop_if_queue_empty': True},
     filename_prefix='EXO_',
     chrome_name='chromium-browser',
-    target_directory='./file-downloads'
+    target_directory='./fileDownloads'
 )
 
 num_expected_queue_items = 0
