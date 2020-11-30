@@ -11,5 +11,5 @@ if sys.version_info.major != 3 or sys.version_info.minor < 6:
 from exoskeleton.__main__ import Exoskeleton
 
 NAME = "exoskeleton"
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __author__ = "Rüdiger Voigt"

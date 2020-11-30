@@ -189,16 +189,16 @@ class DatabaseConnection:
             if not schema:
                 logging.error('Found no information about the version ' +
                               'of the database schema.')
-            elif schema[0] == '1.2.0':
+            elif schema[0] == '1.2.0':  # no db changes with 1.2.1
                 logging.info('Database schema matches version of exoskeleton.')
             else:
                 logging.warning("Mismatch between version of exoskeleton " +
-                                " (1.2.0) and version of the database " +
+                                " (1.2.1) and version of the database " +
                                 f"schema ({schema[0]}).")
         except pymysql.ProgrammingError:
             # means: the table does not exist (i.e. before version 1.1.0)
             logging.warning('Found no information about the version of the ' +
-                            'database schema. this means the view ' +
+                            'database schema. This means the view ' +
                             'v_errors_in_queue contains an error. Please ' +
                             'look at the end of the updated database script.')
 
