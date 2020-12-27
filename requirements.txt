@@ -1,8 +1,8 @@
 agg>=0.3.0
-beautifulsoup4>=4.8.2
-bote>=0.9.0
+beautifulsoup4>=4.9.3
+bote>=0.9.1
 lxml>=4.6.2
-pymysql>=0.9.3
-requests
-urllib3
+pymysql>=0.10.1
+requests>=2.25.1
+urllib3>=1.26.1
 userprovided>=0.8.0
