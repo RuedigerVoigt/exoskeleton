@@ -3,8 +3,9 @@
 ## version 1.2.2 stable (2021-01-20)
 
 * Update required versions of dependencies:
-    * Required version of `urllib3` deprecated negotiating `TLSv1` and `TLSv1.1`. Connections will not fail but cause a warning.
-    * Require version `1.0.2` of `pymysql`instead of `0.10.1`: As a new major branch was released in 2021, `pymsql` finally dropped support for Python 2.x and 3.5, and improved code quality.
+    * The new required version of `urllib3` deprecated `TLSv1` and `TLSv1.1`. Connections using those protocols will not fail, but will cause a warning.
+    * Require version `1.0.2` of `pymysql` instead of `0.10.1`: As a new major branch was released in 2021, `pymsql` finally dropped support for Python 2.x/3.5 and improved code quality.
+* New dependency: [`compatibility`](https://github.com/RuedigerVoigt/compatibility) (`>=0.8.0`) is added. This warns you if you use exoskeleton with an untested or unsupported version of Python. As a sister project of `exoskeleton` development is coordinated.
 
 ## version 1.2.1 stable (2020-11-30)
 

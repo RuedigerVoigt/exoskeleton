@@ -14,10 +14,12 @@ Released under the Apache License 2.0
 from collections import Counter
 # noinspection PyUnresolvedReferences
 from collections import defaultdict  # noqa # pylint: disable=unused-import
+from datetime import date
 import logging
 from typing import Union, Optional
 
 # Sister projects:
+import compatibility
 import userprovided
 
 # import other modules of this framework
@@ -54,7 +56,19 @@ class Exoskeleton:
                  chrome_name: str = ''):
         """Sets defaults"""
 
-        logging.info('You are using exoskeleton 1.2.1 (November 30, 2020)')
+        compatibility.Check(
+            package_name='exoskeleton',
+            package_version='1.2.2',
+            release_date=date(2021, 1, 20),
+            python_version_support={
+                'min_version': '3.6',
+                'incompatible_versions': [],
+                'max_tested_version': '3.9'},
+            nag_over_update={
+                    'nag_days_after_release': 120,
+                    'nag_in_hundred': 100},
+            language_messages='en'
+        )
 
         self.project: str = project_name.strip()
         self.user_agent: str = bot_user_agent.strip()

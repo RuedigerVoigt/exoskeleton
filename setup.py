@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="exoskeleton",
-    version="1.2.1",
+    version="1.2.2",
     author="Rüdiger Voigt",
     author_email="projects@ruediger-voigt.eu",
     description="A library to create a bot / spider / crawler.",
@@ -21,6 +21,7 @@ setuptools.setup(
     install_requires=["agg>=0.3.0",
                       "beautifulsoup4>=4.9.3",
                       "bote>=0.9.1",
+                      "compatibility>=0.8.0",
                       "lxml>=4.6.2",
                       "pymysql>=1.0.2",
                       "requests>=2.25.1",
