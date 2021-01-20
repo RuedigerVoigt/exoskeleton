@@ -1,8 +1,14 @@
 # Changelog / History
 
+## version 1.2.2 stable (2021-01-20)
+
+* Update required versions of dependencies:
+    * Required version of `urllib3` deprecated negotiating `TLSv1` and `TLSv1.1`. Connections will not fail but cause a warning.
+    * Require version `1.0.2` of `pymysql`instead of `0.10.1`: As a new major branch was released in 2021, `pymsql` finally dropped support for Python 2.x and 3.5, and improved code quality.
+
 ## version 1.2.1 stable (2020-11-30)
 
-* Require lxml version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability *and* works with Python 3.9.
+* Require `lxml` version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability *and* works with Python 3.9.
 
 ## version 1.2.0 stable (2020-11-16)
 
