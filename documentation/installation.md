@@ -20,45 +20,48 @@ MariaDB claims to be a drop-in replacement for MySQL. They share a large part of
 
 Exoskeleton needs at least Python 3.6. To check your python version, open a command line prompt and type one of these commands:
 ```bash
-# if only a single version is installed:
+# If only a single version is installed:
 python --version
 
-# if python 2 and 3 are installed in parallel
+# In case Python 2 and 3 are installed in parallel
 # (for example Debian 10 or Ubuntu 19 systems):
 python3 --version
 ```
 
-Newer versions than 3.6 like 3.7 or 3.8 are just equally fine and tested.
+Newer versions than 3.6 like 3.7, 3.8 and 3.9 are just equally fine and tested.
 
 ### Installing with Pip
 
 Install exoskeleton using `pip` or `pip3`. For example:
 ```bash
-pip install exoskeleton
+sudo pip install exoskeleton
 
 # or if two versions of Python are installed:
-pip3 install exoskeleton
+sudo pip3 install exoskeleton
 ```
 
-You may consider using a [virtualenv](https://virtualenv.pypa.io/en/latest/userguide/ "Documentation").
+You may consider using [virtualenv](https://virtualenv.pypa.io/en/latest/ "Documentation") or [pipenv](https://pypi.org/project/pipenv/).
 
 **The pip command should automatically install all dependencies which are not already part of the Python standard installation.**
 
 These are:
 
+* [agg](https://github.com/RuedigerVoigt/agg): A sister package of exoskeleton which aggregates CSV files.
 * [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/ "beautiful soup project homepage"): A very useful package to analyze a webpage's code.
+* [bote](https://github.com/RuedigerVoigt/bote): A sister package of exoskeleton which sends notifications.
+* [compatibility](https://github.com/RuedigerVoigt/compatibility): A sister package of exoskeleton which ensures you run a suitable version of Python.
 * [lxml](https://lxml.de/): A parser used to repair broken HTML code.
 * [pymysql](https://github.com/PyMySQL/PyMySQL): Needed to connect to the MariaDB database.
 * [requests](https://requests.readthedocs.io/en/master/): A high-level library to send and download data
-* [urllib3](https://urllib3.readthedocs.io/en/latest/)
+* [urllib3](https://urllib3.readthedocs.io/en/latest/): The basis for the `requests`library
 * [userprovided](https://github.com/RuedigerVoigt/userprovided): A sister package of exoskeleton which checks user input for plausibility.
-* [bote](https://github.com/RuedigerVoigt/bote): A sister package of exoskeleton which sends notifications.
+
 
 ### Updating Exoskeleton with Pip
 
 ```python
 # pip or pip3 depending on your setup:
-pip install exoskeleton --upgrade
+sudo pip install exoskeleton --upgrade
 ```
 
 

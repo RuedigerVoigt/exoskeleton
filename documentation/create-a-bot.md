@@ -102,7 +102,7 @@ So exoskeleton assumed MariaDB runs on the same machine and the port is unchange
 
 The dictionary `database_settings` knows the following parameters and defaults:
 
-| Parameter  | Default Value |
+| Key / Parameter  | Default Value |
 | ------------- | ------------- |
 | host  | localhost  |
 | port  | 3306  |

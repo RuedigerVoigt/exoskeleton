@@ -22,7 +22,9 @@ We will use the excellent [Beautiful Soup](https://www.crummy.com/software/Beaut
 
 The exoskeleton function `return_page_code()` gives back the code of a page without storing it in the database. As we have no further need for the page code, we use that function here.
 
-There is a high risk to run into a rate limit on result page 400 or 500. You do not want to start again from scratch. Therefore, we define a job to store the progress. You need to know the following four exoskeleton functions:
+## Using jobs to store progress
+
+There is a high risk to run into a rate limit on result page 400 or 500. You do not want to start again from scratch. *Therefore, we define a job to store the progress.* There are four exoskeleton functions for this:
 
 `job_define_new(job_name, start_url)`: defines a job. It stores the given URL in the database. So it can be accessed even after the scripts fail.
 
