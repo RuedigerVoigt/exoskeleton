@@ -18,7 +18,7 @@ setuptools.setup(
     package_data={"exoskeleton": ["py.typed"]},
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
-    install_requires=["agg>=0.3.0",
+    install_requires=["agg>=0.3.1",
                       "beautifulsoup4>=4.9.3",
                       "bote>=1.0.0",
                       "compatibility>=0.8.0",
