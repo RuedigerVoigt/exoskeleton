@@ -70,6 +70,10 @@ class TimeManager:
                                 num_items_in_queue: int) -> int:
         """Estimate remaining seconds to finish crawl."""
         time_so_far = self.absolute_run_time()
+        if already_processed == 0 and num_items_in_queue == 0:
+            return -1
+        if num_items_in_queue == 0:
+            return 0
         if already_processed > 0:
             time_each = time_so_far / already_processed
             return round(num_items_in_queue * time_each)
