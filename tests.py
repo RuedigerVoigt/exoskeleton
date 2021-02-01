@@ -10,6 +10,7 @@ For the moment the relevant test is in the file system-test.py.
 That is a complete run with different scenarios which test the interaction
 between this application, the database and the network.
 That is run automatically.
+These test here cover only around 1/3 of the code.
 ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
 
 
@@ -23,6 +24,7 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 
+from unittest.mock import patch
 
 import pytest
 from exoskeleton import database_connection
@@ -98,3 +100,8 @@ def test_TimeManager_functions():
     assert my_tm.estimate_remaining_time(0, 0) == -1  # nothing done
     assert my_tm.estimate_remaining_time(0, 10000) == -1  # nothing done
     assert my_tm.estimate_remaining_time(10000, 0) == 0
+    assert isinstance(my_tm.estimate_remaining_time(10000, 10), int) is True
+    # random-wait needs to be patched
+    with patch('time.sleep', return_value=None):
+        my_tm.random_wait()
+
