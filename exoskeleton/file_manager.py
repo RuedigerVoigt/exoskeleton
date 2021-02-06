@@ -61,6 +61,10 @@ class FileManager:
     def __clean_prefix(file_prefix: str) -> str:
         """Remove whitespace around the filename prefix and check if it is
            not longer than 16 characters."""
+        if not file_prefix:
+            logging.warning('You defined no filename prefix.')
+            return ''
+
         file_prefix = file_prefix.strip()
         # Limit the prefix length as on many systems the path must not be
         # longer than 255 characters and it needs space for folders and the
