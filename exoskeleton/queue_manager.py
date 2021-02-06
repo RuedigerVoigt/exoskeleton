@@ -5,6 +5,7 @@
 The class QueueManager manages the action queue for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
+(c) 2019-2021 Rüdiger Voigt:
 Released under the Apache License 2.0
 """
 # standard library:
@@ -137,8 +138,8 @@ class QueueManager:
             return None
 
         if prettify_html and action != 2:
-            logging.error('Option prettify_html not supported for ' +
-                          'this action. Will be ignored.')
+            logging.error(
+                'Option prettify_html not supported for this action.')
             prettify_html = False
 
         try:
@@ -150,8 +151,8 @@ class QueueManager:
         # Check if the scheme is either http or https
         # (others are not supported by requests)
         if not userprovided.url.is_url(url, ('http', 'https')):
-            logging.error('Could not add URL %s : invalid or unsupported ' +
-                          'scheme', url)
+            logging.error(
+                'Could not add URL %s : invalid or unsupported scheme', url)
             return None
 
         # Add labels for the master entry.
@@ -173,8 +174,8 @@ class QueueManager:
                                  (id_in_file_master, action))
                 version_id = self.cur.fetchone()
                 if version_id:
-                    logging.info('File has already been processed ' +
-                                 'in the same way. Skipping it.')
+                    logging.info(
+                        'Skipping file already processed in the same way.')
                     return None
 
                 # log and simply go on
@@ -253,8 +254,8 @@ class QueueManager:
         """ If the label is not already in use, define a new label
             and a description. """
         if len(shortname) > 31:
-            logging.error("Labelname exceeds max length of 31 " +
-                          "characters. Cannot add it.")
+            logging.error(
+                "Cannot add labelname exceeding max length of 31 characters.")
             return
         try:
             self.cur.execute('INSERT INTO labels (shortName, description) ' +
@@ -517,7 +518,7 @@ class QueueManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def check_is_milestone(self) -> bool:
-        """ Check if a milestone is reached."""
+        "Check if a milestone is reached."
         processed = self.stats.get_processed_counter()
         # Check >0 in case the bot starts failing with the first item.
         if (self.milestone and
