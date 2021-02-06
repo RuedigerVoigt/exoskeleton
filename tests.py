@@ -27,7 +27,10 @@ Released under the Apache License 2.0
 from unittest.mock import patch
 
 import pytest
+
+from exoskeleton import actions
 from exoskeleton import database_connection
+from exoskeleton import file_manager
 from exoskeleton import notification_manager
 from exoskeleton import remote_control_chrome
 from exoskeleton import statistics_manager
@@ -38,6 +41,19 @@ def test_DatabaseConnection():
     # missing settings dictionary
     with pytest.raises(ValueError):
         database_connection.DatabaseConnection(None)
+
+
+def test_FileManager_functions():
+    # empty string
+    assert file_manager.FileManager._FileManager__clean_prefix('') == ''
+    # only whitespace
+    assert file_manager.FileManager._FileManager__clean_prefix('   ') == ''
+    # exactly 16 characters ( = allowed length) plus whitespace
+    assert file_manager.FileManager._FileManager__clean_prefix('   1234567890123456  ') == '1234567890123456'
+    # more than 16 characters ( = allowed length)
+    with pytest.raises(ValueError):
+        assert file_manager.FileManager._FileManager__clean_prefix('12345678901234567') == ''
+    assert file_manager.FileManager._FileManager__clean_prefix(None) == ''
 
 
 def test_Notificationmanager():
@@ -66,6 +82,12 @@ def test_StatisticsManager():
     my_stats.increment_processed_counter()
     assert my_stats.cnt['processed'] == 1
     assert my_stats.get_processed_counter() == 1
+
+
+def test_StatisticsManager_functions():
+    # TO DO
+    #my_stats.update_host_statistics('https://www.example.com', 1, 0, 0, 0)
+    pass
 
 
 def test_TimeManager():
@@ -105,3 +127,10 @@ def test_TimeManager_functions():
     with patch('time.sleep', return_value=None):
         my_tm.random_wait()
 
+
+def test_actions():
+    # prettify_html
+    # Not checking how the improved version looks like as this may change
+    # slightly with newer version of beautiful soup.
+    broken_html = "<a href='https://www.example.com'>example</b></b><p></p>"
+    assert actions.ExoActions.prettify_html(broken_html) != broken_html
