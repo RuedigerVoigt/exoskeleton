@@ -5,6 +5,7 @@
 Database connection management for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
+(c) 2019-2021 Rüdiger Voigt:
 Released under the Apache License 2.0
 """
 # standard library:
@@ -63,8 +64,8 @@ class DatabaseConnection:
 
         self.db_port: int = database_settings.get('port', None)
         if not self.db_port:
-            logging.info('No port number supplied. ' +
-                         'Will try standard port 3306 instead.')
+            logging.info(
+                'No port number supplied: will try standard port 3306.')
             self.db_port = 3306
         elif not userprovided.port.port_in_range(self.db_port):
             raise ValueError('Database port outside valid range!')
@@ -79,8 +80,8 @@ class DatabaseConnection:
 
         self.db_passphrase: str = database_settings.get('passphrase', '')
         if self.db_passphrase == '':
-            logging.warning('No database passphrase provided. ' +
-                            'Will try to connect without.')
+            logging.warning(
+                'No database passphrase provided. Trying to connect without.')
 
         # Establish the database connection
         self.connection = None

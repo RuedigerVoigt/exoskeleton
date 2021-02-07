@@ -11,6 +11,7 @@ Released under the Apache License 2.0
 import logging
 
 # external dependencies:
+import userprovided
 import pymysql
 
 
@@ -31,18 +32,15 @@ class JobManager:
                    start_url: str) -> None:
         """ Create a new crawl job identified by it name and an url
             to start crawling. """
-        # no check for None or '' here as it is a required argument
+        if not job_name:
+            raise ValueError('Provide a valid job_name')
+        if not start_url:
+            raise ValueError('A job needs a Start URL.')
 
         job_name = job_name.strip()
-        # the job_name may have consisted only of whitespace_
-        if job_name == '':
-            raise ValueError('Provide a valid job_name')
 
-        if len(job_name) > 127:
-            raise ValueError('Invalid job name: maximum 127 characters.')
-
-        if start_url == '' or start_url is None:
-            raise ValueError
+        if not userprovided.parameters.string_in_range(job_name, 1, 127):
+            raise ValueError('job name must be between 1 and 127 characters.')
 
         try:
             self.cur.execute('INSERT INTO jobs ' +
@@ -66,11 +64,10 @@ class JobManager:
     def update_current_url(self,
                            job_name: str,
                            current_url: str) -> None:
-        """ Set the currentUrl for a specific job. """
-
-        if job_name == '' or job_name is None:
+        "Set the currentUrl for a specific job. "
+        if not job_name:
             raise ValueError('Provide the job name.')
-        if current_url == '' or current_url is None:
+        if not current_url:
             raise ValueError('Current URL must not be empty.')
 
         affected_rows = self.cur.execute('UPDATE jobs ' +
@@ -115,8 +112,8 @@ class JobManager:
     def mark_as_finished(self,
                          job_name: str) -> None:
         """ Mark a crawl job as finished. """
-        if job_name == '' or job_name is None:
-            raise ValueError
+        if not job_name:
+            raise ValueError('Missing job_name')
         job_name = job_name.strip()
         affected_rows = self.cur.execute('UPDATE jobs SET ' +
                                          'finished = CURRENT_TIMESTAMP() ' +

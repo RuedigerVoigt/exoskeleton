@@ -7,6 +7,7 @@ Exoskeleton Crawler Framework
 A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 Source: https://github.com/RuedigerVoigt/exoskeleton
+(c) 2019-2021 Rüdiger Voigt:
 Released under the Apache License 2.0
 """
 
@@ -54,7 +55,7 @@ class Exoskeleton:
                  mail_settings: Union[dict, None] = None,
                  mail_behavior: Union[dict, None] = None,
                  chrome_name: str = ''):
-        """Sets defaults"""
+        "Sets defaults"
 
         compatibility.Check(
             package_name='exoskeleton',
@@ -103,19 +104,18 @@ class Exoskeleton:
         # INIT: Bot Behavior
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        known_behavior_keys = {'connection_timeout',
-                               'queue_max_retries',
-                               'queue_revisit',
-                               'rate_limit_wait',
-                               'stop_if_queue_empty',
-                               'wait_min',
-                               'wait_max'}
         if bot_behavior:
             userprovided.parameters.validate_dict_keys(
-                bot_behavior,
-                known_behavior_keys,
-                None,
-                'bot_behavior')
+                dict_to_check=bot_behavior,
+                allowed_keys={'connection_timeout',
+                              'queue_max_retries',
+                              'queue_revisit',
+                              'rate_limit_wait',
+                              'stop_if_queue_empty',
+                              'wait_min',
+                              'wait_max'},
+                necessary_keys=None,
+                dict_name='bot_behavior')
         else:
             bot_behavior = dict()
 
@@ -207,7 +207,7 @@ class Exoskeleton:
     def job_update_current_url(self,
                                job_name: str,
                                current_url: str) -> None:
-        """ Set the currentUrl for a specific job. """
+        "Set the currentUrl for a specific job."
         self.jobs.update_current_url(job_name, current_url)
 
     def job_get_current_url(self,
@@ -219,7 +219,7 @@ class Exoskeleton:
 
     def job_mark_as_finished(self,
                              job_name: str) -> None:
-        """ Mark a crawl job as finished. """
+        "Mark a crawl job as finished."
         self.jobs.mark_as_finished(job_name)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -231,7 +231,7 @@ class Exoskeleton:
                           labels_master: set = None,
                           labels_version: set = None,
                           force_new_version: bool = False) -> Optional[str]:
-        """Add a file download URL to the queue """
+        "Add a file download URL to the queue"
         uuid = self.queue.add_to_queue(url, 1, labels_master,
                                        labels_version, False,
                                        force_new_version)
