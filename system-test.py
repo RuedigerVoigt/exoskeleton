@@ -17,8 +17,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def check_queue_count(correct_number: int):
-    u"""Check if the number of items in the queue equals
-        the expected number. """
+    "Check if the number of items in the queue equals the expected number."
     stats = exo.stats.queue_stats()
     found = stats['tasks_without_error']
     if found != correct_number:
@@ -29,13 +28,12 @@ def check_queue_count(correct_number: int):
 
 
 def check_label_count(correct_number: int):
-    u"""Check if the number of labels equals the expected number."""
+    "Check if the number of labels equals the expected number."
     exo.cur.execute('SELECT COUNT(*) FROM exoskeleton.labels;')
     found = int(exo.cur.fetchone()[0])
 
     if found != correct_number:
-        raise Exception(f"Number of labels not correct" +
-                        f"({found} found / " +
+        raise Exception(f"Number of labels not correct: ({found} found / " +
                         f"{correct_number} expected).")
     else:
         logging.info('Number of labels correct')
@@ -61,7 +59,7 @@ def check_error_codes(expectation: set):
 
 exo = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
-    database_settings={'port': 12345,
+    database_settings={
                        'database': 'exoskeleton',
                        'username': 'exoskeleton',
                        'passphrase': 'exoskeleton'},
@@ -72,7 +70,7 @@ exo = exoskeleton.Exoskeleton(
                   'queue_revisit': 5,
                   'stop_if_queue_empty': True},
     filename_prefix='EXO_',
-    chrome_name='chromium-browser',
+    chrome_name='google-chrome',
     target_directory='./fileDownloads'
 )
 

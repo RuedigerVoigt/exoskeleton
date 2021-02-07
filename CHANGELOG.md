@@ -1,5 +1,10 @@
 # Changelog / History
 
+## version 1.2.3 stable (2021-02-07)
+
+* Update required versions of dependencies `agg` and `bote`.
+* Refactored code.
+
 ## version 1.2.2 stable (2021-01-20)
 
 * Update required versions of dependencies:
@@ -7,7 +12,7 @@
     * Require version `1.0.2` of `pymysql` instead of `0.10.1`: As a new major branch was released in 2021, `pymsql` finally dropped support for Python 2.x/3.5 and improved code quality.
 * New dependency: [`compatibility`](https://github.com/RuedigerVoigt/compatibility) (`>=0.8.0`) is added. This warns you if you use exoskeleton with an untested or unsupported version of Python. As a sister project of `exoskeleton` development is coordinated.
 
-## version 1.2.1 stable (2020-11-30)
+## version 1.2.1 stable (2020-11-30) - Security Update
 
 * Require `lxml` version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability *and* works with Python 3.9.
 

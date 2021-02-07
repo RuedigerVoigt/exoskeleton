@@ -59,8 +59,8 @@ class Exoskeleton:
 
         compatibility.Check(
             package_name='exoskeleton',
-            package_version='1.2.2',
-            release_date=date(2021, 1, 20),
+            package_version='1.2.3',
+            release_date=date(2021, 2, 7),
             python_version_support={
                 'min_version': '3.6',
                 'incompatible_versions': [],
