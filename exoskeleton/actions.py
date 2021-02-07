@@ -168,7 +168,7 @@ class GetFile(GetObjectBaseClass):
                                str(self.file.target_dir),
                                new_filename,
                                self.file.get_file_size(file_path),
-                               self.file.hash_method,
+                               self.file.HASH_METHOD,
                                hash_value, 1))
         except pymysql.DatabaseError:
             logging.error('Transaction failed: Could not add ' +
