@@ -50,17 +50,17 @@ class RemoteControlChrome:
         else:
             self.browser_name = browser_name.strip()
             if not self.check_executable_existence(self.browser_name):
-                logging.exception("No browser with this executable name " +
-                                  "found in the path. Saving a HTML page " +
-                                  "as PDF is not possible without that.")
+                logging.exception(
+                    "No browser with this executable name found in the path." +
+                    " Saving a HTML page as PDF is not possible without that.")
                 self.suggest_executables()
-                raise ValueError(f"Browser {self.browser_name} not found in path!")
+                raise ValueError(f"Browser {self.browser_name} not in path!")
             if self.check_browser_support(self.browser_name):
                 self.browser_present = True
 
     @staticmethod
     def check_executable_existence(browser_name: str) -> bool:
-        """See if the executable name provided by the setup is in the path """
+        "See if the executable name provided by the setup is in the path."
         return bool(shutil.which(browser_name))
 
     def suggest_executables(self) -> None:

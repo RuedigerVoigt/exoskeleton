@@ -44,7 +44,7 @@ class StatisticsManager:
 
     def __num_tasks_w_temporary_errors(self) -> Optional[int]:
         """Number of tasks in the queue that are marked as causing a
-        temporary error."""
+           temporary error."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError IN " +
                          "    (SELECT id FROM errorType WHERE permanent = 0);")
@@ -52,8 +52,7 @@ class StatisticsManager:
         return int(response[0]) if response else None  # type: ignore[index]
 
     def __num_tasks_w_rate_limit(self) -> Optional[int]:
-        """Number of tasks in the queue that are marked as causing a permanent
-        error."""
+        "Number of tasks in the queue marked as causing a permanent error."
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError NOT IN " +
                          "    (SELECT id FROM errorType " +
@@ -76,8 +75,8 @@ class StatisticsManager:
 
     def log_queue_stats(self) -> None:
         """Log the queue statistics using logging - that means to the screen
-        or into a file depending on your setup.
-        Especially useful when a bot starts or resumes processing the queue."""
+           or into a file depending on your setup. Especially useful when 
+           a bot starts or resumes processing the queue."""
         stats = self.queue_stats()
         overall_workable = (stats['tasks_without_error'] +
                             stats['tasks_with_temp_errors'])

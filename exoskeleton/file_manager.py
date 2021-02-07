@@ -21,6 +21,8 @@ import userprovided
 class FileManager:
     """File handling for the exoskeleton framework"""
 
+    HASH_METHOD = 'sha256'
+
     def __init__(self,
                  db_cursor: pymysql.cursors.Cursor,
                  target_directory: str,
@@ -31,8 +33,7 @@ class FileManager:
         logging.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)
 
-        self.hash_method = 'sha256'
-        if not userprovided.hash.hash_available(self.hash_method):
+        if not userprovided.hash.hash_available(self.HASH_METHOD):
             raise ValueError('The hash method SHA256 is not available on ' +
                              'your system.')
 
@@ -52,15 +53,15 @@ class FileManager:
             # Therefore no fallback to the current working directory.
             target_dir = pathlib.Path(target_directory).resolve()
             if not target_dir.is_dir():
-                raise OSError("Cannot find or access the user " +
-                              "supplied target directory! " +
-                              "Create this directory or check permissions.")
+                raise OSError(
+                    "Cannot find or access the user supplied target " +
+                    "directory! Create it or check permissions.")
         return target_dir
 
     @staticmethod
     def __clean_prefix(file_prefix: str) -> str:
-        """Remove whitespace around the filename prefix and check if it is
-           not longer than 16 characters."""
+        """Remove whitespace around the filename prefix and
+           limit it to 16 characters."""
         if not file_prefix:
             logging.warning('You defined no filename prefix.')
             return ''
@@ -80,7 +81,7 @@ class FileManager:
     def write_response_to_file(self,
                                response: requests.Response,
                                file_name: str) -> pathlib.Path:
-        """Write the server's response into a file."""
+        "Write the server's response into a file."
         target_path = self.target_dir.joinpath(file_name)
         with open(target_path, 'wb') as file_handle:
             for block in response.iter_content(1024):
@@ -94,7 +95,7 @@ class FileManager:
         """Calculate the hash of a file using the set method
            (currently fixed to SHA256)."""
         hash_value = userprovided.hash.calculate_file_hash(
-            file_path, self.hash_method)
+            file_path, self.HASH_METHOD)
         return hash_value
 
     @staticmethod

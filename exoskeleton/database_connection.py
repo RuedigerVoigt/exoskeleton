@@ -46,15 +46,14 @@ class DatabaseConnection:
         """Sets defaults"""
 
         if database_settings is None:
-            raise ValueError('You must supply database credentials for' +
-                             'exoskeleton to work.')
+            raise ValueError('You must supply database credentials.')
 
         # Are the parameters valid?
         userprovided.parameters.validate_dict_keys(
-            database_settings,
-            {'host', 'port', 'database', 'username', 'passphrase'},
-            {'database'},
-            'database_settings')
+            dict_to_check=database_settings,
+            allowed_keys={'host', 'port', 'database', 'username', 'passphrase'},
+            necessary_keys={'database'},
+            dict_name='database_settings')
 
         # Check settings and fallback to default if necessary:
         self.db_host: str = database_settings.get('host', None)
@@ -111,8 +110,8 @@ class DatabaseConnection:
             logging.info('Succesfully established database connection.')
 
         except pymysql.InterfaceError:
-            logging.exception('Exception related to the database ' +
-                              '*interface*.', exc_info=True)
+            logging.exception('Exception related to the database *interface*.',
+                              exc_info=True)
             raise
         except pymysql.DatabaseError:
             logging.exception('Exception related to the database.',

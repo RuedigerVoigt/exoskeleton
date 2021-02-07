@@ -332,7 +332,7 @@ class ExoActions:
                               (url, url_hash, queue_id, 'application/pdf',
                                str(self.file.target_dir), filename,
                                self.file.get_file_size(path),
-                               self.file.hash_method, hash_value, 3))
+                               self.file.HASH_METHOD, hash_value, 3))
         except pymysql.DatabaseError:
             logging.error('Database Transaction failed: Could not add ' +
                           'already downloaded file %s to the database!',
