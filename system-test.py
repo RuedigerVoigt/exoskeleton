@@ -59,7 +59,7 @@ def check_error_codes(expectation: set):
 
 exo = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
-    database_settings={
+    database_settings={'port': 12345,
                        'database': 'exoskeleton',
                        'username': 'exoskeleton',
                        'passphrase': 'exoskeleton'},
@@ -70,7 +70,7 @@ exo = exoskeleton.Exoskeleton(
                   'queue_revisit': 5,
                   'stop_if_queue_empty': True},
     filename_prefix='EXO_',
-    chrome_name='google-chrome',
+    chrome_name='chromium-browser',
     target_directory='./fileDownloads'
 )
 
