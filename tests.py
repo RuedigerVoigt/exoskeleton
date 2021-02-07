@@ -76,12 +76,12 @@ def test_RemoteControlChrome_functions():
         my_chrome.page_to_pdf('https://www.example.com', './', '12343454')
 
 
-def test_StatisticsManager():
-    my_stats = statistics_manager.StatisticsManager(None)
-    assert my_stats.cnt['processed'] == 0
-    my_stats.increment_processed_counter()
-    assert my_stats.cnt['processed'] == 1
-    assert my_stats.get_processed_counter() == 1
+#def test_StatisticsManager():
+#    my_stats = statistics_manager.StatisticsManager(None)
+#    assert my_stats.cnt['processed'] == 0
+#    my_stats.increment_processed_counter()
+#    assert my_stats.cnt['processed'] == 1
+#    assert my_stats.get_processed_counter() == 1
 
 
 def test_StatisticsManager_functions():

@@ -15,13 +15,16 @@ from urllib.parse import urlparse
 
 import pymysql
 
+from exoskeleton import database_connection
+
 
 class StatisticsManager:
     """Manage the statistics like counting requests and errors,"""
 
     def __init__(self,
-                 db_cursor: pymysql.cursors.Cursor) -> None:
-        self.cur = db_cursor
+                 db_connection: database_connection.DatabaseConnection
+                 ) -> None:
+        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.cnt: Counter = Counter()
 
     def __num_tasks_wo_errors(self) -> Optional[int]:
@@ -75,7 +78,7 @@ class StatisticsManager:
 
     def log_queue_stats(self) -> None:
         """Log the queue statistics using logging - that means to the screen
-           or into a file depending on your setup. Especially useful when 
+           or into a file depending on your setup. Especially useful when
            a bot starts or resumes processing the queue."""
         stats = self.queue_stats()
         overall_workable = (stats['tasks_without_error'] +
@@ -94,7 +97,7 @@ class StatisticsManager:
                                permanent_errors: int,
                                hit_rate_limit: int) -> None:
         """ Updates the host based statistics. The URL gets shortened to
-        the hostname. Increase the different counters."""
+            the hostname. Increase the different counters."""
 
         fqdn = urlparse(url).hostname
 

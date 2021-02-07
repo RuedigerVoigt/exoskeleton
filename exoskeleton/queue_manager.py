@@ -36,7 +36,6 @@ class QueueManager:
     def __init__(
             self,
             db_connection: database_connection.DatabaseConnection,
-            db_cursor: pymysql.cursors.Cursor,
             time_manager_object: time_manager.TimeManager,
             stats_manager_object: statistics_manager.StatisticsManager,
             actions_object: actions.ExoActions,
@@ -47,7 +46,7 @@ class QueueManager:
         # cursor in case there is a problem.
         # Planned to be replaced with a connection pool. See issue #20
         self.db = db_connection
-        self.cur = db_cursor
+        self.cur: pymysql.cursors.Cursor = self.db.get_cursor()
         self.time = time_manager_object
         self.stats = stats_manager_object
         self.action = actions_object
@@ -419,11 +418,12 @@ class QueueManager:
                         logging.info('Succesfully restored connection ' +
                                      'to database server!')
                     except Exception:
-                        logging.error('Could not reestablish database ' +
-                                      'server connection!', exc_info=True)
+                        logging.error(
+                            'Could not reestablish database server connection!',
+                            exc_info=True)
                         self.notify.send_msg('abort_lost_db')
-                        raise ConnectionError('Lost database connection and ' +
-                                              'could not restore it.')
+                        raise ConnectionError(
+                            'Lost database connection and could not restore it.')
                 else:
                     logging.error('Unexpected Operational Error',
                                   exc_info=True)
@@ -437,6 +437,7 @@ class QueueManager:
                     self.cur.execute(
                         'SELECT num_items_with_temporary_errors();')
                     num_temp_errors = self.cur.fetchone()[0]  # type: ignore[index]
+
                     if num_temp_errors > 0:
                         # there are still tasks, but they have to wait
                         logging.debug("Tasks with temporary errors: " +
@@ -444,23 +445,23 @@ class QueueManager:
                                       self.queue_revisit)
                         time.sleep(self.queue_revisit)
                         continue
-                    else:
-                        # Nothing left
-                        logging.info('Queue empty. Bot stops as configured.')
 
-                        self.cur.execute(
-                            'SELECT num_items_with_permanent_error();')
-                        num_permanent_errors = self.cur.fetchone()[0]  # type: ignore[index]
-                        if num_permanent_errors > 0:
-                            logging.error("%s permanent errors!",
-                                          num_permanent_errors)
-                        self.notify.send_finish_msg(num_permanent_errors)
+                    # Nothing left (i.e. num_temp_errors == 0)
+                    logging.info('Queue empty. Bot stops as configured.')
+
+                    self.cur.execute(
+                        'SELECT num_items_with_permanent_error();')
+                    num_permanent_errors = self.cur.fetchone()[0]  # type: ignore[index]
+                    if num_permanent_errors > 0:
+                        logging.error("%s permanent errors!",
+                                      num_permanent_errors)
+                    self.notify.send_finish_msg(num_permanent_errors)
                     break
-                else:
-                    logging.debug("No actionable task: waiting %s seconds " +
-                                  "until next check", self.queue_revisit)
-                    time.sleep(self.queue_revisit)
-                    continue
+
+                logging.debug("No actionable task: waiting %s seconds " +
+                              "until next check", self.queue_revisit)
+                time.sleep(self.queue_revisit)
+                continue
             else:
                 # got a task from the queue
                 queue_id = next_in_queue[0]

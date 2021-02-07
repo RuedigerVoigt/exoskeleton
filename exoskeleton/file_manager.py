@@ -17,6 +17,8 @@ import pymysql
 import requests
 import userprovided
 
+from exoskeleton import database_connection
+
 
 class FileManager:
     """File handling for the exoskeleton framework"""
@@ -24,18 +26,17 @@ class FileManager:
     HASH_METHOD = 'sha256'
 
     def __init__(self,
-                 db_cursor: pymysql.cursors.Cursor,
+                 db_connection: database_connection.DatabaseConnection,
                  target_directory: str,
                  filename_prefix: str
                  ) -> None:
-        self.cur = db_cursor
+        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.target_dir = self.__check_target_directory(target_directory)
         logging.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)
 
         if not userprovided.hash.hash_available(self.HASH_METHOD):
-            raise ValueError('The hash method SHA256 is not available on ' +
-                             'your system.')
+            raise ValueError(f"Hash method {self.HASH_METHOD} not available!")
 
     @staticmethod
     def __check_target_directory(target_directory: str) -> pathlib.Path:
@@ -92,8 +93,7 @@ class FileManager:
 
     def get_file_hash(self,
                       file_path: pathlib.Path) -> str:
-        """Calculate the hash of a file using the set method
-           (currently fixed to SHA256)."""
+        "Calculate the hash of a file (method currently fixed to SHA256)."
         hash_value = userprovided.hash.calculate_file_hash(
             file_path, self.HASH_METHOD)
         return hash_value

@@ -16,6 +16,8 @@ from typing import Optional
 import userprovided
 import pymysql
 
+from exoskeleton import database_connection
+
 
 class CrawlingErrorManager:
     """Manage errors that occur while crawling."""
@@ -30,10 +32,10 @@ class CrawlingErrorManager:
     DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
 
     def __init__(self,
-                 db_cursor: pymysql.cursors.Cursor,
+                 db_connection: database_connection.DatabaseConnection,
                  queue_max_retries: int,
                  rate_limit_wait_seconds: int) -> None:
-        self.cur = db_cursor
+        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = queue_max_retries
         self.queue_max_retries = userprovided.parameters.int_in_range(

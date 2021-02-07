@@ -19,6 +19,7 @@ import requests
 import urllib3  # type: ignore
 import userprovided
 
+from exoskeleton import database_connection
 from exoskeleton import error_manager
 from exoskeleton import file_manager
 from exoskeleton import remote_control_chrome
@@ -47,7 +48,8 @@ class GetObjectBaseClass:
             url: str,
             url_hash: str,
             prettify_html: bool = False):
-        self.cur = objects['db_cursor']
+        self.db_connection = objects['db_connection']
+        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.stats = objects['stats_manager_object']
         self.file = objects['file_manager_object']
         self.time = objects['time_manager_object']
@@ -229,7 +231,7 @@ class ExoActions:
 
     def __init__(
             self,
-            db_cursor: pymysql.cursors.Cursor,
+            db_connection: database_connection.DatabaseConnection,
             stats_manager_object: statistics_manager.StatisticsManager,
             file_manager_object: file_manager.FileManager,
             time_manager_object: time_manager.TimeManager,
@@ -238,7 +240,8 @@ class ExoActions:
             user_agent: str,
             connection_timeout: int) -> None:
         """ """
-        self.cur = db_cursor
+        self.db_connection = db_connection
+        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.stats = stats_manager_object
         self.file = file_manager_object
         self.time = time_manager_object
@@ -249,7 +252,7 @@ class ExoActions:
         self.controlled_browser = remote_control_chrome_object
 
         self.objects = {
-            'db_cursor': self.cur,
+            'db_connection': self.db_connection,
             'stats_manager_object': self.stats,
             'file_manager_object': self.file,
             'time_manager_object': self.time,

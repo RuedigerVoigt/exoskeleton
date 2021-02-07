@@ -82,7 +82,7 @@ class Exoskeleton:
         self.db = database_connection.DatabaseConnection(database_settings)
         self.cur = self.db.get_cursor()
 
-        self.stats = statistics_manager.StatisticsManager(self.cur)
+        self.stats = statistics_manager.StatisticsManager(self.db)
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Mail / Notification Setup
@@ -132,12 +132,12 @@ class Exoskeleton:
             bot_behavior.get('wait_max', 30))
 
         self.file = file_manager.FileManager(
-            self.cur,
+            self.db,
             target_directory,
             filename_prefix)
 
         self.errorhandling = error_manager.CrawlingErrorManager(
-            self.cur,
+            self.db,
             bot_behavior.get('queue_max_retries', 3),
             bot_behavior.get('rate_limit_wait', 1860)
             )
@@ -148,7 +148,7 @@ class Exoskeleton:
             self.stats)
 
         self.action = actions.ExoActions(
-            self.cur,
+            self.db,
             self.stats,
             self.file,
             self.time,
@@ -159,7 +159,6 @@ class Exoskeleton:
 
         self.queue = queue_manager.QueueManager(
             self.db,
-            self.cur,
             self.time,
             self.stats,
             self.action,
@@ -363,9 +362,8 @@ class Exoskeleton:
                               uuid: str,
                               labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels either to a specific
-            version of a file.
-            Removes duplicates and adds new labels to the label list
-            if necessary.."""
+            version of a file. Removes duplicates and adds new labels
+            to the label list if necessary."""
         self.queue.assign_labels_to_uuid(uuid, labels)
 
     def get_label_ids(self,
@@ -377,9 +375,9 @@ class Exoskeleton:
     def define_or_update_label(self,
                                shortname: str,
                                description: str = None) -> None:
-        """ Insert a new label into the database or update its
-        description in case it already exists. Use __define_new_label
-        if an update has to be avoided. """
+        """ Insert a new label into the database or update its description
+            in case it already exists. Use __define_new_label if an update
+            has to be avoided. """
         if len(shortname) > 31:
             logging.error("Labelname exceeds max length of 31 " +
                           "characters. Cannot add it.")
@@ -425,8 +423,8 @@ class Exoskeleton:
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
         """Get a list of label names (not id numbers!) attached
-        to a specific version of a file. Does not include
-        labels attached to the filemaster entry."""
+           to a specific version of a file. Does not include
+           labels attached to the filemaster entry."""
         self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
@@ -444,7 +442,7 @@ class Exoskeleton:
     def get_filemaster_id(self,
                           version_uuid: str) -> str:
         """Get the id of the filemaster entry associated with
-        a specific version identified by its UUID."""
+           a specific version identified by its UUID."""
         self.cur.execute('SELECT fileMasterID ' +
                          'FROM exoskeleton.fileVersions ' +
                          'WHERE id = %s;',
@@ -457,7 +455,7 @@ class Exoskeleton:
     def filemaster_labels_by_id(self,
                                 filemaster_id: str) -> set:
         """Get a list of label names (not id numbers!) attached
-        to a specific filemaster entry."""
+           to a specific filemaster entry."""
         self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
@@ -475,9 +473,9 @@ class Exoskeleton:
     def filemaster_labels_by_url(self,
                                  url: str) -> set:
         """Primary use for automatic test: Get a list of label names
-        (not id numbers!) attached to a specific filemaster entry
-        via its URL instead of the id. The reason for this:
-        The association with the URl predates the filemaster entry / the id."""
+           (not id numbers!) attached to a specific filemaster entry
+           via its URL instead of the id. The reason for this: The
+           association with the URl predates the filemaster entry / the id."""
         self.cur.execute('SELECT DISTINCT shortName ' +
                          'FROM labels ' +
                          'WHERE ID IN (' +
@@ -495,7 +493,7 @@ class Exoskeleton:
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
         """Get a set of ALL label names (not id numbers!) attached
-        to a specific version of a file AND its filemaster entry."""
+           to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
         filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
@@ -505,7 +503,7 @@ class Exoskeleton:
     def remove_labels_from_uuid(self,
                                 uuid: str,
                                 labels_to_remove: set) -> None:
-        """Detaches a label from a UUID / version."""
+        "Detaches a label from a UUID / version."
 
         # Using a set to avoid duplicates. However, accept either
         # a single string or a list type.
