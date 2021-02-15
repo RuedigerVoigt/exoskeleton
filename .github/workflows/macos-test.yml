@@ -17,17 +17,6 @@ jobs:
       matrix:
         python-version: [3.8, 3.9]
 
-    services:
-      mariadb:
-        image: mariadb:latest
-        ports:
-          - 12345:3306
-        env:
-          MYSQL_ROOT_PASSWORD: 'RootPassphrase' # password for root account
-          MYSQL_DATABASE: 'exoskeleton' # database to be created on image startup
-          MYSQL_USER: 'exoskeleton' # User with all right for exoskeleton database
-          MYSQL_PASSWORD: 'exoskeleton' # Password for the exoskelton user
-
     steps:
 
     - name: System Update
@@ -48,22 +37,6 @@ jobs:
     - name: Install test utilities
       run: |
         pip install pytest pytest_mock pyfakefs
-
-
-    # The next step need to wait until the MariaDB container is ready.
-    # This pings it until it gets an answer:
-    - name: Wait for MariaDB to initialize
-      run: |
-        while ! mysqladmin ping -h"127.0.0.1" -P"12345" --silent; do
-          sleep 1
-        done
-
-    - name: Fill exoskeleton database
-      env:
-        PORT: ${{ job.services.mariadb.ports[3306] }}
-      run: |
-        mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'
-
 
 #    - name: Run system-test with pytest
 #      run: pytest tests.py
