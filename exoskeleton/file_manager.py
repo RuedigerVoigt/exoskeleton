@@ -5,6 +5,7 @@
 File handling for the exoskeleton framework
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
+(c) 2019-2021 Rüdiger Voigt
 Released under the Apache License 2.0
 """
 # standard library:
@@ -44,19 +45,18 @@ class FileManager:
            If not fallback to the current working directory.
            If a directory is set, but not accessible, fail early."""
 
-        target_dir = pathlib.Path.cwd()
-
         if not target_directory or target_directory.strip() == '':
             logging.error("Target directory is not set. Using the " +
                           "current working directory as a fallback!")
-        else:
-            # Assuming that if a directory was set, it has to be used.
-            # Therefore no fallback to the current working directory.
-            target_dir = pathlib.Path(target_directory).resolve()
-            if not target_dir.is_dir():
-                raise OSError(
-                    "Cannot find or access the user supplied target " +
-                    "directory! Create it or check permissions.")
+            return pathlib.Path.cwd()
+
+        # Assuming that if a directory was set, it has to be used.
+        # Therefore no fallback to the current working directory.
+        target_dir = pathlib.Path(target_directory).resolve()
+        if not target_dir.is_dir():
+            raise OSError(
+                "Cannot find or access the user supplied target " +
+                "directory! Create it or check permissions.")
         return target_dir
 
     @staticmethod
