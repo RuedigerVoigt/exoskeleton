@@ -75,7 +75,7 @@ jobs:
       run: mkdir ./fileDownloads
 
     - name: Run system-test with pytest
-      run: pytest tests.py
+      run: pytest tests_with_side_effects.py
 
     - name: List downloaded files
       run: ls -l ./fileDownloads

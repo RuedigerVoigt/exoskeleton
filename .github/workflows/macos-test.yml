@@ -38,5 +38,7 @@ jobs:
       run: |
         pip install pytest pytest_mock pyfakefs
 
-#    - name: Run system-test with pytest
-#      run: pytest tests.py
+# Some tests currently require a Linux container as Windows workers
+# cannot spin up a MariaDB service. So run a subset.  
+    - name: Run a subset of the tests
+      run: pytest tests_without_side_effects.py
