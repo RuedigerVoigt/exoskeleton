@@ -25,7 +25,7 @@ setuptools.setup(
                       "lxml>=4.6.2",
                       "pymysql>=1.0.2",
                       "requests>=2.25.1",
-                      "urllib3>=1.26.2",
+                      "urllib3>=1.26.3",
                       "userprovided>=0.8.0"],
     classifiers=[
         "Programming Language :: Python :: 3",
