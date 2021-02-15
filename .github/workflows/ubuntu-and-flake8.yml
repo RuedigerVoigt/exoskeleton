@@ -14,6 +14,17 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9]
 
+    services:
+      mariadb:
+        image: mariadb:latest
+        ports:
+          - 12345:3306
+        env:
+          MYSQL_ROOT_PASSWORD: 'RootPassphrase' # password for root account
+          MYSQL_DATABASE: 'exoskeleton' # database to be created on image startup
+          MYSQL_USER: 'exoskeleton' # User with all right for exoskeleton database
+          MYSQL_PASSWORD: 'exoskeleton' # Password for the exoskelton user
+
     steps:
 
     - name: APT Update
@@ -31,13 +42,40 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Install test utilities
+      run: |
+        pip install pytest pytest_mock pyfakefs
+        pip install flake8
+
+    - name: Install Chromium
+      run: sudo apt install chromium-browser
+
     - name: Lint with flake8
       run: |
-        pip install flake8
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        pip install pytest pytest_mock pyfakefs
-    - name: Run Pytest
+
+    # The next step need to wait until the MariaDB container is ready.
+    # This pings it until it gets an answer:
+    - name: Wait for MariaDB to initialize
+      run: |
+        while ! mysqladmin ping -h"127.0.0.1" -P"12345" --silent; do
+          sleep 1
+        done
+
+    - name: Fill exoskeleton database
+      env:
+        PORT: ${{ job.services.mariadb.ports[3306] }}
+      run: |
+        mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'
+
+    - name: Make a directory to store downloads
+      run: mkdir ./fileDownloads
+
+    - name: Run system-test with pytest
       run: pytest tests.py
+
+    - name: List downloaded files
+      run: ls -l ./fileDownloads
