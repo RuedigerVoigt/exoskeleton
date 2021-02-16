@@ -1,10 +1,9 @@
 # Exoskeleton
 
-![Build](https://github.com/RuedigerVoigt/exoskeleton/workflows/Build/badge.svg)
-![System Test](https://github.com/RuedigerVoigt/exoskeleton/workflows/System%20Test/badge.svg)
-![Supported Python Versions](https://img.shields.io/pypi/pyversions/exoskeleton)
-![Last commit](https://img.shields.io/github/last-commit/RuedigerVoigt/exoskeleton)
 ![pypi version](https://img.shields.io/pypi/v/exoskeleton)
+![Supported Python Versions](https://img.shields.io/pypi/pyversions/exoskeleton)
+![Build](https://github.com/RuedigerVoigt/exoskeleton/workflows/Build/badge.svg)
+![Last commit](https://img.shields.io/github/last-commit/RuedigerVoigt/exoskeleton)
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
 [![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
