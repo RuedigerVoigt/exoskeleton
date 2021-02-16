@@ -116,6 +116,10 @@ def test_TimeManager_functions():
     my_tm.increase_wait()
     assert my_tm.wait_min == min_before + 1
     assert my_tm.wait_max == max_before + 1
+    # at wait tresholds:
+    my_tm.wait_min = 30
+    my_tm.wait_max = 50
+    my_tm.increase_wait()
     # process time
     assert isinstance(my_tm.get_process_time(), float) is True
     # absolute run time
@@ -128,6 +132,7 @@ def test_TimeManager_functions():
     # random-wait needs to be patched
     with patch('time.sleep', return_value=None):
         my_tm.random_wait()
+
 
 
 def test_actions():
