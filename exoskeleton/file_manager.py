@@ -72,8 +72,7 @@ class FileManager:
         # longer than 255 characters and it needs space for folders and the
         # actual filename. 16 characters seems to be a reasonable limit.
         if not userprovided.parameters.string_in_range(file_prefix, 0, 16):
-            raise ValueError('The file name prefix is limited to a ' +
-                             'maximum of 16 characters.')
+            raise ValueError('File name prefix must be 16 characters or less.')
         if len(file_prefix) == 0:
             logging.warning('You defined no filename prefix.')
 

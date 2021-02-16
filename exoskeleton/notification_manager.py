@@ -5,6 +5,7 @@
 Notification Management for the Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
+(c) 2019-2021 Rüdiger Voigt
 Released under the Apache License 2.0
 """
 from collections import defaultdict  # noqa # pylint: disable=unused-import
@@ -55,8 +56,7 @@ class NotificationManager:
 
     def send_msg(self,
                  reason: str) -> None:
-        """Send a prepared message if the bot is configured
-           and able to do so."""
+        "Send a prepared message if the bot is configured and able to do so."
         messages = {
             'start': {
                 'subject': f"Project {self.project_name} just started.",
@@ -74,9 +74,7 @@ class NotificationManager:
             self.mailer.send_mail(
                 messages['start']['subject'],
                 messages['start']['body'])
-            logging.info("Just sent a notification email. If the " +
-                         "receiving server uses greylisting, " +
-                         "this may take some minutes.")
+            logging.info("Sent a notification email.")
 
     def send_milestone_msg(self,
                            processed: int,
@@ -106,6 +104,6 @@ class NotificationManager:
     def send_custom_msg(self,
                         subject: str,
                         body: str) -> None:
-        """Send a custom message if the bot is configured and able to do so."""
+        "Send a custom message if the bot is configured and able to do so."
         if self.send_mails:
             self.mailer.send_mail(subject, body)
