@@ -6,6 +6,7 @@
 ![Last commit](https://img.shields.io/github/last-commit/RuedigerVoigt/exoskeleton)
 ![pypi version](https://img.shields.io/pypi/v/exoskeleton)
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
+[![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
 For my dissertation I downloaded hundreds of thousands of documents and feed them into a machine learning pipeline. Using a high-speed-connection is helpful but carries the risk to run an involuntary denial-of-service attack on the servers that provide those documents. This creates a need for a crawler / scraper that avoids too high loads on the connection and instead runs permanently and fault tolerant to ultimately download all files.
 
