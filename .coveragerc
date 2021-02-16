@@ -1,0 +1,7 @@
+[run]
+branch = True
+cover_pylib = False
+source = exoskeleton
+
+[html]
+title = Coverage Report for the Exoskeleton Python Package
