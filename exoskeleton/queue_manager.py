@@ -423,10 +423,10 @@ class QueueManager:
                             exc_info=True)
                         self.notify.send_msg('abort_lost_db')
                         raise ConnectionError(
-                            'Lost database connection and could not restore it.')
+                            'Could not restore lost database connection.')
                 else:
-                    logging.error('Unexpected Operational Error',
-                                  exc_info=True)
+                    logging.error(
+                        'Unexpected Operational Error', exc_info=True)
                     raise
 
             if next_in_queue is None:
@@ -463,58 +463,52 @@ class QueueManager:
                     self.queue_revisit)
                 time.sleep(self.queue_revisit)
                 continue
+
+            # Got a task from the queue!
+            queue_id = next_in_queue[0]
+            action = next_in_queue[1]
+            url = next_in_queue[2]
+            url_hash = next_in_queue[3]
+            prettify_html = (next_in_queue[4] == 1)
+
+            # The FQDN might have been added to the blocklist *after*
+            # the task entered into the queue!
+            # (We now that hostname is not None, as the URL was checked for
+            # validity before beeing added: so ignore for mypy is OK)
+            if self.check_blocklist(
+                    urlparse(url).hostname):  # type: ignore[arg-type]
+                logging.error('Cannot process queue item as the FQDN ' +
+                              'has meanwhile been added to the blocklist!')
+                self.delete_from_queue(queue_id)
+                logging.info('Removed item from queue: FQDN on blocklist.')
             else:
-                # got a task from the queue
-                queue_id = next_in_queue[0]
-                action = next_in_queue[1]
-                url = next_in_queue[2]
-                url_hash = next_in_queue[3]
-                prettify_html = (next_in_queue[4] == 1)
-
-                # The FQDN might have been added to the blocklist *after*
-                # the task entered into the queue!
-                # (We now that hostname is not None, as the URL was checked for
-                # validity before beeing added: so ignore for mypy is OK)
-                if self.check_blocklist(
-                        urlparse(url).hostname):  # type: ignore[arg-type]
-                    logging.error('Cannot process queue item as the FQDN ' +
-                                  'has meanwhile been added to the blocklist!')
-                    self.delete_from_queue(queue_id)
-                    logging.info('Removed item from queue: FQDN on blocklist.')
+                if action == 1:  # download file to disk
+                    self.action.get_object(queue_id, 'file', url, url_hash)
+                elif action == 2:  # save page code into database
+                    self.action.get_object(
+                        queue_id, 'content', url, url_hash, prettify_html)
+                elif action == 3:  # headless Chrome to create PDF
+                    self.action.page_to_pdf(url, url_hash, queue_id)
+                elif action == 4:  # save page text into database
+                    self.action.get_object(
+                        queue_id, 'text', url, url_hash, prettify_html)
                 else:
-                    if action == 1:
-                        # download file to disk
-                        self.action.get_object(queue_id, 'file', url, url_hash)
-                    elif action == 2:
-                        # save page code into database
-                        self.action.get_object(queue_id, 'content',
-                                               url, url_hash,
-                                               prettify_html)
-                    elif action == 3:
-                        # headless Chrome to create PDF
-                        self.action.page_to_pdf(url, url_hash, queue_id)
-                    elif action == 4:
-                        # save page text into database
-                        self.action.get_object(queue_id, 'text',
-                                               url, url_hash,
-                                               prettify_html)
-                    else:
-                        logging.error('Unknown action id!')
+                    logging.error('Unknown action id!')
 
-                    if self.milestone and self.check_is_milestone():
-                        stats = self.stats.queue_stats()
-                        remaining_tasks = (stats['tasks_without_error'] +
-                                           stats['tasks_with_temp_errors'])
-                        self.notify.send_milestone_msg(
+                if self.milestone and self.check_is_milestone():
+                    stats = self.stats.queue_stats()
+                    remaining_tasks = (stats['tasks_without_error'] +
+                                       stats['tasks_with_temp_errors'])
+                    self.notify.send_milestone_msg(
+                        self.stats.get_processed_counter(),
+                        remaining_tasks,
+                        self.time.estimate_remaining_time(
                             self.stats.get_processed_counter(),
-                            remaining_tasks,
-                            self.time.estimate_remaining_time(
-                                self.stats.get_processed_counter(),
-                                remaining_tasks)
-                                )
+                            remaining_tasks)
+                            )
 
-                    # wait some interval to avoid overloading the server
-                    self.time.random_wait()
+                # wait some interval to avoid overloading the server
+                self.time.random_wait()
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # MILESTONES
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
