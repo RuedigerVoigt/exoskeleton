@@ -1,5 +1,12 @@
 # Changelog / History
 
+## version 1.2.4 stable (2021-03-16)
+
+* Improved test strategy and documentation.
+* Publish code coverage report.
+* Update dependencies.
+* Cleaned up some code, but no functional changes.
+
 ## version 1.2.3 stable (2021-02-07)
 
 * Update required versions of dependencies `agg` and `bote`.

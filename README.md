@@ -5,7 +5,7 @@
 ![Build](https://github.com/RuedigerVoigt/exoskeleton/workflows/Build/badge.svg)
 ![Last commit](https://img.shields.io/github/last-commit/RuedigerVoigt/exoskeleton)
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
-[![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
+[![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
 For my dissertation I downloaded hundreds of thousands of documents and feed them into a machine learning pipeline. Using a high-speed-connection carries the risk to run an involuntary denial-of-service attack on the servers that provide those documents.
 
