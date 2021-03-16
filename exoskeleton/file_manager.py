@@ -52,11 +52,20 @@ class FileManager:
 
         # Assuming that if a directory was set, it has to be used.
         # Therefore no fallback to the current working directory.
-        target_dir = pathlib.Path(target_directory).resolve()
+        try:
+            # make the path absolute and fail if it not exists (strict mode)
+            target_dir = pathlib.Path(target_directory).resolve(strict=True)
+        except FileNotFoundError as not_found:
+            msg = "Cannot find the target directory! Create it."
+            logging.exception(msg)
+            raise FileNotFoundError(msg) from not_found
+        # Is it a directory or a file
         if not target_dir.is_dir():
-            raise OSError(
-                "Cannot find or access the user supplied target " +
-                "directory! Create it or check permissions.")
+            msg = (f"Parameter 'target_directory' ({target_dir}) " +
+                   "not a directory.")
+            logging.exception(msg)
+            raise AttributeError(msg)
+
         return target_dir
 
     @staticmethod

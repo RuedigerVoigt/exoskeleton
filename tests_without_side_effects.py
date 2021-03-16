@@ -38,6 +38,7 @@ from unittest.mock import patch
 
 logging.basicConfig(level=logging.DEBUG)
 
+import pyfakefs
 import pytest
 
 
@@ -70,6 +71,19 @@ def test_FileManager_functions():
     with pytest.raises(ValueError):
         assert file_manager.FileManager._FileManager__clean_prefix('12345678901234567') == ''
     assert file_manager.FileManager._FileManager__clean_prefix(None) == ''
+
+
+# fs is a fixture provided by pyfakefs
+def test_FileManager_target_directory(fs):
+    fs.create_file('/fake/example.file')
+    # directory exists
+    assert file_manager.FileManager._FileManager__check_target_directory("/fake/")
+    # directory is not exist
+    with pytest.raises(FileNotFoundError):
+        assert file_manager.FileManager._FileManager__check_target_directory("/fake/nonexistent")
+    # user supplied file instead of directory
+    with pytest.raises(AttributeError):
+        assert file_manager.FileManager._FileManager__check_target_directory("/fake/example.file")
 
 
 def test_Notificationmanager():
