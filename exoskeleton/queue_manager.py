@@ -388,14 +388,14 @@ class QueueManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def get_next_task(self) -> Optional[str]:
-        """ Get the next suitable task"""
+        "Get the next suitable task"
         self.cur.execute('CALL next_queue_object_SP();')
         return self.cur.fetchone()  # type: ignore[return-value]
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
         """Remove all label links from a queue item
-        and then delete it from the queue."""
+           and then delete it from the queue."""
         # callproc expects a tuple. Do not remove the comma:
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
@@ -415,8 +415,8 @@ class QueueManager:
                     try:
                         self.cur = self.db.get_cursor()
                         next_in_queue = self.get_next_task()
-                        logging.info('Succesfully restored connection ' +
-                                     'to database server!')
+                        logging.info(
+                            'Succesfully restored connection to database!')
                     except Exception:
                         logging.error(
                             'Could not reestablish database server connection!',
@@ -458,8 +458,9 @@ class QueueManager:
                     self.notify.send_finish_msg(num_permanent_errors)
                     break
 
-                logging.debug("No actionable task: waiting %s seconds " +
-                              "until next check", self.queue_revisit)
+                logging.debug(
+                    "No actionable task: waiting %s seconds until next check",
+                    self.queue_revisit)
                 time.sleep(self.queue_revisit)
                 continue
             else:

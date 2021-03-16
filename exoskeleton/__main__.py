@@ -379,8 +379,8 @@ class Exoskeleton:
             in case it already exists. Use __define_new_label if an update
             has to be avoided. """
         if len(shortname) > 31:
-            logging.error("Labelname exceeds max length of 31 " +
-                          "characters. Cannot add it.")
+            logging.error(
+                "Labelname exceeds max length of 31 chars: cannot add it.")
             return
 
         self.cur.execute('INSERT INTO labels (shortName, description) ' +

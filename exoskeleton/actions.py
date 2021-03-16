@@ -173,9 +173,9 @@ class GetFile(GetObjectBaseClass):
                                self.file.HASH_METHOD,
                                hash_value, 1))
         except pymysql.DatabaseError:
-            logging.error('Transaction failed: Could not add ' +
-                          'already downloaded file %s to the database!',
-                          new_filename)
+            logging.error(
+                'Did not add already downloaded file %s to the database!',
+                new_filename)
 
 
 class GetContent(GetObjectBaseClass):
@@ -239,7 +239,7 @@ class ExoActions:
             remote_control_chrome_object: remote_control_chrome.RemoteControlChrome,
             user_agent: str,
             connection_timeout: int) -> None:
-        """ """
+        "Init class"
         self.db_connection = db_connection
         self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.stats = stats_manager_object
@@ -267,8 +267,7 @@ class ExoActions:
                    url: str,
                    url_hash: str,
                    prettify_html: bool = False) -> None:
-        """ Generic function to either download a file or
-            store a page's content."""
+        "Generic function to either download a file or store a page's content."
 
         if action_type == 'file':
             if prettify_html:

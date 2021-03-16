@@ -84,6 +84,12 @@ def test_FileManager_target_directory(fs):
     # user supplied file instead of directory
     with pytest.raises(AttributeError):
         assert file_manager.FileManager._FileManager__check_target_directory("/fake/example.file")
+    # Missing parameter
+    with pytest.raises(TypeError):
+        assert file_manager.FileManager._FileManager__check_target_directory()
+    # Parameter, but no directory provided. Fallback to cwd
+    assert file_manager.FileManager._FileManager__check_target_directory(None)
+    assert file_manager.FileManager._FileManager__check_target_directory(' ')
 
 
 def test_Notificationmanager():
@@ -146,7 +152,6 @@ def test_TimeManager_functions():
     # random-wait needs to be patched
     with patch('time.sleep', return_value=None):
         my_tm.random_wait()
-
 
 
 def test_actions():

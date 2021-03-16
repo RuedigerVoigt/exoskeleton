@@ -118,9 +118,9 @@ class DatabaseConnection:
                               exc_info=True)
             raise
         except Exception:
-            logging.exception('Unknown exception while ' +
-                              'trying to connect to the DBMS.',
-                              exc_info=True)
+            logging.exception(
+                'Unknown exception while trying to connect to the DBMS.',
+                exc_info=True)
             raise
 
     def check_table_existence(self) -> bool:
