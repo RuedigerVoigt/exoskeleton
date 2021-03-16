@@ -54,9 +54,8 @@ class QueueManager:
 
         self.stop_if_queue_empty: bool = bot_behavior.get(
             'stop_if_queue_empty', False)
-        if type(self.stop_if_queue_empty) != bool:
-            raise ValueError('The value for "stop_if_queue_empty" ' +
-                             'must be a boolean (True / False).')
+        userprovided.parameters.enforce_boolean(
+            self.stop_if_queue_empty, 'stop_if_queue_empty')
 
         # Time to wait after the queue is empty to check for new elements:
         self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
@@ -415,8 +414,7 @@ class QueueManager:
                     try:
                         self.cur = self.db.get_cursor()
                         next_in_queue = self.get_next_task()
-                        logging.info(
-                            'Succesfully restored connection to database!')
+                        logging.info('Restored database connection!')
                     except Exception:
                         logging.error(
                             'Could not reestablish database server connection!',

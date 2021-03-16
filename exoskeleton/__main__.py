@@ -40,6 +40,8 @@ class Exoskeleton:
     """ Main class of the exoskeleton crawler framework. """
     # The class is complex which leads pylint3 to complain a lot.
     # As the complexity is needed, disable some warnings:
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-locals
     # pylint: disable=too-many-public-methods

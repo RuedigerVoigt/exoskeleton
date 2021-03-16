@@ -51,8 +51,7 @@ class RemoteControlChrome:
             self.browser_name = browser_name.strip()
             if not self.check_executable_existence(self.browser_name):
                 logging.exception(
-                    "No browser with this executable name found in the path." +
-                    " Saving a HTML page as PDF is not possible without that.")
+                    "No browser with this executable name found in the path.")
                 self.suggest_executables()
                 raise ValueError(f"Browser {self.browser_name} not in path!")
             if self.check_browser_support(self.browser_name):
@@ -135,7 +134,7 @@ class RemoteControlChrome:
                               exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 5)
             self.stats.update_host_statistics(url, 0, 0, 1, 0)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             logging.error('Exception.', exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 0)
             self.stats.update_host_statistics(url, 0, 1, 0, 0)
