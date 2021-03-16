@@ -3,12 +3,14 @@
 
 import setuptools
 
+from exoskeleton import _version
+
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="exoskeleton",
-    version="1.2.3",
+    version=f"{_version.__version__}",
     author="Rüdiger Voigt",
     author_email="projects@ruediger-voigt.eu",
     description="A library to create a bot / spider / crawler.",

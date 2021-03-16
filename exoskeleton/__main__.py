@@ -15,7 +15,6 @@ Released under the Apache License 2.0
 from collections import Counter
 # noinspection PyUnresolvedReferences
 from collections import defaultdict  # noqa # pylint: disable=unused-import
-from datetime import date
 import logging
 from typing import Union, Optional
 
@@ -24,6 +23,7 @@ import compatibility
 import userprovided
 
 # import other modules of this framework
+from exoskeleton import _version as version
 from exoskeleton import actions
 from exoskeleton import database_connection
 from exoskeleton import error_manager
@@ -38,7 +38,7 @@ from exoskeleton import time_manager
 
 class Exoskeleton:
     """ Main class of the exoskeleton crawler framework. """
-    # The class is complex which leads pylint3 to complain a lot.
+    # The class is complex which leads pylint to complain a lot.
     # As the complexity is needed, disable some warnings:
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-instance-attributes
@@ -61,8 +61,8 @@ class Exoskeleton:
 
         compatibility.Check(
             package_name='exoskeleton',
-            package_version='1.2.3',
-            release_date=date(2021, 2, 7),
+            package_version=version.__version__,
+            release_date=version.release_date,
             python_version_support={
                 'min_version': '3.6',
                 'incompatible_versions': [],

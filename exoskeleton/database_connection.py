@@ -12,10 +12,11 @@ Released under the Apache License 2.0
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 
-
 # external dependencies:
 import pymysql
 import userprovided
+
+from exoskeleton import _version as version
 
 
 class DatabaseConnection:
@@ -193,8 +194,8 @@ class DatabaseConnection:
                 logging.info('Database schema matches version of exoskeleton.')
             else:
                 logging.warning("Mismatch between version of exoskeleton " +
-                                " (1.2.1) and version of the database " +
-                                f"schema ({schema[0]}).")
+                                f"({version.__version__}) and version of " +
+                                f"the database schema ({schema[0]}).")
         except pymysql.ProgrammingError:
             # means: the table does not exist (i.e. before version 1.1.0)
             logging.warning('Found no information about the version of the ' +
