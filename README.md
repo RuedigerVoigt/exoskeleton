@@ -7,10 +7,12 @@
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
 [![Coverage](https://img.shields.io/badge/coverage-77%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
-For my dissertation I downloaded hundreds of thousands of documents and feed them into a machine learning pipeline. Using a high-speed-connection is helpful but carries the risk to run an involuntary denial-of-service attack on the servers that provide those documents. This creates a need for a crawler / scraper that avoids too high loads on the connection and instead runs permanently and fault tolerant to ultimately download all files.
+For my dissertation I downloaded hundreds of thousands of documents and feed them into a machine learning pipeline. Using a high-speed-connection carries the risk to run an involuntary denial-of-service attack on the servers that provide those documents.
 
-Exoskeleton is a python framework that aims to help you build a similar bot. Main functionalities are:
-* Managing a download queue within a MariaDB database.
+Exoskeleton is a Python framework that helps you build a crawler / scraper that avoids too high loads on the connection and instead runs permanently and fault tolerant to ultimately download all files.
+
+Main functionalities are:
+* Managing the download queue within a MariaDB database.
 * Avoid processing the same URL more than once.
 * Working through that queue by either
     * downloading files to disk,
@@ -22,12 +24,32 @@ Exoskeleton is a python framework that aims to help you build a similar bot. Mai
     * Assigning labels to downloads, so they can be found and grouped easily.
 * Sending progress reports to the admin.
 
-**[Exoskeleton has an extensive documentation.](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation "Learn about using exoskeleton")**
+
+# Documentation
+
+## How To Use Exoskeleton
+
+* [Installation and Requirements](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/installation.md)
+* [Create a Bot](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/create-a-bot.md)
+* [Dealing with result pages](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/parse-search-results.md)
+* [Avoiding duplicates](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/avoiding-duplicates.md)
+* [The Queue: Downloading files / Saving the page code / Creating PDF](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/handling-pages.md)
+* [Bot Behavior](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/behavior-settings.md)
+* [Progress Reports via Email](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/progress-reports-via-email.md)
+* [File Versions and Labels](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/versions-and-labels.md)
+* [Using the Blocklist](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/blocklist.md)
+
+## Example Uses
+
+* [Downloading an Archive](https://www.ruediger-voigt.eu/exoskeleton-download-an-archive.html) : A quite complex use case requiring some custom SQL. This is the actual project that triggered the development of exoskeleton.
+
+## Technical Documentation
+
+* [Contributing](https://github.com/RuedigerVoigt/exoskeleton/tree/master/contributing.md)
+* [Database Structure](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/database-schema.md)
+* [Testing](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/testing-exoskeleton.md)
 
 
-Two other python libraries were created as part of this project:
-* [userprovided](https://github.com/RuedigerVoigt/userprovided/ "Code and documentation for userprovided") : check user input for validity and plausibility / covert input into better formats
-* [bote](https://github.com/RuedigerVoigt/bote/ "Code and documentation for bote") : send messages (currently via a local or remote SMTP server)
 
 ## Example
 
@@ -83,5 +105,4 @@ exo.add_page_to_pdf('https://github.com/RuedigerVoigt/exoskeleton')
 
 # work through the queue:
 exo.process_queue()
-
 ```
