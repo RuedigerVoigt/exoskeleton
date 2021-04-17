@@ -1,5 +1,10 @@
 # Changelog / History
 
+## version 1.2.5 stable (2021-04-17)
+
+* Update dependency `lxml` to `4.6.3` (security update). 
+* Version updates for other dependencies.
+
 ## version 1.2.4 stable (2021-03-16)
 
 * Improved test strategy and documentation.
