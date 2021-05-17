@@ -6,4 +6,4 @@ lxml>=4.6.3
 pymysql>=1.0.2
 requests>=2.25.1
 urllib3>=1.26.4
-userprovided>=0.8.1
+userprovided>=0.9.0
