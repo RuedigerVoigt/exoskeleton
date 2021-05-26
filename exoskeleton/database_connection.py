@@ -67,7 +67,7 @@ class DatabaseConnection:
             logging.info(
                 'No port number supplied: will try standard port 3306.')
             self.db_port = 3306
-        elif not userprovided.port.port_in_range(self.db_port):
+        elif not userprovided.parameters.is_port(self.db_port):
             raise ValueError('Database port outside valid range!')
 
         self.db_name: str = database_settings.get('database', None)
