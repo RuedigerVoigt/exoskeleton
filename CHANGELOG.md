@@ -1,5 +1,9 @@
 # Changelog / History
 
+## version 1.2.6 stable ()
+
+* Due to changes in the interface version `>=0.9.0` of `userprovided` and version `>=1.1.0` of `bote` are required.
+
 ## version 1.2.5 stable (2021-04-17)
 
 * Update dependency `lxml` to `4.6.3` (security update). 
