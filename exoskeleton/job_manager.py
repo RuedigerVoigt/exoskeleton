@@ -58,8 +58,8 @@ class JobManager:
             if existing_start_url != start_url:
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
-            logging.warning('A job with identical name and startURL ' +
-                            'is already defined.')
+            logging.warning(
+                'A job with identical name and startURL is already defined.')
 
     def update_current_url(self,
                            job_name: str,

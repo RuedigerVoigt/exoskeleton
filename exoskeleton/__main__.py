@@ -255,13 +255,12 @@ class Exoskeleton:
                         labels_master: set = None,
                         labels_version: set = None,
                         force_new_version: bool = False) -> Optional[str]:
-        """Add an URL to the queue to print it to PDF
-        with headless Chrome. """
+        "Add an URL to the queue to print it to PDF with headless Chrome. "
         if not self.controlled_browser.browser_present:
-            logging.warning('Will add this task to the queue, but without ' +
-                            'Chrome or Chromium this task cannot run!' +
-                            'Provide the path to the executable when you ' +
-                            'initialize exoskeleton.')
+            logging.warning(
+                'Will add this task to the queue, but without Chrome or ' +
+                'Chromium it cannot run! Provide the path to the ' +
+                'executable when you initialize exoskeleton.')
         uuid = self.queue.add_to_queue(url, 3, labels_master,
                                        labels_version, False,
                                        force_new_version)
@@ -363,9 +362,8 @@ class Exoskeleton:
     def assign_labels_to_uuid(self,
                               uuid_string: str,
                               labels: Union[set, None]) -> None:
-        """ Assigns one or multiple labels either to a specific
-            version of a file. Removes duplicates and adds new labels
-            to the label list if necessary."""
+        """Assigns one or multiple labels to a specific version of a file.
+           Removes duplicates and adds new labels if necessary."""
         self.queue.assign_labels_to_uuid(uuid_string, labels)
 
     def get_label_ids(self,

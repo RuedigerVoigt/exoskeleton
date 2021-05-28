@@ -188,8 +188,8 @@ class DatabaseConnection:
                              "WHERE exoKey ='schema';")
             schema = self.cur.fetchone()
             if not schema:
-                logging.error('Found no information about the version ' +
-                              'of the database schema.')
+                logging.error(
+                    'Found no version information for the database schema.')
             elif schema[0] == '1.2.0':  # no db changes with 1.2.1
                 logging.info('Database schema matches version of exoskeleton.')
             else:

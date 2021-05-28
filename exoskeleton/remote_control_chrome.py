@@ -45,8 +45,8 @@ class RemoteControlChrome:
         self.stats = stats_manager_object
 
         if not browser_name:
-            logging.warning('You have not provided a browser name. Therefore' +
-                            ' you cannot use the save as PDF feature.')
+            logging.warning(
+                'You must provide a browser name to be able to save as PDF.')
         else:
             self.browser_name = browser_name.strip()
             if not self.check_executable_existence(self.browser_name):
