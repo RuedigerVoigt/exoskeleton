@@ -354,7 +354,7 @@ class QueueManager:
         if len(remaining_ids) > 0:
             # Case: there are new labels
             # Convert into a format to INSERT with executemany
-            insert_list = [(id, uuid) for id in remaining_ids]
+            insert_list = [(id, uuid_string) for id in remaining_ids]
             self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
                                  '(labelID, versionUUID) ' +
                                  'VALUES (%s, %s);', insert_list)
