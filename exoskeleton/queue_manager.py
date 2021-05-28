@@ -45,8 +45,8 @@ class QueueManager:
         # Connection object AND cursor for the queue manager to get a new
         # cursor in case there is a problem.
         # Planned to be replaced with a connection pool. See issue #20
-        self.db = db_connection
-        self.cur: pymysql.cursors.Cursor = self.db.get_cursor()
+        self.db_connection = db_connection
+        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.time = time_manager_object
         self.stats = stats_manager_object
         self.action = actions_object
@@ -412,7 +412,7 @@ class QueueManager:
                                   'Trying to restore it in 10 seconds ...')
                     time.sleep(10)
                     try:
-                        self.cur = self.db.get_cursor()
+                        self.cur = self.db_connection.get_cursor()
                         next_in_queue = self.get_next_task()
                         logging.info('Restored database connection!')
                     except Exception:
