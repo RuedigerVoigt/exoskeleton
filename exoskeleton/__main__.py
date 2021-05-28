@@ -361,12 +361,12 @@ class Exoskeleton:
         self.queue.assign_labels_to_master(url, labels)
 
     def assign_labels_to_uuid(self,
-                              uuid: str,
+                              uuid_string: str,
                               labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels either to a specific
             version of a file. Removes duplicates and adds new labels
             to the label list if necessary."""
-        self.queue.assign_labels_to_uuid(uuid, labels)
+        self.queue.assign_labels_to_uuid(uuid_string, labels)
 
     def get_label_ids(self,
                       label_set: Union[set, str]) -> set:

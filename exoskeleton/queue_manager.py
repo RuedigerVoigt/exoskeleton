@@ -123,7 +123,7 @@ class QueueManager:
                      prettify_html: bool = False,
                      force_new_version: bool = False) -> Optional[str]:
         """ More general function to add items to queue. Called by
-        add_file_download, add_save_page_code and add_page_to_pdf."""
+            add_file_download, add_save_page_code and add_page_to_pdf."""
 
         if action not in (1, 2, 3, 4):
             logging.error('Invalid value for action!')
@@ -317,7 +317,7 @@ class QueueManager:
         return None
 
     def assign_labels_to_uuid(self,
-                              uuid: str,
+                              uuid_string: str,
                               labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels either to a specific
             version of a file.
@@ -343,7 +343,7 @@ class QueueManager:
         # Check if there are already labels assigned with the version
         self.cur.execute('SELECT labelID ' +
                          'FROM labelToVersion ' +
-                         'WHERE versionUUID = %s;', (uuid, ))
+                         'WHERE versionUUID = %s;', (uuid_string, ))
         ids_found = self.cur.fetchall()
         ids_associated = set()
         if ids_found:
@@ -475,8 +475,9 @@ class QueueManager:
             # validity before beeing added: so ignore for mypy is OK)
             if self.check_blocklist(
                     urlparse(url).hostname):  # type: ignore[arg-type]
-                logging.error('Cannot process queue item as the FQDN ' +
-                              'has meanwhile been added to the blocklist!')
+                logging.error(
+                    'Cannot process queue item: FQDN has meanwhile been ' +
+                    'added to the blocklist!')
                 self.delete_from_queue(queue_id)
                 logging.info('Removed item from queue: FQDN on blocklist.')
             else:
