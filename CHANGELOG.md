@@ -1,38 +1,38 @@
 # Changelog / History
 
-## version 1.2.6 stable ()
+## Version 1.3.0 stable (2021-05-30)
 
-* Due to changes in the interface version `>=0.9.0` of `userprovided` and version `>=1.1.0` of `bote` are required.
+* The dependency `userprovided` changed its interface. Due to this, version `>=0.9.0` of `userprovided` and version `>=1.1.0` of `bote` are required.
 
-## version 1.2.5 stable (2021-04-17)
+## Version 1.2.5 stable (2021-04-17)
 
 * Update dependency `lxml` to `4.6.3` (security update). 
 * Version updates for other dependencies.
 
-## version 1.2.4 stable (2021-03-16)
+## Version 1.2.4 stable (2021-03-16)
 
 * Improved test strategy and documentation.
 * Publish code coverage report.
 * Update dependencies.
 * Cleaned up some code, but no functional changes.
 
-## version 1.2.3 stable (2021-02-07)
+## Version 1.2.3 stable (2021-02-07)
 
 * Update required versions of dependencies `agg` and `bote`.
 * Refactored code.
 
-## version 1.2.2 stable (2021-01-20)
+## Version 1.2.2 stable (2021-01-20)
 
 * Update required versions of dependencies:
     * The new required version of `urllib3` deprecated `TLSv1` and `TLSv1.1`. Connections using those protocols will not fail, but will cause a warning.
     * Require version `1.0.2` of `pymysql` instead of `0.10.1`: As a new major branch was released in 2021, `pymsql` finally dropped support for Python 2.x/3.5 and improved code quality.
 * New dependency: [`compatibility`](https://github.com/RuedigerVoigt/compatibility) (`>=0.8.0`) is added. This warns you if you use exoskeleton with an untested or unsupported version of Python. As a sister project of `exoskeleton` development is coordinated.
 
-## version 1.2.1 stable (2020-11-30) - Security Update
+## Version 1.2.1 stable (2020-11-30) - Security Update
 
 * Require `lxml` version >= 4.6.2 (released 2020-11-26) as it fixes a vulnerability *and* works with Python 3.9.
 
-## version 1.2.0 stable (2020-11-16)
+## Version 1.2.0 stable (2020-11-16)
 
 * The code has been refactored to make it easier to maintain.
 * Make the methods `assign_labels_to_master`, `assign_labels_to_uuid`, and `get_label_ids` directly accessible again. (With an alias in the main class as they are sometimes useful in direct access.)
@@ -42,7 +42,7 @@ Bugfixes:
 * The database script for version 1.0.0 onward contained the database name `exoskeleton` hardcoded in the view `v_errors_in_queue`. So the create script would not complete if your database had another name.
 * The dependency `userprovided` has been updated from version 0.7.5 to 0.8.0 as some not RFC compliant URLs caused exceptions.
 
-## version 1.1.0 stable (2020-10-29)
+## Version 1.1.0 stable (2020-10-29)
 
 * The [agg](https://github.com/RuedigerVoigt/agg) package has been added as an dependency for a planned feature.  Its functionality is joining multiple CSV files into one. As a sister project of exoskeleton it follows the same development steps.
 * If a user provides an unsupported browser to the "save as PDF" functionality, exoskeleton now checks if supported browsers are in the PATH and suggests them.
@@ -53,7 +53,7 @@ Breaking Changes:
 * The parameter `chrome_name` now defaults to an empty string. So if you want to use Chromium or Google Chrome to download PDF versions of webpages, you have to provide the name of an executable in the path.
 
 
-## version 1.0.0 stable (2020-07-23)
+## Version 1.0.0 stable (2020-07-23)
 
 New Features:
 * **System Test**: Each push and every pull requests now also triggers a system test. This test launches an Ubuntu instance and loads a MariaDB container. Then it creates the database, adds tasks to the queue, processes the queue, and checks the resulting structure.
@@ -71,7 +71,7 @@ Breaking Changes:
 * The method `get_queue_id` is now `QueueManager.__get_queue_uuids` as there is now reason to access it from a script.
 * The method `num_items_in_queue` has been replaced with `Queuemanager.queue_stats` and now returns more information as a dictionary.
 
-## version 0.9.3 beta (2020-07-18)
+## Version 0.9.3 beta (2020-07-18)
 
 Breaking Changes:
 * `__assign_labels_to_version` is now `assign_labels_to_uuid`
@@ -85,7 +85,7 @@ New features:
 
 
 
-## version 0.9.2 beta (2020-07-07)
+## Version 0.9.2 beta (2020-07-07)
 
 Breaking Changes:
 * Add a [blocklist](documentation/blocklist.md "How to use the blocklist"): requires changes to the database.
@@ -101,7 +101,7 @@ New features:
     + `all_labels_by_uuid`: Get a set of ALL label names (not id numbers!) attached to a specific version of a file AND its filemaster entry.
 
 
-## version 0.9.1 beta (2020-06-22)
+## Version 0.9.1 beta (2020-06-22)
 
 Breaking Changes:
 * There is a new parameter `mail_behavior` that contains the already existing settings `send_start_msg`, `send_finish_msg`, and `milestone_num`.
@@ -116,7 +116,7 @@ New Features / Improvements:
 * Signal compliance with [PEP 561](https://www.python.org/dev/peps/pep-0561/): If you type-check code that imports this package, tools like mypy now know that `userprovided` has type-hints and extend their checks to calls of these functions.
 * The automatic tests now also cover Windows and MacOS.
 
-## version 0.9.0 beta (2020-04-27)
+## Version 0.9.0 beta (2020-04-27)
 
 Breaking Changes:
 * Changed the database structure especially regarding labels. (Reason: issue #12)
@@ -134,24 +134,24 @@ Other:
 * Input checks were moved to the sister package [userprovided](https://github.com/RuedigerVoigt/userprovided)
 
 
-## version 0.8.2 beta (2020-02-21)
+## Version 0.8.2 beta (2020-02-21)
 
 * Bugfix in job_get_current_url()
 
-## version 0.8.1 beta (2020-02-18)
+## Version 0.8.1 beta (2020-02-18)
 
 * Add ability to create jobs: In essence a convenient way to store the current URL while parsing a large set of results. In case the program is terminated, now it is easy to pick up at the same page.
 
-## version 0.8.0 beta (2020-02-14)
+## Version 0.8.0 beta (2020-02-14)
 
 * Require Python 3.6 (Debian 10 "Buster" just moved to Python 3.7 with the 10.3 update. Ubuntu stable uses 3.6.)
 * Use transactions and rollbacks to ensure DBMS integrity (i.e. changes to the database schema).
 
-## version 0.7.1 beta (2020-01-27)
+## Version 0.7.1 beta (2020-01-27)
 
 * If the user tries to add an URL which is already processed or in the queue, any new labels get associated with that item.
 
-## version 0.7.0 beta (2020-01-16)
+## Version 0.7.0 beta (2020-01-16)
 
 * Assign labels to pages in the queue / the filemaster
 * Store MIME type / Media type
@@ -159,22 +159,22 @@ Other:
 * Small but breaking changes to the database schema
 * Change default file hash version from SHA1 to SHA256
 
-## version 0.6.3 beta (2019-12-20)
+## Version 0.6.3 beta (2019-12-20)
 
 * Eliminate race condition
 * Prepare labels
 
-## version 0.6.2 beta (2019-12-11)
+## Version 0.6.2 beta (2019-12-11)
 
 * Add statistics on a per host basis.
 * Improve error handling.
 
 
-## version 0.6.1 beta (2019-12-07)
+## Version 0.6.1 beta (2019-12-07)
 
 * Check if a file / URL has already been processed before adding it to the queue.
 
-## version 0.6.0 beta (2019-11-26)
+## Version 0.6.0 beta (2019-11-26)
 
 * *Breaking Change*: Changed database structure in order to manage multiple versions of a file in different locations (local / Cloud / ...).
 * Using database triggers to increment / decrement the number of versions saved.
@@ -184,13 +184,12 @@ Other:
 * Extended documentation (especially for the [Database Structure](Database-Scripts/README.md))
 * Introduced unit tests
 
-## version 0.5.2 beta (2019-11-07)
+## Version 0.5.2 beta (2019-11-07)
 
 * Removed f-strings to be compatible with Python 3.5 as used by Debian 9.
 * Add URL specific delays (for example in case of timeouts / #7)
 * minor bug fixes
 
-## version 0.5.0 beta (2019-10-25)
-
+## Version 0.5.0 beta (2019-10-25)
 
 * Initial public release
