@@ -28,9 +28,14 @@ class DatabaseConnection:
                   'insert_file_SP',
                   'next_queue_object_SP']
 
+    FUNCTIONS = ['num_items_with_permanent_error',
+                 'num_items_with_temporary_errors',
+                 'num_tasks_with_active_rate_limit']
+
     TABLES = ['actions',
               'blockList',
               'errorType',
+              'exoInfo',
               'fileContent',
               'fileMaster',
               'fileVersions',
@@ -39,6 +44,7 @@ class DatabaseConnection:
               'labelToMaster',
               'labelToVersion',
               'queue',
+              'rateLimits',
               'statisticsHosts',
               'storageTypes']
 
