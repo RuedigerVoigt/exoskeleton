@@ -430,11 +430,8 @@ class QueueManager:
                 if self.stop_if_queue_empty:
                     # Bot is configured to stop if queue is empty
                     # => check if that is only temporary or everything is done
-                    self.cur.execute(
-                        'SELECT num_items_with_temporary_errors();')
-                    num_temp_errors = self.cur.fetchone()[0]  # type: ignore[index]
 
-                    if num_temp_errors > 0:
+                    if self.stats.num_tasks_w_temporary_errors() > 0:
                         # there are still tasks, but they have to wait
                         logging.debug("Tasks with temporary errors: " +
                                       "waiting %s seconds until next try.",
@@ -445,9 +442,7 @@ class QueueManager:
                     # Nothing left (i.e. num_temp_errors == 0)
                     logging.info('Queue empty. Bot stops as configured.')
 
-                    self.cur.execute(
-                        'SELECT num_items_with_permanent_error();')
-                    num_permanent_errors = self.cur.fetchone()[0]  # type: ignore[index]
+                    num_permanent_errors = self.stats.num_tasks_w_permanent_errors()
                     if num_permanent_errors > 0:
                         logging.error("%s permanent errors!",
                                       num_permanent_errors)
