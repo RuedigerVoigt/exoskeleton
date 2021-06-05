@@ -124,7 +124,7 @@ class DatabaseConnection:
                 exc_info=True)
             raise
 
-    def check_table_existence(self) -> bool:
+    def __check_table_existence(self) -> bool:
         """Check if all expected tables exist."""
         tables_count = 0
         self.cur.execute('SHOW TABLES;')
@@ -143,9 +143,11 @@ class DatabaseConnection:
 
         if tables_count != len(self.TABLES):
             raise RuntimeError('Database Schema Incomplete: Missing Tables!')
+        
+        logging.debug('Database schema: found all expected tables.')
         return True
 
-    def check_stored_procedures(self) -> bool:
+    def __check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
            is allowed to execute them. """
         procedures_count = 0
@@ -166,21 +168,21 @@ class DatabaseConnection:
         if procedures_count != len(self.PROCEDURES):
             raise RuntimeError('Database Schema Incomplete: ' +
                                'Missing Stored Procedures!')
+        logging.debug('Database schema: found all expected stored procedures.')
         return True
 
     def check_db_schema(self) -> None:
-        """Call the functions which check wheter all expected tables and
-           stored procedures are available in the database. Then look
-           for a version string in that database."""
-        self.check_table_existence()
-        self.check_stored_procedures()
-        logging.info('Database schema: found all tables and procedures')
-        self.check_schema_version()
+        """Check wheter all expected tables and stored procedures
+           are available in the database. Then look for a version
+           string in that database."""
+        self.__check_table_existence()
+        self.__check_stored_procedures()
+        self.__check_schema_version()
 
-    def check_schema_version(self) -> None:
+    def __check_schema_version(self) -> None:
         """Check if the database schema is compatible with this version
-           of exoskeleton: Although check_table_existence and
-           check_stored_procedures check if all expected tables and
+           of exoskeleton: Although __check_table_existence and
+           __check_stored_procedures check if all expected tables and
            stored procedures exist, there might have been changes to
            the structure of those. This can alert the user."""
         try:
