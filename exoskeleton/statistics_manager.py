@@ -48,18 +48,12 @@ class StatisticsManager:
         num_temp_errors = self.cur.fetchone()
         return int(num_temp_errors[0]) if num_temp_errors else 0  # type: ignore[index]
 
-    def __num_tasks_w_rate_limit(self) -> Optional[int]:
+    def num_tasks_w_rate_limit(self) -> int:
         """Number of tasks in the queue that do not yield a permanent error,
            but are currently affected by a rate limit."""
-        self.cur.execute("SELECT COUNT(*) FROM queue " +
-                         "WHERE causesError NOT IN " +
-                         "    (SELECT id FROM errorType " +
-                         "     WHERE permanent = 1) " +
-                         "AND fqdnhash IN " +
-                         "    (SELECT fqdnhash FROM rateLimits " +
-                         "     WHERE noContactUntil > NOW());")
-        response = self.cur.fetchone()
-        return int(response[0]) if response else None  # type: ignore[index]
+        self.cur.execute("SELECT num_tasks_with_active_rate_limit();")
+        num_rate_limited = self.cur.fetchone()
+        return int(num_rate_limited[0]) if num_rate_limited else 0  # type: ignore[index]
 
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""
@@ -67,7 +61,7 @@ class StatisticsManager:
             'tasks_without_error': self.__num_tasks_wo_errors(),
             'tasks_with_temp_errors': self.num_tasks_w_temporary_errors(),
             'tasks_with_permanent_errors': self.num_tasks_w_permanent_errors(),
-            'tasks_blocked_by_rate_limit': self.__num_tasks_w_rate_limit()
+            'tasks_blocked_by_rate_limit': self.num_tasks_w_rate_limit()
         }
         return stats
 

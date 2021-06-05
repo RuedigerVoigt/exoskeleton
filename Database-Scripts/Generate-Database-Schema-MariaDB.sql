@@ -1,6 +1,6 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 1.3.0 of exoskeleton
+-- for version 1.4.0 of exoskeleton
 -- © 2019-2021 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
@@ -676,3 +676,27 @@ FROM queue as q
 LEFT JOIN errorType as e ON q.causesError = e.id
 LEFT JOIN actions as a ON q.action = a.id
 WHERE q.causesError IS NOT NULL;
+
+-- ----------------------------------------------------------
+-- ----------------------------------------------------------
+-- BELOW CHANGES FOR EXOSKELETON VERSION 1.4.0
+-- ----------------------------------------------------------
+-- ----------------------------------------------------------
+
+INSERT INTO exoInfo VALUES ('schema', '1.4.0') 
+ON DUPLICATE KEY UPDATE exoValue = '1.4.0';
+
+
+CREATE FUNCTION num_tasks_with_active_rate_limit ()
+-- Number of tasks in the queue that do not yield a permanent error,
+-- but are currently affected by a rate limit.
+RETURNS INTEGER
+RETURN(
+    SELECT COUNT(*) FROM queue
+    WHERE causesError NOT IN (
+        SELECT id FROM errorType
+        WHERE permanent = 1)
+    AND fqdnhash IN (
+        SELECT fqdnhash FROM rateLimits
+        WHERE noContactUntil > NOW())
+    );
