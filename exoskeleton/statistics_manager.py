@@ -37,22 +37,20 @@ class StatisticsManager:
         return int(response[0]) if response else None  # type: ignore[index]
 
     def num_tasks_w_permanent_errors(self) -> int:
-        """Number of tasks in the queue that are marked as causing a permanent
-        error."""
+        "Number of tasks in the queue marked as causing a permanent error."
         self.cur.execute('SELECT num_items_with_permanent_error();')
         num_permanent_errors = self.cur.fetchone()
         return int(num_permanent_errors[0]) if num_permanent_errors else 0  # type: ignore[index]
 
     def num_tasks_w_temporary_errors(self) -> int:
-        """Number of tasks in the queue that are marked as causing a
-           *temporary* error."""
-        self.cur.execute(
-            'SELECT num_items_with_temporary_errors();')
+        "Number of tasks in the queue marked as causing a *temporary* error."
+        self.cur.execute('SELECT num_items_with_temporary_errors();')
         num_temp_errors = self.cur.fetchone()
         return int(num_temp_errors[0]) if num_temp_errors else 0  # type: ignore[index]
 
     def __num_tasks_w_rate_limit(self) -> Optional[int]:
-        "Number of tasks in the queue marked as causing a permanent error."
+        """Number of tasks in the queue that do not yield a permanent error,
+           but are currently affected by a rate limit."""
         self.cur.execute("SELECT COUNT(*) FROM queue " +
                          "WHERE causesError NOT IN " +
                          "    (SELECT id FROM errorType " +
