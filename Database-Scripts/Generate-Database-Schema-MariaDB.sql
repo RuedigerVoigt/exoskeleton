@@ -1,7 +1,7 @@
 -- ----------------------------------------------------------
 -- EXOSKELETON TABLE STRUCTURE FOR MARIADB
--- for version 1.2.0 of exoskeleton
--- © 2019-2020 Rüdiger Voigt
+-- for version 1.3.0 of exoskeleton
+-- © 2019-2021 Rüdiger Voigt
 -- APACHE-2 LICENSE
 --
 -- This file generates the table structure needed for the
@@ -14,6 +14,14 @@
 -- BEWARE: This should be run in an empty database as otherwise
 -- this script might alter existing tables!
 --
+-- ----------------------------------------------------------
+-- SQL CONVENTIONS:
+-- * Use US, not British spelling.
+-- * Use mixedCase (lower camel case) for table- and field-names.
+-- * Use snake case for the names of views, functions and stored procedures.
+--   Use the prefix 'v_' for views and the suffix '_SP' for stored procedures.
+--   Neither a prefix or a suffix for functions.
+-- * Parameters of functions and procedures shall have the suffix '_p'.
 -- ----------------------------------------------------------
 
 -- DO NOT FORGET TO CHANGE:
