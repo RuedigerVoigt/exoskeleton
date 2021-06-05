@@ -1,5 +1,10 @@
 # Changelog / History
 
+## UPCOMING
+
+**Breaking Changes:**
+* Moved functionality from the code into the database. 
+
 ## Version 1.3.0 stable (2021-05-30)
 
 * The dependency `userprovided` changed its interface. Due to this, version `>=0.9.0` of `userprovided` and version `>=1.1.0` of `bote` are required.
