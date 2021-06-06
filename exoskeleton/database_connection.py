@@ -151,7 +151,7 @@ class DatabaseConnection:
 
         if tables_count != len(self.TABLES):
             raise RuntimeError('Database Schema Incomplete: Missing Tables!')
-        
+
         logging.debug('Database schema: found all expected tables.')
         return True
 

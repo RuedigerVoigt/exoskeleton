@@ -79,12 +79,12 @@ class StatisticsManager:
                    "executed due to permanent errors.")
         logging.info(message)
 
-    def update_host_statistics(self,
-                               url: str,
-                               successful_requests: int,
-                               temporary_problems: int,
-                               permanent_errors: int,
-                               hit_rate_limit: int) -> None:
+    def __update_host_statistics(self,
+                                 url: str,
+                                 successful_requests: int,
+                                 temporary_problems: int,
+                                 permanent_errors: int,
+                                 hit_rate_limit: int) -> None:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
 
@@ -103,6 +103,30 @@ class StatisticsManager:
                           permanent_errors, hit_rate_limit,
                           successful_requests, temporary_problems,
                           permanent_errors, hit_rate_limit))
+
+    def log_successful_request(self,
+                               url: str) -> None:
+        """ Update the host based statistics: Log a succesful request
+            for the host of the provided URL."""
+        self.__update_host_statistics(url, 1, 0, 0, 0)
+
+    def log_temporary_problem(self,
+                              url: str) -> None:
+        """ Update the host based statistics: Log a temporary error
+            for the host of the provided URL."""
+        self.__update_host_statistics(url, 0, 1, 0, 0)
+
+    def log_permanent_error(self,
+                            url: str) -> None:
+        """ Update the host based statistics: Log a permanent error
+            for the host of the provided URL."""
+        self.__update_host_statistics(url, 0, 0, 1, 0)
+
+    def log_rate_limit_hit(self,
+                           url: str) -> None:
+        """ Update the host based statistics: Log that the crawler hit the
+            rate limit for the host of the provided URL."""
+        self.__update_host_statistics(url, 0, 0, 0, 1)
 
     def increment_processed_counter(self) -> None:
         """Count the number of actions processed.

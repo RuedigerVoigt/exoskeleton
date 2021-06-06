@@ -128,13 +128,13 @@ class RemoteControlChrome:
             logging.exception('Cannot create PDF due to subprocess timeout.',
                               exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 4)
-            self.stats.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.log_temporary_problem(url)
         except subprocess.CalledProcessError:
-            logging.exception('Cannot create PDF due to process error.',
+            logging.exception('Process Error: cannot create PDF.',
                               exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 5)
-            self.stats.update_host_statistics(url, 0, 0, 1, 0)
+            self.stats.log_permanent_error(url)
         except Exception:  # pylint: disable=broad-except
             logging.error('Exception.', exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 0)
-            self.stats.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.log_temporary_problem(url)

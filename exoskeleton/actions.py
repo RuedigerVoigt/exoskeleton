@@ -85,35 +85,35 @@ class GetObjectBaseClass:
             elif response.status_code in self.HTTP_PERMANENT_ERRORS:
                 self.errorhandling.mark_permanent_error(
                     self.queue_id, response.status_code)
-                self.stats.update_host_statistics(self.url, 0, 0, 1, 0)
+                self.stats.log_permanent_error(self.url)
             elif response.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit => increase min_wait.')
                 fqdn = urlparse(self.url).hostname
                 if fqdn:
                     self.errorhandling.add_rate_limit(fqdn)
-                self.stats.update_host_statistics(self.url, 0, 0, 0, 1)
+                self.stats.log_rate_limit_hit(self.url)
             elif response.status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
                 self.errorhandling.add_crawl_delay(
                     self.queue_id, response.status_code)
             else:
                 logging.error('Unhandled return code %s', response.status_code)
-                self.stats.update_host_statistics(self.url, 0, 0, 1, 0)
+                self.stats.log_permanent_error(self.url)
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
             self.errorhandling.add_crawl_delay(self.queue_id, 4)
-            self.stats.update_host_statistics(self.url, 0, 1, 0, 0)
+            self.stats.log_temporary_problem(self.url)
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.stats.update_host_statistics(self.url, 0, 1, 0, 0)
+            self.stats.log_temporary_problem(self.url)
             raise
 
         except urllib3.exceptions.NewConnectionError:
             logging.error('New Connection Error: might be a rate limit',
                           exc_info=True)
-            self.stats.update_host_statistics(self.url, 0, 0, 0, 1)
+            self.stats.log_rate_limit_hit(self.url)
             self.time.increase_wait()
 
         except requests.exceptions.MissingSchema:
@@ -125,10 +125,10 @@ class GetObjectBaseClass:
         except Exception:
             logging.error('Unknown exception while trying to download.',
                           exc_info=True)
-            self.stats.update_host_statistics(self.url, 0, 0, 1, 0)
+            self.stats.log_permanent_error(self.url)
             raise
         self.stats.increment_processed_counter()
-        self.stats.update_host_statistics(self.url, 1, 0, 0, 0)
+        self.stats.log_successful_request(self.url)
 
     def handle_action(self) -> requests.Response:
         "Do the actual request"
@@ -300,12 +300,12 @@ class ExoActions:
 
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
-            self.stats.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.log_temporary_problem(url)
             raise
 
         except ConnectionError:
             logging.error('Connection Error', exc_info=True)
-            self.stats.update_host_statistics(url, 0, 1, 0, 0)
+            self.stats.log_temporary_problem(url)
             raise
 
         except Exception:
