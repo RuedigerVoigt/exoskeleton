@@ -58,6 +58,21 @@ def test_DatabaseConnection():
     # missing settings dictionary
     with pytest.raises(ValueError):
         database_connection.DatabaseConnection(None)
+    # missing necessary key
+    with pytest.raises(ValueError) as excinfo:
+        database_connection.DatabaseConnection(database_settings={'database': 'foo'})
+        assert "Necessary key username missing" in str(excinfo.value)
+    # necessary key present, but set to None
+    with pytest.raises(ValueError) as excinfo:
+        database_connection.DatabaseConnection(database_settings={'database': None, 'username': 'foo'})
+        assert "You must provide the name of the database" in str(excinfo.value)
+    with pytest.raises(ValueError) as excinfo:
+        database_connection.DatabaseConnection(database_settings={'database': 'foo', 'username': None})
+        assert "You must provide a database user" in str(excinfo.value)
+    # Port out of range
+    with pytest.raises(ValueError) as excinfo:
+        database_connection.DatabaseConnection(database_settings={'database': 'foo', 'username': 'foo', 'port': 999999999})
+        assert "port outside valid range" in str(excinfo.value)
 
 
 def test_FileManager_functions():
