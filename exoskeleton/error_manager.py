@@ -166,13 +166,8 @@ class CrawlingErrorManager:
         logging.error(msg)
         # Always use SEC_TO_TIME() to avoid unexpected behavior if
         # just adding seconds as a plain number.
-        self.cur.execute('INSERT INTO rateLimits ' +
-                         '(fqdnHash, fqdn, noContactUntil) VALUES ' +
-                         '(SHA2(%s,256), %s, ADDTIME(NOW(), SEC_TO_TIME(%s))) ' +
-                         'ON DUPLICATE KEY UPDATE ' +
-                         'noContactUntil = ADDTIME(NOW(), SEC_TO_TIME(%s));',
-                         (fqdn, fqdn, self.rate_limit_wait,
-                          self.rate_limit_wait))
+        self.cur.execute('CALL add_rate_limit_SP(%s, %s);',
+                         (fqdn, self.rate_limit_wait))
 
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:

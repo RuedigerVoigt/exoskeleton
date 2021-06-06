@@ -760,3 +760,18 @@ hitRateLimit = hitRateLimit + hitRateLimit_p;
 
 END $$
 DELIMITER ;
+
+
+-- The bot hit a rate limit, so add wait time until it is contacted again.
+DELIMITER $$
+CREATE PROCEDURE add_rate_limit_SP (IN fqdn_p VARCHAR(255),
+                                    IN wait_seconds_p INT UNSIGNED)
+MODIFIES SQL DATA
+BEGIN
+
+INSERT INTO rateLimits (fqdnHash, fqdn, noContactUntil)
+VALUES (SHA2(fqdn_p,256), fqdn_p, ADDTIME(NOW(), SEC_TO_TIME(wait_seconds_p)))  
+ON DUPLICATE KEY UPDATE noContactUntil = ADDTIME(NOW(), SEC_TO_TIME(wait_seconds_p));
+
+END $$
+DELIMITER ;
