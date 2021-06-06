@@ -85,17 +85,15 @@ class QueueManager:
                    fqdn: str,
                    comment: Optional[str] = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
-           - like www.example.com - to the blocklist."""
+           - like www.example.com - to the blocklist. Does not handle URLs."""
         if len(fqdn) > 255:
-            raise ValueError('No valid FQDN can be longer than 255 ' +
-                             'characters. Exoskeleton can only block ' +
-                             'a FQDN but not URLs.')
+            raise ValueError(
+                'No valid FQDN can be longer than 255 characters. ' +
+                'Exoskeleton can only block a FQDN but not URLs.')
 
         try:
-            self.cur.execute('INSERT INTO blockList ' +
-                             '(fqdn, fqdnHash, comment) ' +
-                             'VALUES (%s, SHA2(%s,256), %s);',
-                             (fqdn.strip(), fqdn.strip(), comment))
+            self.cur.execute('CALL block_fqdn_SP(%s, %s);',
+                             (fqdn.strip(), comment))
         except pymysql.err.IntegrityError:
             logging.info('FQDN already on blocklist.')
 

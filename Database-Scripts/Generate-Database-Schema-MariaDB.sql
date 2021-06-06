@@ -700,3 +700,22 @@ RETURN(
         SELECT fqdnhash FROM rateLimits
         WHERE noContactUntil > NOW())
     );
+
+
+
+
+
+-- block_fqdn_SP:
+-- A stored procedure to put a specific fully qualified domain name FQDN
+-- (not an URL) on the blocklist.
+DELIMITER $$
+CREATE PROCEDURE block_fqdn_SP (IN fqdn_p VARCHAR(255),
+                                IN comment_p TEXT)
+MODIFIES SQL DATA
+BEGIN
+
+INSERT INTO blockList (fqdn, fqdnHash, comment)
+VALUES (fqdn_p, SHA2(fqdn_p,256), comment_p);
+
+END $$
+DELIMITER ;
