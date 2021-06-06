@@ -22,13 +22,16 @@ from exoskeleton import _version as version
 class DatabaseConnection:
     """Database connection management for the exoskeleton framework."""
 
-    PROCEDURES = ['add_to_queue_SP',
+    PROCEDURES = ['add_rate_limit_SP',
+                  'add_to_queue_SP',
                   'block_fqdn_SP',
                   'delete_all_versions_SP',
                   'delete_from_queue_SP',
+                  'forget_all_errors_SP',
                   'insert_content_SP',
                   'insert_file_SP',
-                  'next_queue_object_SP']
+                  'next_queue_object_SP',
+                  'update_host_stats_SP']
 
     FUNCTIONS = ['num_items_with_permanent_error',
                  'num_items_with_temporary_errors',
@@ -180,7 +183,7 @@ class DatabaseConnection:
         return True
 
     def check_db_schema(self) -> None:
-        """Check wheter all expected tables and stored procedures
+        """Check whether all expected tables and stored procedures
            are available in the database. Then look for a version
            string in that database."""
         self.__check_table_existence()

@@ -775,3 +775,20 @@ ON DUPLICATE KEY UPDATE noContactUntil = ADDTIME(NOW(), SEC_TO_TIME(wait_seconds
 
 END $$
 DELIMITER ;
+
+
+
+
+
+
+-- Treat all queued tasks, that are marked to cause any type of error,
+-- as if they were new tasks.
+DELIMITER $$
+CREATE PROCEDURE forget_all_errors_SP ()
+MODIFIES SQL DATA
+BEGIN
+
+UPDATE queue SET causesError = NULL, numTries = 0, delayUntil = NULL;
+
+END $$
+DELIMITER ;

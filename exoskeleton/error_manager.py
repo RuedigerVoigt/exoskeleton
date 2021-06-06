@@ -149,11 +149,11 @@ class CrawlingErrorManager:
 
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
-        error, as if they are new tasks by removing that mark and any delay."""
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0, " +
-                         "delayUntil = NULL;")
+           error, as if they were new tasks by removing that mark and any
+           task specific delay.
+           However, this does not remove delays due to rate limit on a per host
+           basis. Use corresponding functions to remove those."""
+        self.cur.callproc("forget_all_errors_SP")
 
     def add_rate_limit(self,
                        fqdn: str) -> None:
