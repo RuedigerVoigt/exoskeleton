@@ -81,52 +81,45 @@ class StatisticsManager:
 
     def __update_host_statistics(self,
                                  url: str,
-                                 successful_requests: int,
-                                 temporary_problems: int,
-                                 permanent_errors: int,
-                                 hit_rate_limit: int) -> None:
+                                 successful_requests_increment: int = 0,
+                                 temporary_problems_increment: int = 0,
+                                 permanent_errors_increment: int = 0,
+                                 hit_rate_limit_increment: int = 0) -> None:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
 
         fqdn = urlparse(url).hostname
 
-        self.cur.execute('INSERT INTO statisticsHosts ' +
-                         '(fqdnHash, fqdn, successfulRequests, ' +
-                         'temporaryProblems, permamentErrors, hitRateLimit) ' +
-                         'VALUES (SHA2(%s,256), %s, %s, %s, %s, %s) ' +
-                         'ON DUPLICATE KEY UPDATE ' +
-                         'successfulRequests = successfulRequests + %s, ' +
-                         'temporaryProblems = temporaryProblems + %s, ' +
-                         'permamentErrors = permamentErrors + %s, ' +
-                         'hitRateLimit = hitRateLimit + %s;',
-                         (fqdn, fqdn, successful_requests, temporary_problems,
-                          permanent_errors, hit_rate_limit,
-                          successful_requests, temporary_problems,
-                          permanent_errors, hit_rate_limit))
+        self.cur.execute('CALL update_host_stats_SP(%s, %s, %s, %s, %s);',
+                         (fqdn,
+                          successful_requests_increment,
+                          temporary_problems_increment,
+                          permanent_errors_increment,
+                          hit_rate_limit_increment))
 
     def log_successful_request(self,
                                url: str) -> None:
         """ Update the host based statistics: Log a succesful request
             for the host of the provided URL."""
-        self.__update_host_statistics(url, 1, 0, 0, 0)
+        self.__update_host_statistics(url, successful_requests_increment=1)
 
     def log_temporary_problem(self,
                               url: str) -> None:
         """ Update the host based statistics: Log a temporary error
             for the host of the provided URL."""
-        self.__update_host_statistics(url, 0, 1, 0, 0)
+        self.__update_host_statistics(url, temporary_problems_increment=1)
 
     def log_permanent_error(self,
                             url: str) -> None:
         """ Update the host based statistics: Log a permanent error
             for the host of the provided URL."""
-        self.__update_host_statistics(url, 0, 0, 1, 0)
+        self.__update_host_statistics(url, permanent_errors_increment=1)
 
     def log_rate_limit_hit(self,
                            url: str) -> None:
         """ Update the host based statistics: Log that the crawler hit the
             rate limit for the host of the provided URL."""
-        self.__update_host_statistics(url, 0, 0, 0, 1)
+        self.__update_host_statistics(url, hit_rate_limit_increment=1)
 
     def increment_processed_counter(self) -> None:
         """Count the number of actions processed.

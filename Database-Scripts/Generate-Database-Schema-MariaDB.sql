@@ -735,3 +735,28 @@ VALUES (fqdn_p, SHA2(fqdn_p,256), comment_p);
 
 END $$
 DELIMITER ;
+
+
+
+-- Update the central host based statistics by incrementing counters
+-- held in the database.
+DELIMITER $$
+CREATE PROCEDURE update_host_stats_SP (IN fqdn_p VARCHAR(255),
+                                       IN successfulRequests_p INT UNSIGNED,
+                                       IN temporaryProblems_p INT UNSIGNED,
+                                       IN permamentErrors_p INT UNSIGNED,
+                                       IN hitRateLimit_p INT UNSIGNED)
+MODIFIES SQL DATA
+BEGIN
+
+INSERT INTO statisticsHosts 
+(fqdnHash, fqdn, successfulRequests, temporaryProblems, permamentErrors, hitRateLimit) 
+VALUES (SHA2(fqdn_p,256), fqdn_p, successfulRequests_p, temporaryProblems_p, permamentErrors_p, hitRateLimit_p) 
+ON DUPLICATE KEY UPDATE 
+successfulRequests = successfulRequests + successfulRequests_p, 
+temporaryProblems = temporaryProblems + temporaryProblems_p, 
+permamentErrors = permamentErrors + permamentErrors_p, 
+hitRateLimit = hitRateLimit + hitRateLimit_p;
+
+END $$
+DELIMITER ;
