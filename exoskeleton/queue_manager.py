@@ -192,11 +192,8 @@ class QueueManager:
         fqdn = urlparse(url).hostname
 
         # add the new task to the queue
-        self.cur.execute('INSERT INTO queue ' +
-                         '(id, action, url, urlHash, fqdnHash, ' +
-                         'prettifyHtml) VALUES ' +
-                         '(%s, %s, %s, SHA2(%s,256), SHA2(%s,256), %s);',
-                         (uuid_value, action, url, url, fqdn, prettify_html))
+        self.cur.execute('CALL add_to_queue_SP(%s, %s, %s, %s, %s);',
+                         (uuid_value, action, url, fqdn, prettify_html))
 
         # link labels to version item
         if labels_version:

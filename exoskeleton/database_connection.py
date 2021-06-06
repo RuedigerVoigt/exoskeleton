@@ -22,7 +22,8 @@ from exoskeleton import _version as version
 class DatabaseConnection:
     """Database connection management for the exoskeleton framework."""
 
-    PROCEDURES = ['block_fqdn_SP',
+    PROCEDURES = ['add_to_queue_SP',
+                  'block_fqdn_SP',
                   'delete_all_versions_SP',
                   'delete_from_queue_SP',
                   'insert_content_SP',

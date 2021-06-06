@@ -703,6 +703,22 @@ RETURN(
 
 
 
+-- A stored procedure to add an URL and the associated action to the task queue.
+DELIMITER $$
+CREATE PROCEDURE add_to_queue_SP (IN uiid_p CHAR(32) CHARACTER SET ASCII,
+                                  IN action_p TINYINT UNSIGNED,
+                                  IN url_p TEXT,
+                                  IN fqdn_p VARCHAR(255),
+                                  IN prettify_p TINYINT UNSIGNED)
+MODIFIES SQL DATA
+BEGIN
+
+INSERT INTO queue (id, action, url, urlHash, fqdnHash, prettifyHtml)
+VALUES (uuid_p, action_p, url_p, SHA2(url_p,256), SHA2(fqdn_p,256), prettify_p);
+
+END $$
+DELIMITER ;
+
 
 
 -- block_fqdn_SP:
