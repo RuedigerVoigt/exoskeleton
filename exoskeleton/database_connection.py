@@ -61,8 +61,16 @@ class DatabaseConnection:
         userprovided.parameters.validate_dict_keys(
             dict_to_check=database_settings,
             allowed_keys={'host', 'port', 'database', 'username', 'passphrase'},
-            necessary_keys={'database'},
+            necessary_keys={'database', 'username'},
             dict_name='database_settings')
+
+        # Necessary settings (existence ensured, but must not be None)
+        self.db_name: str = database_settings['database']
+        if not self.db_name:
+            raise ValueError('You must provide the name of the database.')
+        self.db_username: str = database_settings['username']
+        if not self.db_username:
+            raise ValueError('You must provide a database user.')
 
         # Check settings and fallback to default if necessary:
         self.db_host: str = database_settings.get('host', None)
@@ -77,14 +85,6 @@ class DatabaseConnection:
             self.db_port = 3306
         elif not userprovided.parameters.is_port(self.db_port):
             raise ValueError('Database port outside valid range!')
-
-        self.db_name: str = database_settings.get('database', None)
-        if not self.db_name:
-            raise ValueError('You must provide the name of the database.')
-
-        self.db_username: str = database_settings.get('username', None)
-        if not self.db_username:
-            raise ValueError('You must provide a database user.')
 
         self.db_passphrase: str = database_settings.get('passphrase', '')
         if self.db_passphrase == '':
