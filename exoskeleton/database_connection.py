@@ -31,6 +31,7 @@ class DatabaseConnection:
                   'insert_content_SP',
                   'insert_file_SP',
                   'next_queue_object_SP',
+                  'remove_labels_from_uuid_SP',
                   'update_host_stats_SP']
 
     FUNCTIONS = ['num_items_with_permanent_error',

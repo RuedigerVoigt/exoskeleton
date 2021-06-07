@@ -503,7 +503,7 @@ class Exoskeleton:
     def remove_labels_from_uuid(self,
                                 uuid: str,
                                 labels_to_remove: set) -> None:
-        "Detaches a label from a UUID / version."
+        "Detaches a label / a set of labels from a UUID / version."
 
         # Using a set to avoid duplicates. However, accept either
         # a single string or a list type.
@@ -514,6 +514,4 @@ class Exoskeleton:
         id_list = self.queue.get_label_ids(labels_to_remove)
 
         for label_id in id_list:
-            self.cur.execute("DELETE FROM labelToVersion " +
-                             "WHERE labelID = %s and versionUUID = %s;",
-                             (label_id, uuid))
+            self.cur.callproc('remove_labels_from_uuid_SP', (label_id, uuid))

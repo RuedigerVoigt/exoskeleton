@@ -792,3 +792,17 @@ UPDATE queue SET causesError = NULL, numTries = 0, delayUntil = NULL;
 
 END $$
 DELIMITER ;
+
+
+-- Remove the association between a label and the specific version of a file.
+DELIMITER $$
+CREATE PROCEDURE remove_labels_from_uuid_SP (
+    IN label_id_p INT UNSIGNED,
+    IN uuid_p CHAR(32) CHARACTER SET ASCII)
+MODIFIES SQL DATA
+BEGIN
+
+DELETE FROM labelToVersion WHERE labelID = label_id_p and versionUUID = uuid_p;
+
+END $$
+DELIMITER ;
