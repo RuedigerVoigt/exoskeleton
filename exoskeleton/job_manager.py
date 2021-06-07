@@ -30,7 +30,7 @@ class JobManager:
     def define_new(self,
                    job_name: str,
                    start_url: str) -> None:
-        """ Create a new crawl job identified by it name and an url
+        """ Create a new crawl job identified by its name and add an URL
             to start crawling. """
         if not job_name:
             raise ValueError('Provide a valid job_name')
@@ -43,10 +43,7 @@ class JobManager:
             raise ValueError('job name must be between 1 and 127 characters.')
 
         try:
-            self.cur.execute('INSERT INTO jobs ' +
-                             '(jobName, startUrl, startUrlHash) ' +
-                             'VALUES (%s, %s, SHA2(%s,256));',
-                             (job_name, start_url, start_url))
+            self.cur.callproc('define_new_job_SP', (job_name, start_url))
             logging.debug('Defined new job.')
         except pymysql.IntegrityError:
             # A job with this name already exists

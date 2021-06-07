@@ -25,6 +25,7 @@ class DatabaseConnection:
     PROCEDURES = ['add_rate_limit_SP',
                   'add_to_queue_SP',
                   'block_fqdn_SP',
+                  'define_new_job_SP',
                   'delete_all_versions_SP',
                   'delete_from_queue_SP',
                   'forget_all_errors_SP',

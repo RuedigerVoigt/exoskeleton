@@ -806,3 +806,18 @@ DELETE FROM labelToVersion WHERE labelID = label_id_p and versionUUID = uuid_p;
 
 END $$
 DELIMITER ;
+
+
+-- Create a new crawl job identified by its name and add an URL to start crawling
+DELIMITER $$
+CREATE PROCEDURE define_new_job_SP (IN job_name_p VARCHAR(127),
+                                    IN start_url_p TEXT)
+MODIFIES SQL DATA
+BEGIN
+
+INSERT INTO jobs (jobName, startUrl, startUrlHash)
+VALUES (job_name_p, start_url_p, SHA2(start_url_p,256));
+
+END $$
+DELIMITER ;
+
