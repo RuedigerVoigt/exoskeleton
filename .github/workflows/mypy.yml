@@ -28,5 +28,10 @@ jobs:
         pip install -r requirements.txt
         pip install mypy
 
+    - name: Install stubs for third-party libraries (necessary since mypy 0.9.0)
+      run: |
+        python3 -m pip install types-PyMySQL
+        python3 -m pip install types-requests
+
     - name: Check code with Mypy
       run: mypy exoskeleton/
