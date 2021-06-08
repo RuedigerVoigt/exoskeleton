@@ -38,6 +38,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Install development packages needed by lxml to build
+      run: sudo apt install libxml2-dev libxslt-dev python-dev
+
     - name: Install test utilities
       run: |
         pip install pytest pytest_mock pyfakefs
