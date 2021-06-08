@@ -74,6 +74,9 @@ jobs:
     - name: Make a directory to store downloads
       run: mkdir ./fileDownloads
 
+    - name: Run tests without side-effects
+      run: pytest tests_without_side_effects.py
+
     - name: Run system-test with pytest
       run: pytest tests_with_side_effects.py
 
