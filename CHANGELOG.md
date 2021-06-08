@@ -2,8 +2,10 @@
 
 ## UPCOMING
 
+* All tests now also run with Python version `3.10.0-beta.2`. Building the `lxml` dependency requires an extra step, but besides this, there seem to be no issues with the upcoming version of Python.
+
 **Breaking Changes:**
-* Moved functionality from the code into the database. 
+  * The database now contains many more SQL functions and stored procedures. *You need to upgrade the schema using the corresponding part of the SQL script.* This is basically code that previously was found mixed with the Python code. It was moved to the database in order to make the code of the package easier to read and maintain.
 
 ## Version 1.3.0 stable (2021-05-30)
 
