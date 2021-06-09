@@ -159,11 +159,9 @@ class CrawlingErrorManager:
 
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:
-        """Forget that the bot hit a rate limit for a specific FQDN."""
-        self.cur.execute('DELETE FROM rateLimits ' +
-                         'WHERE fqdnHash = SHA2(%s,256);',
-                         (fqdn, ))
+        "Forget that the bot hit a rate limit for a specific FQDN."
+        self.cur.callproc('forget_specific_rate_limit_SP', (fqdn, ))
 
     def forget_all_rate_limits(self) -> None:
         """Forget all rate limits the bot hit."""
-        self.cur.execute('TRUNCATE TABLE rateLimits;')
+        self.cur.callproc('forget_all_rate_limits_SP')

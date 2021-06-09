@@ -802,7 +802,23 @@ END $$
 DELIMITER ;
 
 
+-- Forget the rate limit for a specific FQDN
+DELIMITER $$
+CREATE PROCEDURE forget_specific_rate_limit_SP (IN fqdn_p VARCHAR(255))
+MODIFIES SQL DATA
+BEGIN
+DELETE FROM rateLimits WHERE fqdnHash = SHA2(fqdn_p,256);
+END $$
+DELIMITER ;
 
+-- Forget all rate limits for all hosts
+DELIMITER $$
+CREATE PROCEDURE forget_all_rate_limits_SP ()
+MODIFIES SQL DATA
+BEGIN
+TRUNCATE TABLE rateLimits;
+END $$
+DELIMITER ;
 
 
 
