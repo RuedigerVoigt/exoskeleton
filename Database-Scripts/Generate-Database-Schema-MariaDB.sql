@@ -850,3 +850,25 @@ BEGIN
 SELECT finished, COALESCE(currentUrl, startUrl) AS url FROM jobs WHERE jobName = job_name_p;
 END $$
 DELIMITER ;
+
+-- Return the names of all stored procedures in the database
+DELIMITER $$
+CREATE PROCEDURE db_check_all_procedures_SP (IN db_name_p VARCHAR(64))
+READS SQL DATA
+BEGIN
+SELECT SPECIFIC_NAME 
+FROM INFORMATION_SCHEMA.ROUTINES 
+WHERE ROUTINE_SCHEMA = db_name_p AND ROUTINE_TYPE = 'PROCEDURE';
+END $$
+DELIMITER ;
+
+-- Return the names of all functions in the database
+DELIMITER $$
+CREATE PROCEDURE db_check_all_functions_SP (IN db_name_p VARCHAR(64))
+READS SQL DATA
+BEGIN
+SELECT SPECIFIC_NAME 
+FROM INFORMATION_SCHEMA.ROUTINES 
+WHERE ROUTINE_SCHEMA = db_name_p AND ROUTINE_TYPE = 'FUNCTION';
+END $$
+DELIMITER ;

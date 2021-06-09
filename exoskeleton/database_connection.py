@@ -143,14 +143,13 @@ class DatabaseConnection:
             raise
 
     def __check_table_existence(self) -> bool:
-        """Check if all expected tables exist."""
+        "Check if all expected tables exist."
         tables_count = 0
         self.cur.execute('SHOW TABLES;')
         tables = self.cur.fetchall()
         if not tables:
             logging.error('The database exists, but no tables found!')
-            raise OSError('Database table structure missing. ' +
-                          'Run generator script!')
+            raise OSError('No tables found in database: Run generator script!')
 
         tables_found = [item[0] for item in tables]
         for table in self.TABLES:
@@ -168,33 +167,51 @@ class DatabaseConnection:
     def __check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
            is allowed to execute them. """
-        procedures_count = 0
-        self.cur.execute('SELECT SPECIFIC_NAME ' +
-                         'FROM INFORMATION_SCHEMA.ROUTINES ' +
-                         'WHERE ROUTINE_SCHEMA = %s;',
-                         self.db_name)
+        self.cur.callproc('db_check_all_procedures_SP', (self.db_name, ))
         procedures = self.cur.fetchall()
         procedures_found = [item[0] for item in procedures]
+        count = 0
         for procedure in self.PROCEDURES:
-            if procedure in procedures_found:
-                procedures_count += 1
-            else:
+            if procedure not in procedures_found:
+                # Do not raise the exception just now.
+                # Log all missing procedures first
                 logging.error('Stored Procedure %s is missing (create it ' +
-                              'with the database script) or the user lacks ' +
+                              'with the database script) or user lacks ' +
                               'permissions to use it.', procedure)
-
-        if procedures_count != len(self.PROCEDURES):
-            raise RuntimeError('Database Schema Incomplete: ' +
-                               'Missing Stored Procedures!')
+            else:
+                count += 1
+        if count != len(self.PROCEDURES):
+            raise RuntimeError(
+                'Database Schema Incomplete: Missing Stored Procedures!')
         logging.debug('Database schema: found all expected stored procedures.')
         return True
 
+    def __check_functions(self) -> bool:
+        """Check if all expected database functions exist and if the user
+           is allowed to execute them. """
+        self.cur.callproc('db_check_all_functions_SP', (self.db_name, ))
+        functions = self.cur.fetchall()
+        functions_found = [item[0] for item in functions]
+        count = 0
+        for function in self.FUNCTIONS:
+            if function not in functions_found:
+                logging.error(
+                    'Function %s is missing (create it with the database ' +
+                    'script) or user lacks permissions to use it.', function)
+            else:
+                count += 1
+        if count != len(self.FUNCTIONS):
+            raise RuntimeError(
+                'Database Schema Incomplete: Missing Functions!')
+        logging.debug('Database schema: found all expected functions.')
+        return True
+
     def check_db_schema(self) -> None:
-        """Check whether all expected tables and stored procedures
-           are available in the database. Then look for a version
-           string in that database."""
+        """Check whether all expected tables, stored procedures and functions
+           are available in the database. Then look for a version string."""
         self.__check_table_existence()
         self.__check_stored_procedures()
+        self.__check_functions()
         self.__check_schema_version()
 
     def __check_schema_version(self) -> None:
