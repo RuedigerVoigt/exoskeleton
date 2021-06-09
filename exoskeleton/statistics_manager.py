@@ -27,14 +27,12 @@ class StatisticsManager:
         self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.cnt: Counter = Counter()
 
-    def __num_tasks_wo_errors(self) -> Optional[int]:
-        """Number of tasks left in the queue which are *not* marked as
-        causing any kind of error. """
-        # How many are left in the queue?
-        self.cur.execute("SELECT COUNT(*) FROM queue " +
-                         "WHERE causesError IS NULL;")
-        response = self.cur.fetchone()
-        return int(response[0]) if response else None  # type: ignore[index]
+    def num_tasks_wo_errors(self) -> Optional[int]:
+        """Number of tasks in the queue, which are *not* marked as causing 
+           any kind of error."""
+        self.cur.execute("SELECT num_tasks_in_queue_without_error();")
+        without_error = self.cur.fetchone()
+        return int(without_error[0]) if without_error else None  # type: ignore[index]
 
     def num_tasks_w_permanent_errors(self) -> int:
         "Number of tasks in the queue marked as causing a permanent error."
@@ -58,7 +56,7 @@ class StatisticsManager:
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""
         stats = {
-            'tasks_without_error': self.__num_tasks_wo_errors(),
+            'tasks_without_error': self.num_tasks_wo_errors(),
             'tasks_with_temp_errors': self.num_tasks_w_temporary_errors(),
             'tasks_with_permanent_errors': self.num_tasks_w_permanent_errors(),
             'tasks_blocked_by_rate_limit': self.num_tasks_w_rate_limit()

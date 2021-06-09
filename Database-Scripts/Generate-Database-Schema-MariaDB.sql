@@ -702,6 +702,14 @@ RETURN(
     );
 
 
+CREATE FUNCTION num_tasks_in_queue_without_error ()
+-- Number of tasks in the queue, that are not marked as causing an error
+-- (neither temporary nor permanent)
+RETURNS INTEGER
+RETURN(
+    SELECT COUNT(*) FROM queue WHERE causesError IS NULL
+);
+
 
 -- A stored procedure to add an URL and the associated action to the task queue.
 DELIMITER $$
