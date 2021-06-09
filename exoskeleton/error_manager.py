@@ -111,16 +111,10 @@ class CrawlingErrorManager:
     def mark_permanent_error(self,
                              queue_id: str,
                              error: int) -> None:
-        """ Mark item in queue that causes a permanent error.
-            Without this exoskeleton would try to execute the
-            task over and over again."""
-
-        self.cur.execute('UPDATE queue ' +
-                         'SET causesError = %s, ' +
-                         'delayUntil = NULL ' +
-                         'WHERE id = %s;', (error, queue_id))
-        logging.info('Marked queue-item %s as causing a permanent problem.',
-                     queue_id)
+        """ Mark task in queue that causes a *permanent* error.
+            Without this exoskeleton would try to execute it again."""
+        self.cur.callproc('mark_permanent_error_SP', (queue_id, error))
+        logging.info('Marked task %s as causing a permanent error.', queue_id)
 
     def forget_specific_error(self,
                               specific_error: int) -> None:

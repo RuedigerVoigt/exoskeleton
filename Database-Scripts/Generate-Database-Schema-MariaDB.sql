@@ -821,6 +821,19 @@ END $$
 DELIMITER ;
 
 
+-- Mark task in queue that causes a *permanent* error.
+DELIMITER $$
+CREATE PROCEDURE mark_permanent_error_SP (IN queue_id_p CHAR(32) CHARACTER SET ASCII,
+                                          IN error_p INT)
+MODIFIES SQL DATA
+BEGIN
+UPDATE queue 
+SET causesError = error_p,
+    delayUntil = NULL 
+WHERE id = queue_id_p;
+END $$
+DELIMITER ;
+
 
 -- Treat all queued tasks, that are marked to cause any type of error,
 -- as if they were new tasks.

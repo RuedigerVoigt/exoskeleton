@@ -36,6 +36,7 @@ class DatabaseConnection:
                   'job_get_current_url_SP',
                   'insert_content_SP',
                   'insert_file_SP',
+                  'mark_permanent_error_SP',
                   'next_queue_object_SP',
                   'remove_labels_from_uuid_SP',
                   'truncate_blocklist_SP',
