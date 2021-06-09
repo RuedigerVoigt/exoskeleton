@@ -821,3 +821,15 @@ VALUES (job_name_p, start_url_p, SHA2(start_url_p,256));
 END $$
 DELIMITER ;
 
+
+-- Returns the status and the current URL for a job.
+-- If no current URL is stored, return the start URL.
+DELIMITER $$
+CREATE PROCEDURE job_get_current_url_SP (IN job_name_p VARCHAR(127))
+READS SQL DATA
+BEGIN
+
+SELECT finished, COALESCE(currentUrl, startUrl) AS url FROM jobs WHERE jobName = job_name_p;
+
+END $$
+DELIMITER ;

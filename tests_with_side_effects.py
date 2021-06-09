@@ -52,8 +52,8 @@ import exoskeleton
 
 logging.info('Create an instance')
 
-DB_PORT = 12345
-BROWSER = 'chromium-browser'
+DB_PORT = 3306
+BROWSER = 'google-chrome'
 
 exo = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
@@ -489,7 +489,7 @@ def test_job_manager():
     with pytest.raises(ValueError):
         exo.job_update_current_url('Unknown Job', 'https://www.example.com/')
     # Get the URL
-    exo.job_get_current_url('Example Job')
+    assert exo.job_get_current_url('Example Job') == 'https://www.example.com/bar.html'
     with pytest.raises(ValueError):
         exo.job_get_current_url('Unknown Job')
     # mark a job as finished

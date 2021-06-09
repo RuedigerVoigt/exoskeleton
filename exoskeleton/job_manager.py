@@ -76,35 +76,21 @@ class JobManager:
 
     def get_current_url(self,
                         job_name: str) -> str:
-        """ Returns the current URl for this job. If none is stored, this
-        returns the start URL. Raises exception if the job is already
-        finished."""
+        """ Returns the current URL for this job. If none is stored, this
+            returns the start URL.
+            Raises ValueError if the job is unknown.
+            Raises RuntimeError if the job is already finished."""
 
-        self.cur.execute('SELECT finished FROM jobs ' +
-                         'WHERE jobName = %s;',
-                         (job_name, ))
+        self.cur.callproc('job_get_current_url_SP', (job_name, ))
         job_state = self.cur.fetchone()
-        # If the job does not exist at all, then MariaDB returns None.
-        # If the job exists, but the finished field has a value of NULL,
-        # then MariaDB returns (None,)
-        try:
-            job_state = job_state[0]  # type: ignore[index]
-        except TypeError:
-            # Occurs if the the result was None, i.e. the job
-            # does not exist.
+
+        if job_state is None:
             raise ValueError('Job is unknown!')
-
-        if job_state is not None:
-            # i.e. the finished field is not empty
-            raise RuntimeError(f"Job already finished at {job_state}.")
-
-        # The job exists and is not finished. So return the currentUrl,
-        # or - in case that is not defined - the startUrl value.
-        self.cur.execute('SELECT COALESCE(currentUrl, startUrl) ' +
-                         'FROM jobs ' +
-                         'WHERE jobName = %s;',
-                         (job_name, ))
-        return self.cur.fetchone()[0]  # type: ignore[index]
+        if job_state[0] is not None:  # type: ignore[index]
+            # Field 0 contains the status: finished (not None) or not (None)
+            raise RuntimeError(f"Job {job_name} already finished.")
+        # Field 1 contains either the current or the start URL
+        return job_state[1]  # type: ignore[index]
 
     def mark_as_finished(self,
                          job_name: str) -> None:
