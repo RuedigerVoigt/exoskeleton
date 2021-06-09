@@ -52,8 +52,8 @@ import exoskeleton
 
 logging.info('Create an instance')
 
-DB_PORT = 3306
-BROWSER = 'google-chrome'
+DB_PORT = 12345
+BROWSER = 'chromium-browser'
 
 exo = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
