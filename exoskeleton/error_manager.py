@@ -155,8 +155,7 @@ class CrawlingErrorManager:
         logging.error(msg)
         # Always use SEC_TO_TIME() to avoid unexpected behavior if
         # just adding seconds as a plain number.
-        self.cur.execute('CALL add_rate_limit_SP(%s, %s);',
-                         (fqdn, self.rate_limit_wait))
+        self.cur.callproc('add_rate_limit_SP', (fqdn, self.rate_limit_wait))
 
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:
