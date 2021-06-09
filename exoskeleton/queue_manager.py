@@ -92,15 +92,13 @@ class QueueManager:
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
-        """Remove a specific fqdn from the blocklist."""
-        self.cur.execute('DELETE FROM blockList ' +
-                         'WHERE fqdnHash = SHA2(%s,256);',
-                         (fqdn.strip(), ))
+        "Remove a specific FQDN from the blocklist."
+        self.cur.callproc('unblock_fqdn_SP', (fqdn.strip(), ))
 
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
-        logging.info("Truncating the blocklist.")
-        self.cur.execute('TRUNCATE TABLE blockList;')
+        self.cur.callproc('truncate_blocklist_SP')
+        logging.info("Truncated the blocklist.")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ADDING TO AND REMOVING FROM THE QUEUE
@@ -237,11 +235,10 @@ class QueueManager:
     def __define_new_label(self,
                            shortname: str,
                            description: str = None) -> None:
-        """ If the label is not already in use, define a new label
-            and a description. """
+        "If the label is not already used, define a new label and description."
         if len(shortname) > 31:
             logging.error(
-                "Cannot add labelname exceeding max length of 31 characters.")
+                "Cannot add labelname: exceeding max length of 31 characters.")
             return
         try:
             self.cur.execute('INSERT INTO labels (shortName, description) ' +
@@ -379,13 +376,11 @@ class QueueManager:
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
-        """Remove all label links from a queue item
-           and then delete it from the queue."""
-        # callproc expects a tuple. Do not remove the comma:
+        "Remove all label links from item and delete it from the queue."
         self.cur.callproc('delete_from_queue_SP', (queue_id,))
 
     def process_queue(self) -> None:
-        """Process the queue"""
+        "Process the queue"
         self.stats.log_queue_stats()
 
         while True:

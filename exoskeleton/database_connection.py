@@ -34,6 +34,8 @@ class DatabaseConnection:
                   'insert_file_SP',
                   'next_queue_object_SP',
                   'remove_labels_from_uuid_SP',
+                  'truncate_blocklist_SP',
+                  'unblock_fqdn_SP',
                   'update_host_stats_SP']
 
     FUNCTIONS = ['fqdn_on_blocklist',

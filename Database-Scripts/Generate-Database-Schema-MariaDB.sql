@@ -720,10 +720,8 @@ CREATE PROCEDURE add_to_queue_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII,
                                   IN prettify_p TINYINT UNSIGNED)
 MODIFIES SQL DATA
 BEGIN
-
 INSERT INTO queue (id, action, url, urlHash, fqdnHash, prettifyHtml)
 VALUES (uuid_p, action_p, url_p, SHA2(url_p,256), SHA2(fqdn_p,256), prettify_p);
-
 END $$
 DELIMITER ;
 
@@ -737,10 +735,27 @@ CREATE PROCEDURE block_fqdn_SP (IN fqdn_p VARCHAR(255),
                                 IN comment_p TEXT)
 MODIFIES SQL DATA
 BEGIN
-
 INSERT INTO blockList (fqdn, fqdnHash, comment)
 VALUES (fqdn_p, SHA2(fqdn_p,256), comment_p);
+END $$
+DELIMITER ;
 
+
+-- Remove a previously blocked FQDN (not an URL) from the blocklist.
+DELIMITER $$
+CREATE PROCEDURE unblock_fqdn_SP (IN fqdn_p VARCHAR(255))
+MODIFIES SQL DATA
+BEGIN
+DELETE FROM blockList WHERE fqdnHash = SHA2(fqdn_p,256);
+END $$
+DELIMITER ;
+
+-- Empty the blocklist
+DELIMITER $$
+CREATE PROCEDURE truncate_blocklist_SP ()
+MODIFIES SQL DATA
+BEGIN
+TRUNCATE TABLE blockList;
 END $$
 DELIMITER ;
 
@@ -762,7 +777,6 @@ CREATE PROCEDURE update_host_stats_SP (IN fqdn_p VARCHAR(255),
                                        IN hitRateLimit_p INT UNSIGNED)
 MODIFIES SQL DATA
 BEGIN
-
 INSERT INTO statisticsHosts 
 (fqdnHash, fqdn, successfulRequests, temporaryProblems, permamentErrors, hitRateLimit) 
 VALUES (SHA2(fqdn_p,256), fqdn_p, successfulRequests_p, temporaryProblems_p, permamentErrors_p, hitRateLimit_p) 
@@ -771,7 +785,6 @@ successfulRequests = successfulRequests + successfulRequests_p,
 temporaryProblems = temporaryProblems + temporaryProblems_p, 
 permamentErrors = permamentErrors + permamentErrors_p, 
 hitRateLimit = hitRateLimit + hitRateLimit_p;
-
 END $$
 DELIMITER ;
 
@@ -782,11 +795,9 @@ CREATE PROCEDURE add_rate_limit_SP (IN fqdn_p VARCHAR(255),
                                     IN wait_seconds_p INT UNSIGNED)
 MODIFIES SQL DATA
 BEGIN
-
 INSERT INTO rateLimits (fqdnHash, fqdn, noContactUntil)
 VALUES (SHA2(fqdn_p,256), fqdn_p, ADDTIME(NOW(), SEC_TO_TIME(wait_seconds_p)))  
 ON DUPLICATE KEY UPDATE noContactUntil = ADDTIME(NOW(), SEC_TO_TIME(wait_seconds_p));
-
 END $$
 DELIMITER ;
 
@@ -801,9 +812,7 @@ DELIMITER $$
 CREATE PROCEDURE forget_all_errors_SP ()
 MODIFIES SQL DATA
 BEGIN
-
 UPDATE queue SET causesError = NULL, numTries = 0, delayUntil = NULL;
-
 END $$
 DELIMITER ;
 
@@ -815,9 +824,7 @@ CREATE PROCEDURE remove_labels_from_uuid_SP (
     IN uuid_p CHAR(32) CHARACTER SET ASCII)
 MODIFIES SQL DATA
 BEGIN
-
 DELETE FROM labelToVersion WHERE labelID = label_id_p and versionUUID = uuid_p;
-
 END $$
 DELIMITER ;
 
@@ -828,10 +835,8 @@ CREATE PROCEDURE define_new_job_SP (IN job_name_p VARCHAR(127),
                                     IN start_url_p TEXT)
 MODIFIES SQL DATA
 BEGIN
-
 INSERT INTO jobs (jobName, startUrl, startUrlHash)
 VALUES (job_name_p, start_url_p, SHA2(start_url_p,256));
-
 END $$
 DELIMITER ;
 
@@ -842,8 +847,6 @@ DELIMITER $$
 CREATE PROCEDURE job_get_current_url_SP (IN job_name_p VARCHAR(127))
 READS SQL DATA
 BEGIN
-
 SELECT finished, COALESCE(currentUrl, startUrl) AS url FROM jobs WHERE jobName = job_name_p;
-
 END $$
 DELIMITER ;
