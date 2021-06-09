@@ -216,18 +216,17 @@ class DatabaseConnection:
 
     def __check_schema_version(self) -> None:
         """Check if the database schema is compatible with this version
-           of exoskeleton: Although __check_table_existence and
-           __check_stored_procedures check if all expected tables and
-           stored procedures exist, there might have been changes to
-           the structure of those. This can alert the user."""
+           of exoskeleton"""
+        # Other methods check for the existence of stored procedures, functions
+        # and tables. However, those might have changed. Foremost: this gives
+        # the user a hint how much has changed!
         try:
-            self.cur.execute("SELECT exoValue FROM exoInfo " +
-                             "WHERE exoKey ='schema';")
+            self.cur.execute('SELECT version FROM exo_schema_version();')
             schema = self.cur.fetchone()
             if not schema:
                 logging.error(
                     'Found no version information for the database schema.')
-            elif schema[0] == '1.2.0':  # no db changes with 1.2.1
+            elif schema[0] == '1.4.0':
                 logging.info('Database schema matches version of exoskeleton.')
             else:
                 logging.warning("Mismatch between version of exoskeleton " +
@@ -236,9 +235,8 @@ class DatabaseConnection:
         except pymysql.ProgrammingError:
             # means: the table does not exist (i.e. before version 1.1.0)
             logging.warning('Found no information about the version of the ' +
-                            'database schema. This means the view ' +
-                            'v_errors_in_queue contains an error. Please ' +
-                            'look at the end of the updated database script.')
+                            'database schema. Please ensure your version of ' +
+                            'exoskeleton and the database script match!')
 
     def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.

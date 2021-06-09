@@ -872,3 +872,11 @@ FROM INFORMATION_SCHEMA.ROUTINES
 WHERE ROUTINE_SCHEMA = db_name_p AND ROUTINE_TYPE = 'FUNCTION';
 END $$
 DELIMITER ;
+
+
+CREATE FUNCTION exo_schema_version ()
+-- Return the schema version of exoskeleton
+RETURNS VARCHAR(64)
+RETURN(
+    SELECT exoValue FROM exoInfo WHERE exoKey = 'schema'
+    );
