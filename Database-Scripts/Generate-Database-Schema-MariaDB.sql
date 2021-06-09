@@ -817,6 +817,20 @@ END $$
 DELIMITER ;
 
 
+-- Forget a specific error type (identified by its ID) for all tasks in the queue
+DELIMITER $$
+CREATE PROCEDURE forget_specific_error_type_SP (IN error_type INT)
+MODIFIES SQL DATA
+BEGIN
+UPDATE queue 
+SET causesError = NULL,
+    numTries = 0,
+    delayUntil = NULL
+WHERE causesError = error_type;
+END $$
+DELIMITER ;
+
+
 -- Remove the association between a label and the specific version of a file.
 DELIMITER $$
 CREATE PROCEDURE remove_labels_from_uuid_SP (

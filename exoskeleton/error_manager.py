@@ -125,15 +125,10 @@ class CrawlingErrorManager:
     def forget_specific_error(self,
                               specific_error: int) -> None:
         """Treat all queued tasks, that are marked to cause a *specific*
-        error, as if they are new tasks by removing that mark and any delay.
-        The number of the error has to correspond to the errorType
-        database table."""
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0,"
-                         "delayUntil = NULL " +
-                         "WHERE causesError = %s;",
-                         (specific_error, ))
+           error, as if they are new tasks by removing that mark and any delay.
+           The number of the error has to correspond to the errorType
+           database table."""
+        self.cur.callproc('forget_specific_error_type_SP', (specific_error, ))
 
     def forget_error_group(self,
                            permanent: bool) -> None:
