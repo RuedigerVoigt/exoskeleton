@@ -206,14 +206,6 @@ class DatabaseConnection:
         logging.debug('Database schema: found all expected functions.')
         return True
 
-    def check_db_schema(self) -> None:
-        """Check whether all expected tables, stored procedures and functions
-           are available in the database. Then look for a version string."""
-        self.__check_table_existence()
-        self.__check_stored_procedures()
-        self.__check_functions()
-        self.__check_schema_version()
-
     def __check_schema_version(self) -> None:
         """Check if the database schema is compatible with this version
            of exoskeleton"""
@@ -237,6 +229,14 @@ class DatabaseConnection:
             logging.warning('Found no information about the version of the ' +
                             'database schema. Please ensure your version of ' +
                             'exoskeleton and the database script match!')
+
+    def check_db_schema(self) -> None:
+        """Check whether all expected tables, stored procedures and functions
+           are available in the database. Then look for a version string."""
+        self.__check_table_existence()
+        self.__check_stored_procedures()
+        self.__check_functions()
+        self.__check_schema_version()
 
     def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.
