@@ -181,17 +181,16 @@ class Exoskeleton:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def random_wait(self) -> None:
-        """Wait for a random time within the limits set to init TimeManager."""
+        "Wait for a random time within the limits set to init TimeManager."
         self.time.random_wait()
 
     def process_queue(self) -> None:
-        """Process the queue"""
+        "Process the queue"
         self.queue.process_queue()
 
     def return_page_code(self,
                          url: str) -> str:
-        """Immediately return a page's code.
-           Do *not* store it in the database."""
+        "Immediately return a page's code. Do *not* store it in the database."
         return self.action.return_page_code(url)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -213,7 +212,7 @@ class Exoskeleton:
 
     def job_get_current_url(self,
                             job_name: str) -> str:
-        """ Returns the current URl for this job. If none is stored, this
+        """ Returns the current URL for this job. If none is stored, this
         returns the start URL. Raises exception if the job is already
         finished."""
         return self.jobs.get_current_url(job_name)
@@ -326,13 +325,11 @@ class Exoskeleton:
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
-        """Remove a specific fqdn from the blocklist."""
-        self.cur.execute('DELETE FROM blockList ' +
-                         'WHERE fqdnHash = SHA2(%s,256);',
-                         (fqdn.strip(), ))
+        "Remove a specific FQDN from the blocklist."
+        self.queue.unblock_fqdn(fqdn.strip())
 
     def truncate_blocklist(self) -> None:
-        """Remove *all* entries from the blocklist."""
+        "Remove *all* entries from the blocklist."
         self.queue.truncate_blocklist()
 
     def prettify_html(self,
