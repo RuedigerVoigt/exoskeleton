@@ -36,7 +36,8 @@ class DatabaseConnection:
                   'remove_labels_from_uuid_SP',
                   'update_host_stats_SP']
 
-    FUNCTIONS = ['num_items_with_permanent_error',
+    FUNCTIONS = ['fqdn_on_blocklist',
+                 'num_items_with_permanent_error',
                  'num_items_with_temporary_errors',
                  'num_tasks_in_queue_without_error',
                  'num_tasks_with_active_rate_limit']

@@ -745,6 +745,12 @@ END $$
 DELIMITER ;
 
 
+CREATE FUNCTION fqdn_on_blocklist (fqdn_p VARCHAR(255))
+-- Returns 0 if the FQDN is not on the blocklist, or an integer > 0 otherwise
+RETURNS INTEGER
+RETURN(
+    SELECT COUNT(*) FROM blockList WHERE fqdnhash = SHA2(fqdn_p, 256)
+    );
 
 -- Update the central host based statistics by incrementing counters
 -- held in the database.

@@ -70,16 +70,10 @@ class QueueManager:
 
     def check_blocklist(self,
                         fqdn: str) -> bool:
-        """Check if a specific FQDN is on the blocklist."""
-
-        self.cur.execute('SELECT COUNT(*) FROM blockList ' +
-                         'WHERE fqdnhash = SHA2(%s,256);',
-                         (fqdn.strip(), ))
+        "Check if a specific FQDN is on the blocklist."
+        self.cur.execute('SELECT fqdn_on_blocklist(%s);', (fqdn.strip(), ))
         response = self.cur.fetchone()
-        count = int(response[0]) if response else 0  # type: ignore[index]
-        if count > 0:
-            return True
-        return False
+        return bool(response[0]) if response else False  # type: ignore[index]
 
     def block_fqdn(self,
                    fqdn: str,
@@ -92,8 +86,7 @@ class QueueManager:
                 'Exoskeleton can only block a FQDN but not URLs.')
 
         try:
-            self.cur.execute('CALL block_fqdn_SP(%s, %s);',
-                             (fqdn.strip(), comment))
+            self.cur.callproc('block_fqdn_SP', (fqdn.strip(), comment))
         except pymysql.err.IntegrityError:
             logging.info('FQDN already on blocklist.')
 
@@ -105,7 +98,7 @@ class QueueManager:
                          (fqdn.strip(), ))
 
     def truncate_blocklist(self) -> None:
-        """Remove *all* entries from the blocklist."""
+        "Remove *all* entries from the blocklist."
         logging.info("Truncating the blocklist.")
         self.cur.execute('TRUNCATE TABLE blockList;')
 
@@ -192,8 +185,8 @@ class QueueManager:
         fqdn = urlparse(url).hostname
 
         # add the new task to the queue
-        self.cur.execute('CALL add_to_queue_SP(%s, %s, %s, %s, %s);',
-                         (uuid_value, action, url, fqdn, prettify_html))
+        self.cur.callproc('add_to_queue_SP',
+                          (uuid_value, action, url, fqdn, prettify_html))
 
         # link labels to version item
         if labels_version:
