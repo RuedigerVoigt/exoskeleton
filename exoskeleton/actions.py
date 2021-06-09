@@ -12,6 +12,7 @@ Released under the Apache License 2.0
 # standard library:
 import logging
 from urllib.parse import urlparse
+from typing import Final
 
 from bs4 import BeautifulSoup  # type: ignore
 import pymysql
@@ -36,10 +37,10 @@ class GetObjectBaseClass:
     # they signal a permanent or temporary error. The following lists include
     # some non-standard codes. See:
     # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-    HTTP_PERMANENT_ERRORS = (400, 401, 402, 403, 404, 405, 406,
-                             407, 410, 451, 501)
+    HTTP_PERMANENT_ERRORS: Final = (400, 401, 402, 403, 404, 405, 406,
+                                    407, 410, 451, 501)
     # 429 (Rate Limit) is handeled separately:
-    HTTP_TEMP_ERRORS = (408, 500, 502, 503, 504, 509, 529, 598)
+    HTTP_TEMP_ERRORS: Final = (408, 500, 502, 503, 504, 509, 529, 598)
 
     def __init__(
             self,
@@ -208,9 +209,9 @@ class GetContent(GetObjectBaseClass):
                               (self.url, self.url_hash, self.queue_id,
                                self.mime_type, page_content, 2))
         except pymysql.DatabaseError:
-            logging.error('Transaction failed: Could not add page code of ' +
-                          'queue item %s to the database!',
-                          self.queue_id, exc_info=True)
+            logging.error(
+                'Transaction failed: Can not save page code of queue item %s!',
+                self.queue_id, exc_info=True)
 
 
 class GetText(GetContent):
