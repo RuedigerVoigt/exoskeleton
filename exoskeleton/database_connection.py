@@ -226,17 +226,17 @@ class DatabaseConnection:
                                 f"the database schema ({schema[0]}).")
         except pymysql.ProgrammingError:
             # means: the table does not exist (i.e. before version 1.1.0)
-            logging.warning('Found no information about the version of the ' +
-                            'database schema. Please ensure your version of ' +
-                            'exoskeleton and the database script match!')
+            logging.error('Found no information about the version of the ' +
+                          'database schema. Please ensure your version of ' +
+                          'exoskeleton and the database script match!')
 
     def check_db_schema(self) -> None:
         """Check whether all expected tables, stored procedures and functions
            are available in the database. Then look for a version string."""
+        self.__check_schema_version()
         self.__check_table_existence()
         self.__check_stored_procedures()
         self.__check_functions()
-        self.__check_schema_version()
 
     def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.
