@@ -29,6 +29,8 @@ class DatabaseConnection:
                   'delete_all_versions_SP',
                   'delete_from_queue_SP',
                   'forget_all_errors_SP',
+                  'forget_error_group_SP',
+                  'forget_specific_error_type_SP',
                   'job_get_current_url_SP',
                   'insert_content_SP',
                   'insert_file_SP',

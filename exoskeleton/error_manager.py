@@ -132,15 +132,9 @@ class CrawlingErrorManager:
 
     def forget_error_group(self,
                            permanent: bool) -> None:
-        """Forget all errors that are permanent if that parameter is True,
-           else forget all that are NOT permanent."""
-        self.cur.execute("UPDATE queue SET " +
-                         "causesError = NULL, " +
-                         "numTries = 0, " +
-                         "delayUntil = NULL " +
-                         "WHERE causesError IN (" +
-                         "    SELECT id from errorType WHERE permanent = %s);",
-                         (1 if permanent else 0, ))
+        """Forget either errors that are permanent (if that parameter is True),
+           OR forget all that are NOT permanent a.k.a. temporary."""
+        self.cur.callproc('forget_error_group_SP', (1 if permanent else 0, ))
 
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of

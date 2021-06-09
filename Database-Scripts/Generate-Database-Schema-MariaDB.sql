@@ -831,6 +831,32 @@ END $$
 DELIMITER ;
 
 
+ALTER TABLE queue ADD INDEX IF NOT EXISTS (causesError) USING BTREE;
+-- ALTER TABLE errorType ADD PRIMARY KEY(id);
+ALTER TABLE errorType ADD INDEX IF NOT EXISTS (permanent) USING BTREE;
+
+-- Forget either all permament or all temporary errors in the queue
+-- parameter: 1 = permanent / 0 = temporary
+DELIMITER $$
+CREATE PROCEDURE forget_error_group_SP (IN permanent_p INT)
+MODIFIES SQL DATA
+BEGIN
+UPDATE queue
+SET causesError = NULL,
+    numTries = 0,
+    delayUntil = NULL
+    WHERE causesError IN (
+        SELECT id from errorType WHERE permanent = permanent_p)
+        -- SafeMode (default in MySQL Workbench and others) would stop this
+        -- procedure from being created, because the WHERE is not using a column
+        -- with primary key. this might be useful in some scenarios, but not
+        -- here. However - in order not to change system wide settings - 
+        -- the following LIMIT allows us to circumvent SafeMode here.
+        LIMIT 9999999999999999999;
+END $$
+DELIMITER ;
+
+
 -- Remove the association between a label and the specific version of a file.
 DELIMITER $$
 CREATE PROCEDURE remove_labels_from_uuid_SP (
