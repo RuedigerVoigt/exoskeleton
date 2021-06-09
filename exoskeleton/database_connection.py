@@ -34,6 +34,7 @@ class DatabaseConnection:
                   'forget_specific_error_type_SP',
                   'forget_specific_rate_limit_SP',
                   'job_get_current_url_SP',
+                  'job_mark_as_finished_SP',
                   'insert_content_SP',
                   'insert_file_SP',
                   'mark_permanent_error_SP',

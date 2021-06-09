@@ -30,8 +30,7 @@ class JobManager:
     def define_new(self,
                    job_name: str,
                    start_url: str) -> None:
-        """ Create a new crawl job identified by its name and add an URL
-            to start crawling. """
+        "Create a new crawl job identified by its name and add a start URL."
         if not job_name:
             raise ValueError('Provide a valid job_name')
         if not start_url:
@@ -98,9 +97,9 @@ class JobManager:
         if not job_name:
             raise ValueError('Missing job_name')
         job_name = job_name.strip()
-        affected_rows = self.cur.execute('UPDATE jobs SET ' +
-                                         'finished = CURRENT_TIMESTAMP() ' +
-                                         'WHERE jobName = %s;',
+        # Execute instead of callproc, because execute return the number of
+        # affected rows and callproc does not!
+        affected_rows = self.cur.execute('CALL job_mark_as_finished_SP(%s);',
                                          (job_name, ))
         if affected_rows == 0:
             raise ValueError('A job with this name is not known.')

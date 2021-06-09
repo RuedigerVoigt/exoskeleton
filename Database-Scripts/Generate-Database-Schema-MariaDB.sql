@@ -920,6 +920,15 @@ SELECT finished, COALESCE(currentUrl, startUrl) AS url FROM jobs WHERE jobName =
 END $$
 DELIMITER ;
 
+-- Mark a specific crawl job as finished
+DELIMITER $$
+CREATE PROCEDURE job_mark_as_finished_SP (IN job_name_p VARCHAR(127))
+READS SQL DATA
+BEGIN
+UPDATE jobs SET finished = CURRENT_TIMESTAMP() WHERE jobName = job_name_p;
+END $$
+DELIMITER ;
+
 -- Return the names of all stored procedures in the database
 DELIMITER $$
 CREATE PROCEDURE db_check_all_procedures_SP (IN db_name_p VARCHAR(64))
