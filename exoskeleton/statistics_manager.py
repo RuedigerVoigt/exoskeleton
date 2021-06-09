@@ -28,14 +28,14 @@ class StatisticsManager:
         self.cnt: Counter = Counter()
 
     def num_tasks_wo_errors(self) -> Optional[int]:
-        """Number of tasks in the queue, which are *not* marked as causing 
+        """Number of tasks in the queue, which are *not* marked as causing
            any kind of error."""
         self.cur.execute("SELECT num_tasks_in_queue_without_error();")
         without_error = self.cur.fetchone()
         return int(without_error[0]) if without_error else None  # type: ignore[index]
 
     def num_tasks_w_permanent_errors(self) -> int:
-        "Number of tasks in the queue marked as causing a permanent error."
+        "Number of tasks in the queue marked as causing a *permanent* error."
         self.cur.execute('SELECT num_items_with_permanent_error();')
         num_permanent_errors = self.cur.fetchone()
         return int(num_permanent_errors[0]) if num_permanent_errors else 0  # type: ignore[index]
@@ -85,15 +85,16 @@ class StatisticsManager:
                                  hit_rate_limit_increment: int = 0) -> None:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
+        # pylint: disable=too-many-arguments
 
         fqdn = urlparse(url).hostname
 
-        self.cur.execute('CALL update_host_stats_SP(%s, %s, %s, %s, %s);',
-                         (fqdn,
-                          successful_requests_increment,
-                          temporary_problems_increment,
-                          permanent_errors_increment,
-                          hit_rate_limit_increment))
+        self.cur.callproc('update_host_stats_SP',
+                          (fqdn,
+                           successful_requests_increment,
+                           temporary_problems_increment,
+                           permanent_errors_increment,
+                           hit_rate_limit_increment))
 
     def log_successful_request(self,
                                url: str) -> None:
@@ -121,10 +122,9 @@ class StatisticsManager:
 
     def increment_processed_counter(self) -> None:
         """Count the number of actions processed.
-           This function is wrapping a Counter object
-           to make it accesible from different objects."""
+        This wraps a Counter to make it accesible from outside the class."""
         self.cnt['processed'] += 1
 
     def get_processed_counter(self) -> int:
-        """The number of processed tasks."""
+        "The number of processed tasks."
         return self.cnt['processed']
