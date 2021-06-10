@@ -17,8 +17,8 @@ import userprovided
 
 class NotificationManager:
     """Notification management for the exoskeleton crawler framework.
-    At the moment this sends out email, but it may support other
-    notification methods in future versions of exoskeleton."""
+       At the moment this sends out email, but it may support other
+       notification methods in future versions."""
 
     def __init__(self,
                  project_name: str,
@@ -83,8 +83,8 @@ class NotificationManager:
         """Once a milestone is reached, send an email with an estimate
            how long it will take for the bot to finish."""
         # TO DO: more precise estimate requires to account for rate limits
-        subject = (f"Project {self.project_name} Milestone: " +
-                   f"{processed} processed")
+        subject = (
+            f"Project {self.project_name} Milestone: {processed} processed")
         body = (f"{processed} processed.\n" +
                 f"{remaining} tasks remaining in the queue.\n" +
                 "Estimated time to complete queue: " +
