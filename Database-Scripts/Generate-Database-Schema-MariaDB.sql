@@ -911,6 +911,11 @@ END $$
 DELIMITER ;
 
 
+CREATE FUNCTION get_filemaster_id (uuid_p CHAR(32) CHARACTER SET ASCII)
+-- Get the id of the filemaster entry associated with a specific version
+RETURNS INT UNSIGNED
+RETURN(SELECT fileMasterID FROM fileVersions WHERE id = uuid_p);
+
 -- Create a new crawl job identified by its name and add an URL to start crawling
 DELIMITER $$
 CREATE PROCEDURE define_new_job_SP (IN job_name_p VARCHAR(127),

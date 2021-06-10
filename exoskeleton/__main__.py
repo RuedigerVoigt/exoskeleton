@@ -384,11 +384,11 @@ class Exoskeleton:
     def version_uuids_by_label(self,
                                single_label: str,
                                processed_only: bool = False) -> set:
-        """Get a list of UUIDs (in this context file versions)
-           which have *one* specific label attached to them.
-           If processed_only is set to True only UUIDs of
-           already downloaded items are returned.
-           Otherwise it contains queue objects with that label."""
+        """Get a list of UUIDs (in this context file versions) which have
+           *one* specific label attached to them.
+           If processed_only is set to True only UUIDs of already downloaded
+           items are returned. Otherwise it contains queue objects with that
+           label."""
         returned_set = self.queue.get_label_ids(single_label)
         if returned_set == set():
             raise ValueError('Unknown label. Check for typo.')
@@ -436,10 +436,7 @@ class Exoskeleton:
                           version_uuid: str) -> str:
         """Get the id of the filemaster entry associated with
            a specific version identified by its UUID."""
-        self.cur.execute('SELECT fileMasterID ' +
-                         'FROM exoskeleton.fileVersions ' +
-                         'WHERE id = %s;',
-                         (version_uuid, ))
+        self.cur.execute('SELECT get_filemaster_id(%s);', (version_uuid, ))
         filemaster_id = self.cur.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")

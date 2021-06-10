@@ -46,6 +46,7 @@ class DatabaseConnection:
                   'update_host_stats_SP']
 
     FUNCTIONS = ['fqdn_on_blocklist',
+                 'get_filemaster_id',
                  'num_items_with_permanent_error',
                  'num_items_with_temporary_errors',
                  'num_tasks_in_queue_without_error',
