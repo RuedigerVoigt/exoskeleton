@@ -37,6 +37,7 @@ class DatabaseConnection:
                   'job_mark_as_finished_SP',
                   'insert_content_SP',
                   'insert_file_SP',
+                  'label_define_or_update_SP',
                   'mark_permanent_error_SP',
                   'next_queue_object_SP',
                   'remove_labels_from_uuid_SP',

@@ -886,6 +886,19 @@ END $$
 DELIMITER ;
 
 
+-- Define a new label. If it already exists, update its description.
+DELIMITER $$
+CREATE PROCEDURE label_define_or_update_SP (
+    IN short_name_p VARCHAR(63),
+    IN description_p TEXT)
+MODIFIES SQL DATA
+BEGIN
+INSERT INTO labels (shortName, description)
+VALUES (short_name_p, description_p) 
+ON DUPLICATE KEY UPDATE description = description_p;
+END $$
+DELIMITER ;
+
 -- Remove the association between a label and the specific version of a file.
 DELIMITER $$
 CREATE PROCEDURE remove_labels_from_uuid_SP (

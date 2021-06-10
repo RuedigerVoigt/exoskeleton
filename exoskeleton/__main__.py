@@ -376,14 +376,10 @@ class Exoskeleton:
             in case it already exists. Use __define_new_label if an update
             has to be avoided. """
         if len(shortname) > 31:
-            logging.error(
-                "Labelname exceeds max length of 31 chars: cannot add it.")
+            logging.error("Cannot add label exceeding max length (31 chars).")
             return
-
-        self.cur.execute('INSERT INTO labels (shortName, description) ' +
-                         'VALUES (%s, %s) ' +
-                         'ON DUPLICATE KEY UPDATE description = %s;',
-                         (shortname, description, description))
+        self.cur.callproc('label_define_or_update_SP',
+                          (shortname, description))
 
     def version_uuids_by_label(self,
                                single_label: str,
