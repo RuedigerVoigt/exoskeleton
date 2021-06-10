@@ -29,7 +29,7 @@ from exoskeleton import time_manager
 
 
 class QueueManager:
-    """Manage the queue and labels for the exoskeleton framework."""
+    "Manage the queue and labels for the exoskeleton framework."
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
 
@@ -68,10 +68,21 @@ class QueueManager:
     # HANDLE THE BLOCKLIST
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    def __check_fqdn(self,
+                     fqdn: str) -> str:
+        "Remove whitespace and check if it can be a FQDN"
+        fqdn = fqdn.strip()
+        if len(fqdn) > 255:
+            raise ValueError(
+                'No valid FQDN can be longer than 255 characters. ' +
+                'Exoskeleton can only block a FQDN but not URLs.')
+        return fqdn
+
     def check_blocklist(self,
                         fqdn: str) -> bool:
         "Check if a specific FQDN is on the blocklist."
-        self.cur.execute('SELECT fqdn_on_blocklist(%s);', (fqdn.strip(), ))
+        fqdn = self.__check_fqdn(fqdn)
+        self.cur.execute('SELECT fqdn_on_blocklist(%s);', (fqdn, ))
         response = self.cur.fetchone()
         return bool(response[0]) if response else False  # type: ignore[index]
 
@@ -80,20 +91,17 @@ class QueueManager:
                    comment: Optional[str] = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
            - like www.example.com - to the blocklist. Does not handle URLs."""
-        if len(fqdn) > 255:
-            raise ValueError(
-                'No valid FQDN can be longer than 255 characters. ' +
-                'Exoskeleton can only block a FQDN but not URLs.')
-
+        fqdn = self.__check_fqdn(fqdn)
         try:
-            self.cur.callproc('block_fqdn_SP', (fqdn.strip(), comment))
+            self.cur.callproc('block_fqdn_SP', (fqdn, comment))
         except pymysql.err.IntegrityError:
             logging.info('FQDN already on blocklist.')
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
         "Remove a specific FQDN from the blocklist."
-        self.cur.callproc('unblock_fqdn_SP', (fqdn.strip(), ))
+        fqdn = self.__check_fqdn(fqdn)
+        self.cur.callproc('unblock_fqdn_SP', (fqdn, ))
 
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
