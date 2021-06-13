@@ -929,6 +929,32 @@ WHERE ID IN (
 END $$
 DELIMITER ;
 
+
+-- Get a list of label names (not id numbers!) attached to a specific filemaster entry
+-- via its URL instead of the id
+DELIMITER $$
+CREATE PROCEDURE labels_filemaster_by_url_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII)
+READS SQL DATA
+BEGIN
+SELECT DISTINCT shortName 
+FROM labels WHERE ID IN (
+    SELECT labelID FROM labelToMaster WHERE urlHash = SHA2(uuid_p,256));
+END $$
+DELIMITER ;
+
+
+-- Get a list of label names (not id numbers!) attached to a specific version of a file.
+-- Does not include labels attached to the filemaster entry.
+DELIMITER $$
+CREATE PROCEDURE labels_version_by_id_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII)
+READS SQL DATA
+BEGIN
+SELECT DISTINCT shortName 
+FROM labels WHERE ID IN (
+    SELECT labelID FROM labelToVersion WHERE versionUUID = uuid_p);
+END $$
+DELIMITER ;
+
 -- Create a new crawl job identified by its name and add an URL to start crawling
 DELIMITER $$
 CREATE PROCEDURE define_new_job_SP (IN job_name_p VARCHAR(127),

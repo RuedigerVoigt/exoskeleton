@@ -412,14 +412,7 @@ class Exoskeleton:
         """Get a list of label names (not id numbers!) attached
            to a specific version of a file. Does not include
            labels attached to the filemaster entry."""
-        self.cur.execute('SELECT DISTINCT shortName ' +
-                         'FROM labels ' +
-                         'WHERE ID IN (' +
-                         '  SELECT labelID ' +
-                         '  FROM labelToVersion ' +
-                         '  WHERE versionUUID = %s' +
-                         ');',
-                         (version_uuid, ))
+        self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
@@ -443,18 +436,13 @@ class Exoskeleton:
 
     def filemaster_labels_by_url(self,
                                  url: str) -> set:
-        """Primary use for automatic test: Get a list of label names
-           (not id numbers!) attached to a specific filemaster entry
-           via its URL instead of the id. The reason for this: The
-           association with the URL predates the filemaster entry / the id."""
-        self.cur.execute('SELECT DISTINCT shortName ' +
-                         'FROM labels ' +
-                         'WHERE ID IN (' +
-                         '  SELECT labelID ' +
-                         '  FROM labelToMaster ' +
-                         '  WHERE urlHash = SHA2(%s,256)' +
-                         ');',
-                         (url, ))
+        """Primary use for automatic test:
+           Get a list of label names (not id numbers!) attached to a specific
+           filemaster entry via its URL instead of the id.
+           The reason for this: The association with the URL predates 
+           the filemaster entry / the id."""
+        # TO DO: clearer description!
+        self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
