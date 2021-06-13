@@ -977,6 +977,17 @@ SELECT finished, COALESCE(currentUrl, startUrl) AS url FROM jobs WHERE jobName =
 END $$
 DELIMITER ;
 
+-- Set the currentUrl for a specific job to a new value
+DELIMITER $$
+CREATE PROCEDURE job_update_current_url_SP (
+    IN job_name_p VARCHAR(127),
+    IN current_url_p TEXT)
+MODIFIES SQL DATA
+BEGIN
+UPDATE jobs SET currentURL = current_url_p WHERE jobName = job_name_p;
+END $$
+DELIMITER ;
+
 -- Mark a specific crawl job as finished
 DELIMITER $$
 CREATE PROCEDURE job_mark_as_finished_SP (IN job_name_p VARCHAR(127))

@@ -35,6 +35,7 @@ class DatabaseConnection:
                   'forget_specific_rate_limit_SP',
                   'job_get_current_url_SP',
                   'job_mark_as_finished_SP',
+                  'job_update_current_url_SP',
                   'insert_content_SP',
                   'insert_file_SP',
                   'label_define_or_update_SP',

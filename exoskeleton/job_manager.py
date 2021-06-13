@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-JobManager
+JobManager for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
+(c) 2019-2021 Rüdiger Voigt:
 Released under the Apache License 2.0
 """
 # standard library:
@@ -66,10 +67,10 @@ class JobManager:
         if not current_url:
             raise ValueError('Current URL must not be empty.')
 
-        affected_rows = self.cur.execute('UPDATE jobs ' +
-                                         'SET currentURL = %s ' +
-                                         'WHERE jobName = %s;',
-                                         (current_url, job_name))
+        # execute returns affected rows, callproc does not
+        affected_rows = self.cur.execute(
+            'CALL job_update_current_url_SP(%s, %s);',
+            (job_name, current_url))
         if affected_rows == 0:
             raise ValueError('A job with this name is not known.')
 
