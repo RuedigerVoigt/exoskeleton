@@ -200,8 +200,7 @@ class Exoskeleton:
     def job_define_new(self,
                        job_name: str,
                        start_url: str) -> None:
-        """ Create a new crawl job identified by it name and an url
-        to start crawling. """
+        " Create a new crawl job identified by it name and an URL"
         self.jobs.define_new(job_name, start_url)
 
     def job_update_current_url(self,
@@ -213,8 +212,8 @@ class Exoskeleton:
     def job_get_current_url(self,
                             job_name: str) -> str:
         """ Returns the current URL for this job. If none is stored, this
-        returns the start URL. Raises exception if the job is already
-        finished."""
+            returns the start URL. Raises exception if the job is already
+            finished."""
         return self.jobs.get_current_url(job_name)
 
     def job_mark_as_finished(self,
@@ -282,25 +281,23 @@ class Exoskeleton:
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
-        """Get the id of the filemaster entry associated with this URL."""
+        "Get the id of the filemaster entry associated with this URL."
         return self.queue.get_filemaster_id_by_url(url)
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
-        """Remove all label links from a queue item and then delete it
-        from the queue."""
+        "Remove all label links from a queue item and then delete it."
         self.queue.delete_from_queue(queue_id)
 
     def forget_all_errors(self) -> None:
-        """Treat all queued tasks, that are marked to cause any type of
-        error, as if they are new tasks by removing that mark and
-        any delay."""
+        """Treat all queued tasks, that are marked to cause any type of error,
+           as if they are new tasks by removing that mark and any delay."""
         self.errorhandling.forget_all_errors()
 
     def forget_permanent_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause a *permanent*
-        error, as if they are new tasks by removing that mark and
-        any delay."""
+           error, as if they are new tasks by removing that mark and
+           any delay."""
         self.errorhandling.forget_error_group(True)
 
     def forget_temporary_errors(self) -> None:
@@ -311,9 +308,9 @@ class Exoskeleton:
     def forget_specific_error(self,
                               specific_error: int) -> None:
         """Treat all queued tasks, that are marked to cause a *specific*
-        error, as if they are new tasks by removing that mark and
-        any delay. The number of the error has to correspond to the
-        errorType database table."""
+           error, as if they are new tasks by removing that mark and
+           any delay. The number of the error has to correspond to the
+           errorType database table."""
         self.errorhandling.forget_specific_error(specific_error)
 
     def block_fqdn(self,
@@ -408,10 +405,7 @@ class Exoskeleton:
                              "WHERE labelID = %s;",
                              (label_id, ))
         version_ids = self.cur.fetchall()
-        if not version_ids:
-            return set()
-        version_ids = {(uuid[0]) for uuid in version_ids}  # type: ignore[index, assignment]
-        return version_ids  # type: ignore[return-value]
+        return {(uuid[0]) for uuid in version_ids} if version_ids else set()  # type: ignore[index, assignment]
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
@@ -427,10 +421,7 @@ class Exoskeleton:
                          ');',
                          (version_uuid, ))
         labels = self.cur.fetchall()
-        if not labels:
-            return set()
-        labels_set = {(label[0]) for label in labels}  # type: ignore[index]
-        return labels_set
+        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
     def get_filemaster_id(self,
                           version_uuid: str) -> str:
@@ -465,10 +456,7 @@ class Exoskeleton:
                          ');',
                          (url, ))
         labels = self.cur.fetchall()
-        if not labels:
-            return set()
-        labels_set = {(label[0]) for label in labels}  # type: ignore[index]
-        return labels_set
+        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
