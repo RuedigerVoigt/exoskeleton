@@ -916,6 +916,19 @@ CREATE FUNCTION get_filemaster_id (uuid_p CHAR(32) CHARACTER SET ASCII)
 RETURNS INT UNSIGNED
 RETURN(SELECT fileMasterID FROM fileVersions WHERE id = uuid_p);
 
+
+-- label names (not id numbers!) attached to a filemaster entry
+DELIMITER $$
+CREATE PROCEDURE labels_filemaster_by_id_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII)
+READS SQL DATA
+BEGIN
+SELECT DISTINCT shortName 
+FROM labels 
+WHERE ID IN (
+    SELECT labelID FROM labelToMaster WHERE labelID = uuid_p);
+END $$
+DELIMITER ;
+
 -- Create a new crawl job identified by its name and add an URL to start crawling
 DELIMITER $$
 CREATE PROCEDURE define_new_job_SP (IN job_name_p VARCHAR(127),
