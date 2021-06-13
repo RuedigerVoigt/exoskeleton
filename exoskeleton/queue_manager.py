@@ -354,24 +354,26 @@ class QueueManager:
                       label_set: Union[set, str]) -> set:
         """ Given a set of labels, this returns the corresponding ids
             in the labels table. """
-        if label_set:
-            label_set = userprovided.parameters.convert_to_set(label_set)
-            # The IN-Operator makes it necessary to construct the command
-            # every time, so input gets escaped. See the accepted answer here:
-            # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
-            query = ("SELECT id " +
-                     "FROM labels " +
-                     "WHERE shortName " +
-                     "IN ({0});".format(', '.join(['%s'] * len(label_set))))
-            self.cur.execute(query, tuple(label_set))
-            label_id = self.cur.fetchall()
-            label_set = set()
-            if label_id:
-                label_set = {(id[0]) for id in label_id}  # type: ignore[index]
+        if not label_set:
+            logging.error('No labels provided to get_label_ids().')
+            return set()
 
-            return set() if label_id is None else label_set
-        logging.error('No labels provided to get_label_ids().')
-        return set()
+        label_set = userprovided.parameters.convert_to_set(label_set)
+        # The IN-Operator makes it necessary to construct the command
+        # every time, so input gets escaped. See the accepted answer here:
+        # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
+        query = ("SELECT id " +
+                 "FROM labels " +
+                 "WHERE shortName " +
+                 "IN ({0});".format(', '.join(['%s'] * len(label_set))))
+        self.cur.execute(query, tuple(label_set))
+        label_id = self.cur.fetchall()
+        label_set = set()
+        if label_id:
+            label_set = {(id[0]) for id in label_id}  # type: ignore[index]
+
+        return set() if label_id is None else label_set
+
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # PROCESSING THE QUEUE
@@ -460,8 +462,7 @@ class QueueManager:
             if self.check_blocklist(
                     urlparse(url).hostname):  # type: ignore[arg-type]
                 logging.error(
-                    'Cannot process queue item: FQDN has meanwhile been ' +
-                    'added to blocklist!')
+                    'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)
                 logging.info('Removed item from queue: FQDN on blocklist.')
             else:
