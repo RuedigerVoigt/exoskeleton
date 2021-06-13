@@ -318,14 +318,14 @@ class QueueManager:
         if not labels:
             return
 
-        # Using a set to avoid duplicates. However, accept either
-        # a single string or a list type.
+        # Using a set to avoid duplicates. However, users might provide
+        # a string or a list type.
         label_set = userprovided.parameters.convert_to_set(labels)
 
         for label in label_set:
             # Make sure all labels are in the database table.
-            # -> If they already exist or malformed the command
-            # will be ignored by the dbms.
+            # -> If they already exist or are malformed, the command
+            # will be ignored by the DBMS.
             self.__define_new_label(label)
 
         # Get all label-ids
