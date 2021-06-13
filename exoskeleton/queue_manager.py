@@ -68,8 +68,8 @@ class QueueManager:
     # HANDLE THE BLOCKLIST
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def __check_fqdn(self,
-                     fqdn: str) -> str:
+    @staticmethod
+    def __check_fqdn(fqdn: str) -> str:
         "Remove whitespace and check if it can be a FQDN"
         fqdn = fqdn.strip()
         if len(fqdn) > 255:

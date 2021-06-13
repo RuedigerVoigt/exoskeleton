@@ -439,7 +439,7 @@ class Exoskeleton:
         """Primary use for automatic test:
            Get a list of label names (not id numbers!) attached to a specific
            filemaster entry via its URL instead of the id.
-           The reason for this: The association with the URL predates 
+           The reason for this: The association with the URL predates
            the filemaster entry / the id."""
         # TO DO: clearer description!
         self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
