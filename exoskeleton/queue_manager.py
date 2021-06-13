@@ -368,12 +368,7 @@ class QueueManager:
                  "IN ({0});".format(', '.join(['%s'] * len(label_set))))
         self.cur.execute(query, tuple(label_set))
         label_id = self.cur.fetchall()
-        label_set = set()
-        if label_id:
-            label_set = {(id[0]) for id in label_id}  # type: ignore[index]
-
-        return set() if label_id is None else label_set
-
+        return {(id[0]) for id in label_id} if label_id else set()  # type: ignore[index]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # PROCESSING THE QUEUE
