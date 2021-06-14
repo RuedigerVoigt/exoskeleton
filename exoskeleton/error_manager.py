@@ -22,12 +22,10 @@ from exoskeleton import database_connection
 class CrawlingErrorManager:
     """Manage errors that occur while crawling."""
 
-    # If there is a temporary error, exoskeleton delays the
-    # next try until the configured maximum of tries is
-    # reached.
-    # The time between tries is definied here to be able
-    # to overwrite it in case of an automatic tests to
-    # avoid multi-hour runtimes.
+    # If there is a temporary error, exoskeleton delays the next try,
+    # until the configured maximum of tries is reached.
+    # The time between tries is definied here to be able to overwrite it
+    # in case of an automatic tests to avoid multi-hour runtimes.
     # Steps: 1/4h, 1/2h, 1h, 3h, 6h
     DELAY_TRIES = (900, 1800, 3600, 10800, 21600)
 
@@ -47,7 +45,7 @@ class CrawlingErrorManager:
 
     def add_crawl_delay(self,
                         queue_id: str,
-                        error_type: Optional[int] = None) -> None:
+                        error_type: int) -> None:
         """In case of a timeout or a temporary error increment the counter for
         the number of tries by one. If the configured maximum of tries
         was reached, mark it as a permanent error. Otherwise add a delay,
@@ -101,11 +99,10 @@ class CrawlingErrorManager:
                              'WHERE urlHash = %s;',
                              (wait_time, url_hash))
             # Add the error type to the specific task that caused the delay
-            if error_type:
-                self.cur.execute('UPDATE queue ' +
-                                 'SET causesError = %s ' +
-                                 'WHERE id = %s;',
-                                 (error_type, queue_id))
+            self.cur.execute('UPDATE queue ' +
+                             'SET causesError = %s ' +
+                             'WHERE id = %s;',
+                             (error_type, queue_id))
 
     def mark_permanent_error(self,
                              queue_id: str,
