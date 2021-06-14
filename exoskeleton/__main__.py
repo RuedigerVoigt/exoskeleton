@@ -383,8 +383,8 @@ class Exoskeleton:
                                processed_only: bool = False) -> set:
         """Get a list of UUIDs (in this context file versions) which have
            *one* specific label attached to them.
-           If processed_only is set to True only UUIDs of already downloaded
-           items are returned. Otherwise it contains queue objects with that
+           If processed_only is set to True only UUIDs of already processed
+           tasks are returned. Otherwise it contains queue objects with that
            label."""
         returned_set = self.queue.get_label_ids(single_label)
         if returned_set == set():
@@ -431,18 +431,6 @@ class Exoskeleton:
         """Get a list of label names (not id numbers!) attached
            to a specific filemaster entry."""
         self.cur.callproc('labels_filemaster_by_id_SP', (filemaster_id, ))
-        labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
-
-    def filemaster_labels_by_url(self,
-                                 url: str) -> set:
-        """Primary use for automatic test:
-           Get a list of label names (not id numbers!) attached to a specific
-           filemaster entry via its URL instead of the id.
-           The reason for this: The association with the URL predates
-           the filemaster entry / the id."""
-        # TO DO: clearer description!
-        self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 

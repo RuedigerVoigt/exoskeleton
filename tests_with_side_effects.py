@@ -110,6 +110,21 @@ def check_error_codes(expectation: set):
                         f"{error_codes} instead of {expectation}")
 
 
+def filemaster_labels_by_url(url: str) -> set:
+    """Primary use for automatic test:
+        Get a list of label names (not id numbers!) attached to a specific
+        filemaster entry via its URL instead of the id.
+        The reason for this: The association with the URL predates
+        the filemaster entry / the id."""
+    # TO DO: clearer description!
+    exo.cur.execute('SELECT DISTINCT shortName ' +
+                    'FROM labels WHERE ID IN (' +
+                    'SELECT labelID FROM labelToMaster ' +
+                    'WHERE urlHash = SHA2(%s,256));', (url, ))
+    labels = exo.cur.fetchall()
+    return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
+
+
 logging.info('Define counters etc')
 
 # to track changes, track expectations:
@@ -168,7 +183,7 @@ def test_add_same_task_with_different_labels():
 
     # Check if all the labels were added:
     assert exo.version_labels_by_uuid(uuid_t1_1) == t1_1_version_labels
-    assert exo.filemaster_labels_by_url(url_t1_1) == t1_1_filemaster_labels
+    assert filemaster_labels_by_url(url_t1_1) == t1_1_filemaster_labels
 
     t1_2_filemaster_labels = {'i1fml2', 'i1fml3'}
     t1_2_version_labels_to_be_ignored = {'ignore_me1', 'ignore_me2'}
@@ -181,7 +196,7 @@ def test_add_same_task_with_different_labels():
 
     expected_fm_labels = t1_1_filemaster_labels | t1_2_filemaster_labels
     # The same filemaster entry as the item before:
-    assert exo.filemaster_labels_by_url(url_t1_1) == expected_fm_labels
+    assert filemaster_labels_by_url(url_t1_1) == expected_fm_labels
 
     # See if version labels for item 2 are not in the label list by counting:
     all_added_labels = (t1_1_filemaster_labels | t1_1_version_labels |
