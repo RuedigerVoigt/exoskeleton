@@ -68,11 +68,10 @@ class CrawlingErrorManager:
         # Does the number of tries exceed the configured maximum?
         if num_tries == self.queue_max_retries:
             # This is treated as a *permanent* failure!
-            logging.error('Giving up: too many tries for queue item %s',
-                          queue_id)
+            logging.error('Giving up: too many tries for task %s', queue_id)
             self.mark_permanent_error(queue_id, 3)
         else:
-            logging.info('Adding crawl delay to queue item %s', queue_id)
+            logging.info('Adding crawl delay to task %s', queue_id)
             # Using the class constant DELAY_TRIES because it can be easily
             # overwritten for automatic testing!
             if num_tries == 1:
