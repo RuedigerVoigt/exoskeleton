@@ -52,13 +52,8 @@ class CrawlingErrorManager:
         may affect the same URL, the delay is added to all of them."""
         wait_time = 0
 
-        # Increase the tries counter
-        self.cur.execute('UPDATE queue ' +
-                         'SET numTries = numTries + 1 ' +
-                         'WHERE id =%s;', (queue_id, ))
-        # How many times this task was tried?
-        self.cur.execute('SELECT numTries FROM queue WHERE id = %s;',
-                         (queue_id, ))
+        # Increase the tries counter and get the new count
+        self.cur.callproc('increment_num_tries_SP', (queue_id, ))
         response = self.cur.fetchone()
         num_tries = int(response[0]) if response else 0  # type: ignore[index]
 
@@ -67,41 +62,42 @@ class CrawlingErrorManager:
             # This is treated as a *permanent* failure!
             logging.error('Giving up: too many tries for task %s', queue_id)
             self.mark_permanent_error(queue_id, 3)
-        else:
-            logging.info('Adding crawl delay to task %s', queue_id)
-            # Using the class constant DELAY_TRIES because it can be easily
-            # overwritten for automatic testing!
-            if num_tries == 1:
-                wait_time = self.DELAY_TRIES[0]  # 15 minutes
-            elif num_tries == 2:
-                wait_time = self.DELAY_TRIES[1]  # 30 minutes
-            elif num_tries == 3:
-                wait_time = self.DELAY_TRIES[2]  # 1 hour
-            elif num_tries == 4:
-                wait_time = self.DELAY_TRIES[3]  # 3 hours
-            elif num_tries > 4:
-                wait_time = self.DELAY_TRIES[4]  # 6 hours
+            return
 
-            # Add the same delay to all tasks accesing the same URL MariaDB /
-            # MySQL throws an error if the same table is specified both
-            # as a target for 'UPDATE' and a source for data.
-            # Therefore, two steps instead of a Sub-Select.
-            self.cur.execute('SELECT urlHash FROM queue WHERE id = %s;',
-                             (queue_id, ))
-            response = self.cur.fetchone()
-            url_hash = response[0] if response else None  # type: ignore[index]
-            if not url_hash:
-                raise ValueError('Missing urlHash. Cannot add crawl delay.')
+        logging.info('Adding crawl delay to task %s', queue_id)
+        # Using the class constant DELAY_TRIES because it can be easily
+        # overwritten for automatic testing!
+        if num_tries == 1:
+            wait_time = self.DELAY_TRIES[0]  # 15 minutes
+        elif num_tries == 2:
+            wait_time = self.DELAY_TRIES[1]  # 30 minutes
+        elif num_tries == 3:
+            wait_time = self.DELAY_TRIES[2]  # 1 hour
+        elif num_tries == 4:
+            wait_time = self.DELAY_TRIES[3]  # 3 hours
+        elif num_tries > 4:
+            wait_time = self.DELAY_TRIES[4]  # 6 hours
 
-            self.cur.execute('UPDATE queue ' +
-                             'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                             'WHERE urlHash = %s;',
-                             (wait_time, url_hash))
-            # Add the error type to the specific task that caused the delay
-            self.cur.execute('UPDATE queue ' +
-                             'SET causesError = %s ' +
-                             'WHERE id = %s;',
-                             (error_type, queue_id))
+        # Add the same delay to all tasks accessing the same URL.
+        # MariaDB / MySQL throws an error if the same table is specified both
+        # as a target for 'UPDATE' and a source for data.
+        # Therefore, two steps instead of a Sub-Select.
+        self.cur.execute(
+            'SELECT urlHash FROM queue WHERE id = %s;', (queue_id, ))
+        response = self.cur.fetchone()
+        url_hash = response[0] if response else None  # type: ignore[index]
+        if not url_hash:
+            raise ValueError('Missing urlHash. Cannot add crawl delay.')
+
+        self.cur.execute('UPDATE queue ' +
+                         'SET delayUntil = ADDTIME(NOW(), %s) ' +
+                         'WHERE urlHash = %s;',
+                         (wait_time, url_hash))
+        # Add the error type to the specific task that caused the delay
+        self.cur.execute('UPDATE queue ' +
+                         'SET causesError = %s ' +
+                         'WHERE id = %s;',
+                         (error_type, queue_id))
 
     def mark_permanent_error(self,
                              queue_id: str,

@@ -33,6 +33,7 @@ class DatabaseConnection:
                   'forget_error_group_SP',
                   'forget_specific_error_type_SP',
                   'forget_specific_rate_limit_SP',
+                  'increment_num_tries_SP',
                   'insert_content_SP',
                   'insert_file_SP',
                   'job_get_current_url_SP',

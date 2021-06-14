@@ -859,6 +859,15 @@ WHERE causesError = error_type;
 END $$
 DELIMITER ;
 
+-- Increment the counter for the number of tries and return the new one
+DELIMITER $$
+CREATE PROCEDURE increment_num_tries_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII)
+MODIFIES SQL DATA
+BEGIN
+UPDATE queue SET numTries = numTries + 1 WHERE id = uuid_p;
+SELECT numTries FROM queue WHERE id = uuid_p;
+END $$
+DELIMITER ;
 
 ALTER TABLE queue ADD INDEX IF NOT EXISTS (causesError) USING BTREE;
 -- ALTER TABLE errorType ADD PRIMARY KEY(id);
