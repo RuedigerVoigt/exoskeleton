@@ -144,7 +144,7 @@ def test_add_to_queue():
     # implemented behavior is not to raise an exception, but to return.
     # => TO Do: maybe change that
     # Nothing should have been added to the queue:
-    assert queue_count() == before, 'Unknown action addedto the queue'
+    assert queue_count() == before, 'Unknown action added to the queue'
 
 
 def test_add_same_task_with_different_labels():
@@ -159,7 +159,7 @@ def test_add_same_task_with_different_labels():
     # Add to queue "save a page as PDF"
     t1_1_filemaster_labels = {'i1fml1', 'i1fml2'}
     t1_1_version_labels = {'i1vl1', 'i1vl2', 'i1vl3'}
-    url_hash_t1_1 = hs = hashlib.sha256(url_t1_1.encode('utf-8')).hexdigest()
+    url_hash_t1_1 = hashlib.sha256(url_t1_1.encode('utf-8')).hexdigest()
     uuid_t1_1 = exo.add_page_to_pdf(url_t1_1,
                                     t1_1_filemaster_labels,
                                     t1_1_version_labels)
@@ -201,6 +201,16 @@ def test_define_or_update_label():
     assert label_count() == before + 1
 
 
+def test_get_label_ids():
+    # at first define some labels
+    exo.define_or_update_label('yet another label', '')
+    exo.define_or_update_label('yet another label2', '')
+    test_counter['num_expected_labels'] += 2
+    # ask for their ids
+    ids = exo.get_label_ids({'yet another label', 'yet another label2'})
+    assert len(ids) == 2
+
+
 def test_same_url_different_task():
     """Add the same URL to the queue, but with a different task.
        Then add the same new label to filemaster and version.
@@ -238,8 +248,7 @@ def test_force_download_second_version():
 
 
 def test_force_download_text():
-    uuid = exo.add_save_page_text(
-    'https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
+    uuid = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
     assert uuid is not None, 'Did not force downloading page text'
 
 
@@ -516,7 +525,6 @@ def test_job_manager():
 
 def test_clean_up_functions():
     exo.truncate_blocklist()
-
 
 
 # #############################################################################
