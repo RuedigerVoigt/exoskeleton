@@ -33,11 +33,11 @@ class DatabaseConnection:
                   'forget_error_group_SP',
                   'forget_specific_error_type_SP',
                   'forget_specific_rate_limit_SP',
+                  'insert_content_SP',
+                  'insert_file_SP',
                   'job_get_current_url_SP',
                   'job_mark_as_finished_SP',
                   'job_update_current_url_SP',
-                  'insert_content_SP',
-                  'insert_file_SP',
                   'label_define_or_update_SP',
                   'labels_filemaster_by_id_SP',
                   'labels_version_by_id_SP',
@@ -48,7 +48,8 @@ class DatabaseConnection:
                   'unblock_fqdn_SP',
                   'update_host_stats_SP']
 
-    FUNCTIONS = ['fqdn_on_blocklist',
+    FUNCTIONS = ['exo_schema_version',
+                 'fqdn_on_blocklist',
                  'get_filemaster_id',
                  'num_items_with_permanent_error',
                  'num_items_with_temporary_errors',
