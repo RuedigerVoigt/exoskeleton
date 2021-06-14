@@ -77,7 +77,8 @@ class CrawlingErrorManager:
             wait_time = self.DELAY_TRIES[3]  # 3 hours
         elif num_tries > 4:
             wait_time = self.DELAY_TRIES[4]  # 6 hours
-        self.cur.callproc('add_crawl_delay_SP', (queue_id, wait_time))
+        self.cur.callproc('add_crawl_delay_SP',
+                          (queue_id, wait_time, error_type))
 
     def mark_permanent_error(self,
                              queue_id: str,
