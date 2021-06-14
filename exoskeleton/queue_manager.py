@@ -229,9 +229,7 @@ class QueueManager:
                          'WHERE urlHash = SHA2(%s,256);',
                          (url, ))
         id_in_file_master = self.cur.fetchone()
-        if id_in_file_master:
-            return id_in_file_master[0]  # type: ignore[index]
-        return None
+        return id_in_file_master[0] if id_in_file_master else None  # type: ignore[index]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # HANDLE LABELS
@@ -333,9 +331,7 @@ class QueueManager:
                          'FROM labelToVersion ' +
                          'WHERE versionUUID = %s;', (uuid_string, ))
         ids_found = self.cur.fetchall()
-        ids_associated = set()
-        if ids_found:
-            ids_associated = set(ids_found)
+        ids_associated = set(ids_found) if ids_found else set()
         # ignore all labels already associated:
         remaining_ids = tuple(id_list - ids_associated)
 
