@@ -204,20 +204,17 @@ class QueueManager:
                           url: str,
                           action: int) -> set:
         """Based on the URL and action ID this returns a set of UUIDs in the
-        *queue* that match those. Normally this set has a single element,
-        but as you can force exoskeleton to repeat tasks on the same
-        URL it can be multiple. Returns an empty set if such combination
-        is not in the queue."""
+           *queue* that match those. Normally this set has a single element,
+           but as you can force exoskeleton to repeat tasks on the same
+           URL it can be multiple. Returns an empty set if such combination
+           is not in the queue."""
         self.cur.execute('SELECT id FROM queue ' +
                          'WHERE urlHash = SHA2(%s,256) AND ' +
                          'action = %s ' +
                          'ORDER BY addedToQueue ASC;',
                          (url, action))
         queue_uuids = self.cur.fetchall()
-        uuid_set = set()
-        if queue_uuids:
-            uuid_set = {uuid[0] for uuid in queue_uuids}  # type: ignore[index]
-        return uuid_set
+        return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()  # type: ignore[index]
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
