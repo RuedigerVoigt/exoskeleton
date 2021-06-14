@@ -77,27 +77,7 @@ class CrawlingErrorManager:
             wait_time = self.DELAY_TRIES[3]  # 3 hours
         elif num_tries > 4:
             wait_time = self.DELAY_TRIES[4]  # 6 hours
-
-        # Add the same delay to all tasks accessing the same URL.
-        # MariaDB / MySQL throws an error if the same table is specified both
-        # as a target for 'UPDATE' and a source for data.
-        # Therefore, two steps instead of a Sub-Select.
-        self.cur.execute(
-            'SELECT urlHash FROM queue WHERE id = %s;', (queue_id, ))
-        response = self.cur.fetchone()
-        url_hash = response[0] if response else None  # type: ignore[index]
-        if not url_hash:
-            raise ValueError('Missing urlHash. Cannot add crawl delay.')
-
-        self.cur.execute('UPDATE queue ' +
-                         'SET delayUntil = ADDTIME(NOW(), %s) ' +
-                         'WHERE urlHash = %s;',
-                         (wait_time, url_hash))
-        # Add the error type to the specific task that caused the delay
-        self.cur.execute('UPDATE queue ' +
-                         'SET causesError = %s ' +
-                         'WHERE id = %s;',
-                         (error_type, queue_id))
+        self.cur.callproc('add_crawl_delay_SP', (queue_id, wait_time))
 
     def mark_permanent_error(self,
                              queue_id: str,

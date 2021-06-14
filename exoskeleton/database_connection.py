@@ -23,6 +23,7 @@ class DatabaseConnection:
     """Database connection management for the exoskeleton framework."""
 
     PROCEDURES = ['add_rate_limit_SP',
+                  'add_crawl_delay_SP',
                   'add_to_queue_SP',
                   'block_fqdn_SP',
                   'define_new_job_SP',

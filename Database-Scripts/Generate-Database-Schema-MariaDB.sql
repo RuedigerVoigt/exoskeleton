@@ -802,6 +802,26 @@ END $$
 DELIMITER ;
 
 
+-- Add a crawl delay to all tasks with the same URL and mark a temporary error
+DELIMITER $$
+CREATE PROCEDURE add_crawl_delay_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII,
+                                     IN wait_time_p INT UNSIGNED,
+                                     IN error_type_p INT)
+MODIFIES SQL DATA
+BEGIN
+-- Add the same delay to all tasks accessing the same URL.
+-- MariaDB / MySQL throws an error if the same table is specified both
+-- as a target for 'UPDATE' and a source for data.
+-- Therefore: multiple steps instead of a Sub-Select.
+DECLARE var_url_hash CHAR(64);
+SET var_url_hash = (SELECT urlHash FROM queue WHERE id = uuid_p);
+UPDATE queue SET delayUntil = ADDTIME(NOW(), wait_time_p) WHERE urlHash = var_url_hash;
+-- Add the error type to the specific task that caused the delay
+UPDATE queue SET causesError = error_type_p WHERE id = uuid_p;
+END $$
+DELIMITER ;
+
+
 -- Forget the rate limit for a specific FQDN
 DELIMITER $$
 CREATE PROCEDURE forget_specific_rate_limit_SP (IN fqdn_p VARCHAR(255))
