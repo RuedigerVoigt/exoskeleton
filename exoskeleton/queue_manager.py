@@ -394,13 +394,11 @@ class QueueManager:
                         self.cur = self.db_connection.get_cursor()
                         next_in_queue = self.get_next_task()
                         logging.info('Restored database connection!')
-                    except Exception:
-                        logging.error(
-                            'Could not reestablish database server connection!',
-                            exc_info=True)
+                    except Exception as exc:
+                        msg = 'Could not reestablish lost database connection'
+                        logging.exception(msg, exc_info=True)
                         self.notify.send_msg('abort_lost_db')
-                        raise ConnectionError(
-                            'Could not restore lost database connection.')
+                        raise ConnectionError(msg) from exc
                 else:
                     logging.error(
                         'Unexpected Operational Error', exc_info=True)
