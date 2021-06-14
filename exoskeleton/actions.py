@@ -37,7 +37,7 @@ class GetObjectBaseClass:
     # some non-standard codes. See:
     # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
     HTTP_PERMANENT_ERRORS = (400, 401, 402, 403, 404, 405, 406,
-                                    407, 410, 451, 501)
+                             407, 410, 451, 501)
     # 429 (Rate Limit) is handeled separately:
     HTTP_TEMP_ERRORS = (408, 500, 502, 503, 504, 509, 529, 598)
 

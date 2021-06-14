@@ -10,7 +10,6 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
-from typing import Optional
 
 # external dependencies:
 import userprovided

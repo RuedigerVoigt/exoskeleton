@@ -96,9 +96,9 @@ class RemoteControlChrome:
                     file_path: pathlib.Path,
                     queue_id: str) -> None:
         """ Uses the Google Chrome or Chromium browser in headless mode
-        to print the page to PDF and stores that.
-        BEWARE: Some cookie-popups blank out the page and all what is stored
-        is the dialogue."""
+            to print the page to PDF and stores that.
+            BEWARE: Some cookie-popups blank out the page and all what is
+            stored is the dialogue."""
 
         if not self.browser_present:
             raise ValueError('As you have not provided a valid name / path ' +
