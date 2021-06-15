@@ -36,7 +36,7 @@ class FileManager:
         logging.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)
 
-        if not userprovided.hash.hash_available(self.HASH_METHOD):
+        if not userprovided.hashing.hash_available(self.HASH_METHOD):
             raise ValueError(f"Hash method {self.HASH_METHOD} not available!")
 
     @staticmethod
@@ -102,7 +102,7 @@ class FileManager:
     def get_file_hash(self,
                       file_path: pathlib.Path) -> str:
         "Calculate the hash of a file (method currently fixed to SHA256)."
-        hash_value = userprovided.hash.calculate_file_hash(
+        hash_value = userprovided.hashing.calculate_file_hash(
             file_path, self.HASH_METHOD)
         return hash_value
 
