@@ -70,7 +70,10 @@ class Exoskeleton:
             nag_over_update={
                     'nag_days_after_release': 120,
                     'nag_in_hundred': 100},
-            language_messages='en'
+            language_messages='en',
+            system_support={
+                'full': {'Linux', 'MacOS', 'Windows'}
+            }
         )
 
         self.project: str = project_name.strip()
