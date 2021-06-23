@@ -2,12 +2,16 @@
 
 ## UPCOMING
 
-* Small bugfixes.
-* Improved test coverage.
-* All tests now also run with Python version `3.10.0-beta.3`. Building the `lxml` dependency requires an extra step, but besides this, there seem to be no issues with the upcoming version of Python.
-
 **Breaking Changes:**
   * The database now contains many more SQL functions and stored procedures. *You need to upgrade the schema using the corresponding part of the SQL script.* This is basically code that previously was found mixed with the Python code. It was moved to the database in order to make the code of the package easier to read and maintain.
+
+**Other Changes**:
+
+* Small bugfixes.
+* Updated dependencies.
+* Improved code tests:
+  * Increased test coverage.
+  * All tests now also run with Python version `3.10.0-beta.3`. Building the `lxml` dependency requires an extra step, but besides this, there seem to be no issues with the upcoming version of Python.
 
 **Changes that should not affect you:** (If they do, your code propably operates on the wrong level of abstraction.)
   * The parameter `error_type` for the method `error_manager.add_crawl_delay` is no longer optional. 
