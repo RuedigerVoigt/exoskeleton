@@ -21,7 +21,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
     install_requires=["beautifulsoup4>=4.9.3",
-                      "bote>=1.1.0",
+                      "bote>=1.1.1",
                       "compatibility>=1.0.0",
                       "lxml>=4.6.3",
                       "pymysql>=1.0.2",
