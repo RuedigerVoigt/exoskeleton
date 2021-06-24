@@ -13,7 +13,7 @@ Released under the Apache License 2.0
 import logging
 from urllib.parse import urlparse
 
-from bs4 import BeautifulSoup  # type: ignore
+
 import pymysql
 import requests
 import urllib3  # type: ignore
@@ -22,6 +22,7 @@ import userprovided
 from exoskeleton import database_connection
 from exoskeleton import error_manager
 from exoskeleton import file_manager
+from exoskeleton import helpers
 from exoskeleton import remote_control_chrome
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
@@ -196,10 +197,9 @@ class GetContent(GetObjectBaseClass):
         logging.debug('detected encoding: %s', detected_encoding)
         page_content = response.text
         if self.mime_type == 'text/html' and self.prettify_html:
-            page_content = ExoActions.prettify_html(page_content)
+            page_content = helpers.prettify_html(page_content)
         if strip_code:
-            soup = BeautifulSoup(page_content, 'lxml')
-            page_content = soup.get_text()
+            page_content = helpers.strip_code(page_content)
 
         try:
             # Stored procedure saves the content, transfers the
@@ -339,17 +339,3 @@ class ExoActions:
             logging.error('Database Transaction failed: Could not add ' +
                           'already downloaded file %s to the database!',
                           path, exc_info=True)
-
-    @staticmethod
-    def prettify_html(content: str) -> str:
-        """Only use for HTML, not XML.
-           Parse the HTML:
-           * add a document structure if needed
-           * Encode HTML-entities and the document as Unicode (UTF-8).
-           * Empty elements are NOT removed as they might be used to find
-             specific elements within the tree.
-        """
-
-        content = BeautifulSoup(content, 'lxml').prettify()
-
-        return content

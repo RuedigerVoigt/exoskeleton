@@ -332,17 +332,7 @@ class Exoskeleton:
         "Remove *all* entries from the blocklist."
         self.queue.truncate_blocklist()
 
-    def prettify_html(self,
-                      content: str) -> str:
-        """Only use for HTML, not XML.
-           Parse the HTML:
-           * add a document structure if needed
-           * Encode HTML-entities and the document as Unicode (UTF-8).
-           * Empty elements are NOT removed as they might be used to find
-             specific elements within the tree.
-        """
 
-        return self.action.prettify_html(content)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # LABELS

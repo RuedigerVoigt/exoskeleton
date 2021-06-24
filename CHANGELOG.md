@@ -4,6 +4,7 @@
 
 **Breaking Changes:**
   * The database now contains many more SQL functions and stored procedures. *You need to upgrade the schema using the corresponding part of the SQL script.* This is basically code that previously was found mixed with the Python code. It was moved to the database in order to make the code of the package easier to read and maintain.
+  * The method `exoskeleton.prettiffy_html`has been moved to `exoskeleton.helpers.prettify_html`.
 
 **Other Changes**:
 
