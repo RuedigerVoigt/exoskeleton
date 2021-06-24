@@ -142,6 +142,11 @@ class DatabaseConnection:
 
             logging.info('Succesfully established database connection.')
 
+        except pymysql.OperationalError:
+            logging.exception(
+                "Cannot connect to DBMS. Did you forget a parameter?",
+                exc_info=True)
+            raise
         except pymysql.InterfaceError:
             logging.exception('Exception related to the database *interface*.',
                               exc_info=True)
@@ -150,7 +155,7 @@ class DatabaseConnection:
             logging.exception('Exception related to the database.',
                               exc_info=True)
             raise
-        except Exception:
+        except (pymysql.Error, Exception):
             logging.exception(
                 'Unknown exception while trying to connect to the DBMS.',
                 exc_info=True)
