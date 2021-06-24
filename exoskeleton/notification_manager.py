@@ -39,11 +39,7 @@ class NotificationManager:
             self.send_mails = True
             logging.info('This bot will try to send notifications.')
 
-            self.do_send_start_msg = mail_behavior.get('send_start_msg', True)
-            userprovided.parameters.enforce_boolean(
-                self.do_send_start_msg, 'send_start_msg')
-
-            if self.do_send_start_msg:
+            if mail_behavior.get('send_start_msg', True):
                 self.send_msg('start')
 
             self.do_send_finish_msg = mail_behavior.get(
@@ -70,7 +66,7 @@ class NotificationManager:
                          }
                 }
 
-        if reason == 'start' and self.do_send_start_msg:
+        if reason == 'start':
             self.mailer.send_mail(
                 messages['start']['subject'],
                 messages['start']['body'])
