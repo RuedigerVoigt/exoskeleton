@@ -397,7 +397,7 @@ class QueueManager:
                     except Exception as exc:
                         msg = 'Could not reestablish lost database connection'
                         logging.exception(msg, exc_info=True)
-                        self.notify.send_msg('abort_lost_db')
+                        self.notify.send_msg_abort_lost_db()
                         raise ConnectionError(msg) from exc
                 else:
                     logging.error(

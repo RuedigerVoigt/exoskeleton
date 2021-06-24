@@ -40,7 +40,7 @@ class NotificationManager:
             logging.info('This bot will try to send notifications.')
 
             if mail_behavior.get('send_start_msg', True):
-                self.send_msg('start')
+                self.__send_msg_start()
 
             self.do_send_finish_msg = mail_behavior.get(
                 'send_finish_msg', False)
@@ -49,28 +49,6 @@ class NotificationManager:
 
             if self.do_send_finish_msg is True:
                 logging.info('Will send notification once the bot is done.')
-
-    def send_msg(self,
-                 reason: str) -> None:
-        "Send a prepared message if the bot is configured and able to do so."
-        messages = {
-            'start': {
-                'subject': f"Project {self.project_name} just started.",
-                'body': ("The bot just started. This is a notification " +
-                         "to inform you and to check the mail settings.")
-                         },
-            'abort_lost_db': {
-                'subject': f"Project {self.project_name} ABORTED",
-                'body': ("The bot lost the database connection and could " +
-                         "not restore it.")
-                         }
-                }
-
-        if reason == 'start':
-            self.mailer.send_mail(
-                messages['start']['subject'],
-                messages['start']['body'])
-            logging.info("Sent a notification email.")
 
     def send_milestone_msg(self,
                            processed: int,
@@ -87,6 +65,15 @@ class NotificationManager:
                 f"{round(time_to_finish_seconds / 60)} minutes.\n")
         self.mailer.send_mail(subject, body)
 
+    def __send_msg_start(self) -> None:
+        "Send a notofication about the start of the bot."
+        self.mailer.send_mail(
+            f"Project {self.project_name} just started.",
+            ("The bot just started. This is a notification " +
+             "to inform you and to check the mail settings.")
+             )
+        logging.debug('Sent a message announcing the start')
+
     def send_finish_msg(self,
                         num_permanent_errors: int) -> None:
         """If configured so, send an email once the queue is empty
@@ -96,6 +83,14 @@ class NotificationManager:
             body = (f"The queue is empty. The bot {self.project_name} " +
                     f"stopped as configured. {num_permanent_errors} errors.")
             self.mailer.send_mail(subject, body)
+
+    def send_msg_abort_lost_db(self) -> None:
+        "Send a message that the bot cannot connect to the database."
+        self.mailer.send_mail(
+            f"Project {self.project_name} ABORTED",
+            ("The bot lost the database connection and could not restore it.")
+             )
+        logging.debug('Sent a message about lost database connection.')
 
     def send_custom_msg(self,
                         subject: str,
