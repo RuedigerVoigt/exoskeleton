@@ -41,27 +41,47 @@ from unittest.mock import patch
 
 logging.basicConfig(level=logging.DEBUG)
 
+import pymysql
 import pytest
 
 import exoskeleton
 
 
 # #############################################################################
-# TESTS THAT NEED AN INSTANCE OF EXOSKELETON
+# CREATE INSTANCES OF EXOSKELETON
 # #############################################################################
 
-logging.info('Create an instance')
 
-DB_PORT = 12345
-BROWSER = 'chromium-browser'
 
+DB_PORT = 3306
+BROWSER = 'google-chrome'
+
+
+def test_no_host_no_port_no_pw():
+    """The parameters host, port, and password have defaults.
+       However that will yield an exception as the database
+       service requires a password."""
+    with pytest.raises(pymysql.OperationalError):
+        no_host_no_port_no_pass = exoskeleton.Exoskeleton(
+            project_name='Exoskeleton Validation Test',
+            database_settings={'database': 'exoskeleton',
+                            'username': 'exoskeleton'},
+            filename_prefix='EXO_',
+            target_directory='./fileDownloads'
+        )
+
+
+logging.info('Create an instance to use in furter tests')
+
+
+# Create an instance that is used for tests
 exo = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
     database_settings={'port': DB_PORT,
                        'database': 'exoskeleton',
                        'username': 'exoskeleton',
                        'passphrase': 'exoskeleton'},
-    bot_behavior={'queue_max_retries': 5,
+    bot_behavior={'queue_max_retries': 6,
                   'wait_min': 1,
                   'wait_max': 5,
                   'connection_timeout': 30,
@@ -77,10 +97,14 @@ logging.info('Change constants for automatic test')
 # If there is a temporary error, there are delays up
 # to 6 hours between new tries. To test this without
 # astronomical runtimes, change that:
-
 exo.errorhandling.DELAY_TRIES = (1, 1, 1, 1, 1)
 delay_steps = f"DELAY_TRIES: {exo.errorhandling.DELAY_TRIES}"
 logging.info(delay_steps)
+
+# #############################################################################
+# HELPER FUNCTIONS FOR VARIOUS TESTS
+# #############################################################################
+
 
 logging.info('Define helper functions')
 
@@ -94,7 +118,8 @@ def queue_count() -> int:
 def label_count() -> int:
     "Check if the number of labels equals the expected number."
     exo.cur.execute('SELECT COUNT(*) FROM exoskeleton.labels;')
-    return int(exo.cur.fetchone()[0])
+    labelcount = exo.cur.fetchone()
+    return int(labelcount[0]) if labelcount else 0
 
 
 def check_error_codes(expectation: set):
@@ -136,6 +161,11 @@ url_t1_1 = 'https://www.ruediger-voigt.eu/'
 # Check database state before running tests:
 assert queue_count() == 0, "Database / Queue is not empty at test-start"
 assert label_count() == 0, "Database / Table labels is not empty at test-start"
+
+
+# #############################################################################
+# MAIN CLASS
+# #############################################################################
 
 
 def test_random_wait():
@@ -245,6 +275,10 @@ def test_same_url_different_task():
     assert exo.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
 
 
+def test_unsupported_protocol():
+    assert exo.add_file_download('ftp://www.ruediger-voigt.eu/') is None
+
+
 def test_get_filemaster_id_by_url():
     exo.get_filemaster_id_by_url(url_t1_1)
 
@@ -298,11 +332,10 @@ def test_return_page_code():
     exo.return_page_code('https://www.ruediger-voigt.eu/')
     with pytest.raises(ValueError) as excinfo:
         exo.return_page_code(None)
-    assert 'Missing url' in str(excinfo.value)
+    assert 'Missing URL' in str(excinfo.value)
     with pytest.raises(RuntimeError) as excinfo:
         exo.return_page_code("https://www.ruediger-voigt.eu/throw-402.html")
     assert 'Cannot return page code' in str(excinfo.value)
-
 
 # TO Do: handle 404 separetly
 
@@ -313,10 +346,9 @@ def test_process_queue():
     assert queue_count() == 0, 'Did not process everything it should have'
 
 
-# ############################################
-# Test 2: Test the blocklist feature
-# ############################################
-
+# #############################################################################
+# TEST BLOCKLIST FEATURE
+# #############################################################################
 
 def test_block_unblock():
     """Task already in the queue when its host is added to the blocklist.
@@ -379,9 +411,9 @@ def test_remove_from_blocklist():
     assert permanent_errors == 0
 
 
-# ############################################
-# Test: Error Handling
-# ############################################
+# #############################################################################
+# TEST ERROR HANDLING
+# #############################################################################
 
 
 def test_exceed_retries():
@@ -403,7 +435,7 @@ def test_exceed_retries():
     exo.cur.execute('SELECT causesError, numTries FROM queue WHERE id = %s;',
                     uuid_code_500)
     error_description = exo.cur.fetchone()
-    assert error_description == (3, 5), f"Wrong error for exceeded retries: {error_description}"
+    assert error_description == (3, 6), f"Wrong error for exceeded retries: {error_description}"
 
 
 def test_forget_errors():
@@ -423,9 +455,10 @@ def test_forget_errors():
     # Truncate the queue
     exo.cur.execute('TRUNCATE TABLE queue;')
 
-# ############################################
-# Test: Handle Redirects
-# ############################################
+
+# #############################################################################
+# TEST HANDLING REDIRECTS
+# #############################################################################
 
 
 def test_handle_redirects():
@@ -448,9 +481,9 @@ def test_handle_redirects():
     assert filecontent_302 == 'testfile2', 'Redirect 302 did not work.'
 
 
-# ############################################
-# Test: Hitting a Rate Limit
-# ############################################
+# #############################################################################
+# TEST RATE LIMIT
+# #############################################################################
 
 logging.info('Test 6: Rate Limit')
 
@@ -483,9 +516,9 @@ def test_hit_a_rate_limit():
     assert exo.queue.get_next_task() is None, 'Rate limited task showed up as next'
     exo.errorhandling.forget_all_rate_limits()
 
-# ############################################
-# Test 7: Job Manager
-# ############################################
+# #############################################################################
+# TEST JOB MANAGER
+# #############################################################################
 
 
 def test_job_manager():
@@ -532,11 +565,16 @@ def test_job_manager():
 # exo.job_update_current_url('Example Job', 'https://www.github.com/')
 
 
+# #############################################################################
+# TEST NOTIFICATIONS
+# #############################################################################
+
 
 
 # ############################################
 # Test: Clean Up
 # ############################################
+
 
 def test_clean_up_functions():
     exo.truncate_blocklist()

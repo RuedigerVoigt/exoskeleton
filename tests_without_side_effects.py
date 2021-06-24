@@ -45,6 +45,7 @@ import pytest
 from exoskeleton import actions
 from exoskeleton import database_connection
 from exoskeleton import file_manager
+from exoskeleton import helpers
 from exoskeleton import notification_manager
 from exoskeleton import remote_control_chrome
 from exoskeleton import time_manager
@@ -88,7 +89,7 @@ def test_actions():
     # Not checking how the improved version looks like as this may change
     # slightly with newer version of beautiful soup.
     broken_html = "<a href='https://www.example.com'>example</b></b><p></p>"
-    assert actions.ExoActions.prettify_html(broken_html) != broken_html
+    assert helpers.prettify_html(broken_html) != broken_html
 
 # #############################################################################
 # FileManager Class
@@ -131,8 +132,9 @@ def test_FileManager_target_directory(fs):
 # #############################################################################
 
 
-def test_Notificationmanager():
+def test_NotificationManager():
     notification_manager.NotificationManager('test', None, None)
+
 
 # #############################################################################
 # RemoteControlChrome Class

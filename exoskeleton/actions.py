@@ -284,7 +284,7 @@ class ExoActions:
                          url: str) -> str:
         "Directly return a page's code. Do *not* store it in the database."
         if not url:
-            raise ValueError('Missing url')
+            raise ValueError('Missing URL')
         url = url.strip()
 
         try:
@@ -318,9 +318,9 @@ class ExoActions:
                     url_hash: str,
                     queue_id: str) -> None:
         """ Uses the Google Chrome or Chromium browser in headless mode
-        to print the page to PDF and stores that.
-        BEWARE: Some cookie-popups blank out the page and all what is stored
-        is the dialogue."""
+            to print the page to PDF and stores that.
+            BEWARE: Some cookie-popups blank out the page and all what is
+            stored is the dialogue."""
 
         filename = f"{self.file.file_prefix}{queue_id}.pdf"
         path = self.file.target_dir.joinpath(filename)
@@ -336,6 +336,6 @@ class ExoActions:
                                self.file.get_file_size(path),
                                self.file.HASH_METHOD, hash_value, 3))
         except pymysql.DatabaseError:
-            logging.error('Database Transaction failed: Could not add ' +
-                          'already downloaded file %s to the database!',
-                          path, exc_info=True)
+            logging.error(
+                'Transaction failed: Could not add file %s to the database!',
+                path, exc_info=True)
