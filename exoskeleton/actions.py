@@ -49,6 +49,12 @@ class GetObjectBaseClass:
             url: str,
             url_hash: str,
             prettify_html: bool = False):
+        if not isinstance(queue_id, str):
+            raise ValueError('The queue_id must be a string.')
+        if not url:
+            raise ValueError('Missing parameter url')
+        if not url_hash:
+            raise ValueError('Missing url_hash')       
         self.db_connection = objects['db_connection']
         self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.stats = objects['stats_manager_object']
@@ -57,16 +63,9 @@ class GetObjectBaseClass:
         self.errorhandling = objects['crawling_error_manager_object']
         self.user_agent = objects['user_agent']
         self.connection_timeout = objects['connection_timeout']
-        if not isinstance(queue_id, str):
-            raise ValueError('The queue_id must be a string.')
         self.queue_id = queue_id
-        if not url:
-            raise ValueError('Missing url')
         self.url = url.strip()
-        if not url_hash:
-            raise ValueError('Missing url_hash')
         self.url_hash = url_hash
-
         self.prettify_html = prettify_html
 
         self.mime_type: str = ''

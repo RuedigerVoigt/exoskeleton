@@ -84,7 +84,49 @@ def test_DatabaseConnection():
 # #############################################################################
 
 
-def test_actions():
+def test_actions_BAD_QUEUE_ID():
+    # queue id is not a string
+    with pytest.raises(ValueError) as excinfo:
+        _ = actions.GetObjectBaseClass(
+                objects=dict(),
+                queue_id=1,  # !
+                url='https://www.example.com',
+                url_hash='abcd',
+                prettify_html=False
+                )
+    assert "queue_id must be a string" in str(excinfo.value)
+
+
+def test_actions_MISSING_URL():
+    # queue id is not a string
+    with pytest.raises(ValueError) as excinfo:
+        _ = actions.GetObjectBaseClass(
+                objects=dict(),
+                queue_id='foo',
+                url=None,
+                url_hash='abcd',
+                prettify_html=False
+                )
+    assert "Missing parameter url" in str(excinfo.value)
+
+
+def test_actions_MISSING_URL_HASH():
+    # queue id is not a string
+    with pytest.raises(ValueError) as excinfo:
+        _ = actions.GetObjectBaseClass(
+                objects=dict(),
+                queue_id='foo',
+                url='https://www.example.com',
+                url_hash=None,
+                prettify_html=False
+                )
+    assert "Missing url_hash" in str(excinfo.value)
+
+# #############################################################################
+# HELPER FUNCTIONS
+# #############################################################################
+
+def test_helpers():
     # prettify_html
     # Not checking how the improved version looks like as this may change
     # slightly with newer version of beautiful soup.
