@@ -37,15 +37,14 @@ class NotificationManager:
             # The constructor would have failed with exceptions,
             # if the settings were implausible:
             self.send_mails = True
-            logging.info('This bot will try to send notifications.')
+            logging.debug('This bot will try to send notifications.')
 
             if mail_behavior.get('send_start_msg', True):
                 self.__send_msg_start()
 
-            self.do_send_finish_msg = mail_behavior.get(
-                'send_finish_msg', False)
+            self.send_finish_msg = mail_behavior.get('send_finish_msg', False)
             userprovided.parameters.enforce_boolean(
-                self.do_send_finish_msg, 'send_finish_msg')
+                self.send_finish_msg, 'send_finish_msg')
 
     def send_milestone_msg(self,
                            processed: int,
@@ -71,11 +70,11 @@ class NotificationManager:
              )
         logging.debug('Sent a message announcing the start')
 
-    def send_finish_msg(self,
+    def send_msg_finish(self,
                         num_permanent_errors: int) -> None:
         """If configured so, send an email once the queue is empty
            and the bot stopped."""
-        if self.send_mails and self.do_send_finish_msg:
+        if self.send_mails and self.send_finish_msg:
             subject = f"{self.project_name}: queue empty / bot stopped"
             body = (f"The queue is empty. The bot {self.project_name} " +
                     f"stopped as configured. {num_permanent_errors} errors.")

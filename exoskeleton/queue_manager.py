@@ -425,7 +425,7 @@ class QueueManager:
                     if num_permanent_errors > 0:
                         logging.error("%s permanent errors!",
                                       num_permanent_errors)
-                    self.notify.send_finish_msg(num_permanent_errors)
+                    self.notify.send_msg_finish(num_permanent_errors)
                     break
 
                 logging.debug(
