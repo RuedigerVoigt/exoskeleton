@@ -47,9 +47,6 @@ class NotificationManager:
             userprovided.parameters.enforce_boolean(
                 self.do_send_finish_msg, 'send_finish_msg')
 
-            if self.do_send_finish_msg is True:
-                logging.info('Will send notification once the bot is done.')
-
     def send_milestone_msg(self,
                            processed: int,
                            remaining: int,
