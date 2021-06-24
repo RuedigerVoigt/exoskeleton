@@ -29,6 +29,7 @@ from exoskeleton import database_connection
 from exoskeleton import error_manager
 from exoskeleton import file_manager
 from exoskeleton import job_manager
+from exoskeleton import label_manager
 from exoskeleton import notification_manager
 from exoskeleton import queue_manager
 from exoskeleton import remote_control_chrome
@@ -136,6 +137,8 @@ class Exoskeleton:
             bot_behavior.get('wait_min', 5),
             bot_behavior.get('wait_max', 30))
 
+        self.labels = label_manager.LabelManager(self.db)
+
         self.file = file_manager.FileManager(
             self.db,
             target_directory,
@@ -168,6 +171,7 @@ class Exoskeleton:
             self.stats,
             self.action,
             self.notify,
+            self.labels,
             bot_behavior,
             self.milestone  # type: ignore[arg-type]
             )
@@ -331,124 +335,3 @@ class Exoskeleton:
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
         self.queue.truncate_blocklist()
-
-
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # LABELS
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def assign_labels_to_master(self,
-                                url: str,
-                                labels: Union[set, None]) -> None:
-        """ Assigns one or multiple labels to the *fileMaster* entry.
-            Removes duplicates and adds new labels to the label list
-            if necessary."""
-        self.queue.assign_labels_to_master(url, labels)
-
-    def assign_labels_to_uuid(self,
-                              uuid_string: str,
-                              labels: Union[set, None]) -> None:
-        """Assigns one or multiple labels to a specific version of a file.
-           Removes duplicates and adds new labels if necessary."""
-        self.queue.assign_labels_to_uuid(uuid_string, labels)
-
-    def get_label_ids(self,
-                      label_set: Union[set, str]) -> set:
-        """ Given a set of labels, this returns the corresponding ids
-            in the labels table. """
-        return self.queue.get_label_ids(label_set)
-
-    def define_or_update_label(self,
-                               shortname: str,
-                               description: str = None) -> None:
-        """ Insert a new label into the database or update its description
-            in case it already exists. Use __define_new_label if an update
-            has to be avoided. """
-        if len(shortname) > 31:
-            logging.error("Cannot add label exceeding max length (31 chars).")
-            return
-        self.cur.callproc('label_define_or_update_SP',
-                          (shortname, description))
-
-    def version_uuids_by_label(self,
-                               single_label: str,
-                               processed_only: bool = False) -> set:
-        """Get a list of UUIDs (in this context file versions) which have
-           *one* specific label attached to them.
-           If processed_only is set to True only UUIDs of already processed
-           tasks are returned. Otherwise it contains queue objects with that
-           label."""
-        returned_set = self.queue.get_label_ids(single_label)
-        if returned_set == set():
-            raise ValueError('Unknown label. Check for typo.')
-
-        label_id: str = returned_set.pop()
-        if processed_only:
-            self.cur.execute("SELECT versionUUID " +
-                             "FROM labelToVersion AS lv " +
-                             "WHERE labelID = %s AND " +
-                             "EXISTS ( " +
-                             "    SELECT fv.id FROM fileVersions AS fv " +
-                             "    WHERE fv.id = lv.versionUUID);",
-                             (label_id, ))
-        else:
-            self.cur.execute("SELECT versionUUID " +
-                             "FROM labelToVersion " +
-                             "WHERE labelID = %s;",
-                             (label_id, ))
-        version_ids = self.cur.fetchall()
-        return {(uuid[0]) for uuid in version_ids} if version_ids else set()  # type: ignore[index, assignment]
-
-    def version_labels_by_uuid(self,
-                               version_uuid: str) -> set:
-        """Get a list of label names (not id numbers!) attached
-           to a specific version of a file. Does not include
-           labels attached to the filemaster entry."""
-        self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
-        labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
-
-    def get_filemaster_id(self,
-                          version_uuid: str) -> str:
-        """Get the id of the filemaster entry associated with
-           a specific version identified by its UUID."""
-        self.cur.execute('SELECT get_filemaster_id(%s);', (version_uuid, ))
-        filemaster_id = self.cur.fetchone()
-        if not filemaster_id:
-            raise ValueError("Invalid filemaster ID")
-        return filemaster_id[0]  # type: ignore[index]
-
-    def filemaster_labels_by_id(self,
-                                filemaster_id: str) -> set:
-        """Get a list of label names (not id numbers!) attached
-           to a specific filemaster entry."""
-        self.cur.callproc('labels_filemaster_by_id_SP', (filemaster_id, ))
-        labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
-
-    def all_labels_by_uuid(self,
-                           version_uuid: str) -> set:
-        """Get a set of ALL label names (not id numbers!) attached
-           to a specific version of a file AND its filemaster entry."""
-        version_labels = self.version_labels_by_uuid(version_uuid)
-        filemaster_id = self.get_filemaster_id(version_uuid)
-        filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
-        joined_set = version_labels | filemaster_labels
-        return joined_set
-
-    def remove_labels_from_uuid(self,
-                                uuid: str,
-                                labels_to_remove: set) -> None:
-        "Detaches a label / a set of labels from a UUID / version."
-
-        # Using a set to avoid duplicates. However, accept either
-        # a single string or a list type.
-        labels_to_remove = userprovided.parameters.convert_to_set(
-            labels_to_remove)
-
-        # Get all label-ids
-        id_list = self.queue.get_label_ids(labels_to_remove)
-
-        for label_id in id_list:
-            self.cur.callproc('remove_labels_from_uuid_SP', (label_id, uuid))

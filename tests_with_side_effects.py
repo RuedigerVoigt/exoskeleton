@@ -212,7 +212,7 @@ def test_add_same_task_with_different_labels():
     test_counter['num_expected_labels'] += 5
 
     # Check if all the labels were added:
-    assert exo.version_labels_by_uuid(uuid_t1_1) == t1_1_version_labels
+    assert exo.labels.version_labels_by_uuid(uuid_t1_1) == t1_1_version_labels
     assert filemaster_labels_by_url(url_t1_1) == t1_1_filemaster_labels
 
     t1_2_filemaster_labels = {'i1fml2', 'i1fml3'}
@@ -238,21 +238,21 @@ def test_add_same_task_with_different_labels():
 def test_define_or_update_label():
     "Try to add an invalid label"
     before = label_count()
-    exo.define_or_update_label('foo'*33, 'labels are limited to 31 chars')
+    exo.labels.define_or_update_label('foo'*33, 'labels are limited to 31 chars')
     # implemented behavior is to just return without exception
     assert label_count() == before
-    exo.define_or_update_label('some random', '')
+    exo.labels.define_or_update_label('some random', '')
     test_counter['num_expected_labels'] += 1
     assert label_count() == before + 1
 
 
 def test_get_label_ids():
     # at first define some labels
-    exo.define_or_update_label('yet another label', '')
-    exo.define_or_update_label('yet another label2', '')
+    exo.labels.define_or_update_label('yet another label', '')
+    exo.labels.define_or_update_label('yet another label2', '')
     test_counter['num_expected_labels'] += 2
     # ask for their ids
-    ids = exo.get_label_ids({'yet another label', 'yet another label2'})
+    ids = exo.labels.get_label_ids({'yet another label', 'yet another label2'})
     assert len(ids) == 2
 
 
@@ -272,7 +272,7 @@ def test_same_url_different_task():
     assert queue_count() == before + 1
     test_counter['num_expected_labels'] += 1
     assert label_count() == test_counter['num_expected_labels']
-    assert exo.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
+    assert exo.labels.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
 
 
 def test_unsupported_protocol():

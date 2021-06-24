@@ -12,7 +12,7 @@ Released under the Apache License 2.0
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 import time
-from typing import Union, Optional
+from typing import Optional
 from urllib.parse import urlparse
 import uuid
 
@@ -23,6 +23,7 @@ import userprovided
 
 from exoskeleton import actions
 from exoskeleton import database_connection
+from exoskeleton import label_manager
 from exoskeleton import notification_manager
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
@@ -40,6 +41,7 @@ class QueueManager:
             stats_manager_object: statistics_manager.StatisticsManager,
             actions_object: actions.ExoActions,
             notification_manager_object: notification_manager.NotificationManager,
+            label_manager_object: label_manager.LabelManager,
             bot_behavior: dict,
             milestone: int) -> None:
         # Connection object AND cursor for the queue manager to get a new
@@ -51,6 +53,7 @@ class QueueManager:
         self.stats = stats_manager_object
         self.action = actions_object
         self.notify = notification_manager_object
+        self.labels = label_manager_object
 
         self.stop_if_queue_empty: bool = bot_behavior.get(
             'stop_if_queue_empty', False)
@@ -154,7 +157,7 @@ class QueueManager:
         # Ignore labels for the version at this point, as it might
         # not get processed.
         if labels_master:
-            self.assign_labels_to_master(url, labels_master)
+            self.labels.assign_labels_to_master(url, labels_master)
 
         if not force_new_version:
             # check if the URL has already been processed
@@ -196,7 +199,7 @@ class QueueManager:
 
         # link labels to version item
         if labels_version:
-            self.assign_labels_to_uuid(uuid_value, labels_version)
+            self.labels.assign_labels_to_uuid(uuid_value, labels_version)
 
         return uuid_value
 
@@ -230,138 +233,6 @@ class QueueManager:
                          (url, ))
         id_in_file_master = self.cur.fetchone()
         return id_in_file_master[0] if id_in_file_master else None  # type: ignore[index]
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # HANDLE LABELS
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    def __define_new_label(self,
-                           shortname: str,
-                           description: str = None) -> None:
-        "If the label is not already used, define a new label and description."
-        if len(shortname) > 31:
-            logging.error(
-                "Cannot add labelname: exceeding max length of 31 characters.")
-            return
-        try:
-            self.cur.execute('INSERT INTO labels (shortName, description) ' +
-                             'VALUES (%s, %s);',
-                             (shortname, description))
-
-            logging.debug('Added label to the database.')
-        except pymysql.err.IntegrityError:
-            logging.debug('Label already existed.')
-
-    def assign_labels_to_master(self,
-                                url: str,
-                                labels: Union[set, None]) -> None:
-        """ Assigns one or multiple labels to the *fileMaster* entry.
-            Removes duplicates and adds new labels to the label list
-            if necessary."""
-
-        try:
-            url = userprovided.url.normalize_url(url)
-        except ValueError:
-            return None
-
-        if not labels:
-            return None
-
-        # Using a set to avoid duplicates. However, accept either
-        # a single string or a list type.
-        label_set = userprovided.parameters.convert_to_set(labels)
-
-        for label in label_set:
-            # Make sure all labels are in the database table.
-            # -> If they already exist or malformed the command
-            # will be ignored by the dbms.
-            self.__define_new_label(label)
-
-        # Get all label-ids
-        id_list = self.get_label_ids(label_set)
-
-        # Check whether some labels are already associated
-        # with the fileMaster entry.
-        self.cur.execute('SELECT labelID ' +
-                         'FROM labelToMaster ' +
-                         'WHERE urlHash = SHA2(%s,256);', (url, ))
-        ids_found: Optional[tuple] = self.cur.fetchall()
-        ids_associated = set()
-        if ids_found:
-            ids_associated = set(ids_found)
-
-        # ignore all labels already associated:
-        remaining_ids = tuple(id_list - ids_associated)
-
-        if len(remaining_ids) > 0:
-            # Case: there are new labels
-            # Convert into a format to INSERT with executemany
-            insert_list = [(id, url) for id in remaining_ids]
-            # Add those associatons
-            self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
-                                 '(labelID, urlHash) ' +
-                                 'VALUES (%s, SHA2(%s,256));',
-                                 insert_list)
-        return None
-
-    def assign_labels_to_uuid(self,
-                              uuid_string: str,
-                              labels: Union[set, None]) -> None:
-        """Assigns one or multiple labels to a specific version of a file.
-           Removes duplicates and adds new labels if necessary."""
-
-        if not labels:
-            return
-
-        # Using a set to avoid duplicates. However, users might provide
-        # a string or a list type.
-        label_set = userprovided.parameters.convert_to_set(labels)
-
-        for label in label_set:
-            # Make sure all labels are in the database table.
-            # -> If they already exist or are malformed, the command
-            # will be ignored by the DBMS.
-            self.__define_new_label(label)
-
-        # Get all label-ids
-        id_list = self.get_label_ids(label_set)
-
-        # Check if there are already labels assigned with the version
-        self.cur.execute('SELECT labelID ' +
-                         'FROM labelToVersion ' +
-                         'WHERE versionUUID = %s;', (uuid_string, ))
-        ids_found = self.cur.fetchall()
-        ids_associated = set(ids_found) if ids_found else set()
-        # ignore all labels already associated:
-        remaining_ids = tuple(id_list - ids_associated)
-
-        if len(remaining_ids) > 0:
-            # Case: there are new labels
-            # Convert into a format to INSERT with executemany
-            insert_list = [(id, uuid_string) for id in remaining_ids]
-            self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
-                                 '(labelID, versionUUID) ' +
-                                 'VALUES (%s, %s);', insert_list)
-
-    def get_label_ids(self,
-                      label_set: Union[set, str]) -> set:
-        """ Given a set of labels, this returns the corresponding ids
-            in the labels table. """
-        if not label_set:
-            logging.error('No labels provided to get_label_ids().')
-            return set()
-
-        label_set = userprovided.parameters.convert_to_set(label_set)
-        # The IN-Operator makes it necessary to construct the command
-        # every time, so input gets escaped. See the accepted answer here:
-        # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
-        query = ("SELECT id " +
-                 "FROM labels " +
-                 "WHERE shortName " +
-                 "IN ({0});".format(', '.join(['%s'] * len(label_set))))
-        self.cur.execute(query, tuple(label_set))
-        label_id = self.cur.fetchall()
-        return {(id[0]) for id in label_id} if label_id else set()  # type: ignore[index]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # PROCESSING THE QUEUE
