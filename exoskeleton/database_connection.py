@@ -126,7 +126,10 @@ class DatabaseConnection:
 
     def __del__(self) -> None:
         # make sure the connection is closed instead of waiting for timeout:
-        self.connection.close()  # type: ignore[attr-defined]
+        try:
+            self.connection.close()  # type: ignore[attr-defined]
+        except (Exception, pymysql.Error):
+            pass
 
     def establish_db_connection(self) -> None:
         """Establish a connection to MariaDB """
