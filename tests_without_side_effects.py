@@ -49,10 +49,10 @@ from exoskeleton import notification_manager
 from exoskeleton import remote_control_chrome
 from exoskeleton import time_manager
 
-# #############################################################################
-# TESTS WITHOUT A FULL INSTANCE
-# #############################################################################
 
+# #############################################################################
+# DatabaseConnection Class
+# #############################################################################
 
 def test_DatabaseConnection():
     # missing settings dictionary
@@ -60,19 +60,39 @@ def test_DatabaseConnection():
         database_connection.DatabaseConnection(None)
     # missing necessary key
     with pytest.raises(ValueError) as excinfo:
-        database_connection.DatabaseConnection(database_settings={'database': 'foo'})
+        database_connection.DatabaseConnection(
+            database_settings={'database': 'foo'})
         assert "Necessary key username missing" in str(excinfo.value)
     # necessary key present, but set to None
     with pytest.raises(ValueError) as excinfo:
-        database_connection.DatabaseConnection(database_settings={'database': None, 'username': 'foo'})
+        database_connection.DatabaseConnection(
+            database_settings={'database': None, 'username': 'foo'})
         assert "You must provide the name of the database" in str(excinfo.value)
     with pytest.raises(ValueError) as excinfo:
-        database_connection.DatabaseConnection(database_settings={'database': 'foo', 'username': None})
+        database_connection.DatabaseConnection(
+            database_settings={'database': 'foo', 'username': None})
         assert "You must provide a database user" in str(excinfo.value)
     # Port out of range
     with pytest.raises(ValueError) as excinfo:
-        database_connection.DatabaseConnection(database_settings={'database': 'foo', 'username': 'foo', 'port': 999999999})
+        database_connection.DatabaseConnection(
+            database_settings={'database': 'foo', 'username': 'foo', 'port': 999999999})
         assert "port outside valid range" in str(excinfo.value)
+
+# #############################################################################
+# ExoActions Class
+# #############################################################################
+
+
+def test_actions():
+    # prettify_html
+    # Not checking how the improved version looks like as this may change
+    # slightly with newer version of beautiful soup.
+    broken_html = "<a href='https://www.example.com'>example</b></b><p></p>"
+    assert actions.ExoActions.prettify_html(broken_html) != broken_html
+
+# #############################################################################
+# FileManager Class
+# #############################################################################
 
 
 def test_FileManager_functions():
@@ -106,9 +126,17 @@ def test_FileManager_target_directory(fs):
     assert file_manager.FileManager._FileManager__check_target_directory(None)
     assert file_manager.FileManager._FileManager__check_target_directory(' ')
 
+# #############################################################################
+# NotificationManager Class
+# #############################################################################
+
 
 def test_Notificationmanager():
     notification_manager.NotificationManager('test', None, None)
+
+# #############################################################################
+# RemoteControlChrome Class
+# #############################################################################
 
 
 def test_RemoteControlChrome():
@@ -125,6 +153,10 @@ def test_RemoteControlChrome_functions():
     # no browser selected but trying to save a page:
     with pytest.raises(ValueError):
         my_chrome.page_to_pdf('https://www.example.com', './', '12343454')
+
+# #############################################################################
+# TimeManager Class
+# #############################################################################
 
 
 def test_TimeManager():
@@ -167,11 +199,3 @@ def test_TimeManager_functions():
     # random-wait needs to be patched
     with patch('time.sleep', return_value=None):
         my_tm.random_wait()
-
-
-def test_actions():
-    # prettify_html
-    # Not checking how the improved version looks like as this may change
-    # slightly with newer version of beautiful soup.
-    broken_html = "<a href='https://www.example.com'>example</b></b><p></p>"
-    assert actions.ExoActions.prettify_html(broken_html) != broken_html
