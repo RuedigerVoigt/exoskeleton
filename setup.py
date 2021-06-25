@@ -19,7 +19,7 @@ setuptools.setup(
     url="https://github.com/RuedigerVoigt/exoskeleton",
     package_data={"exoskeleton": ["py.typed"]},
     packages=setuptools.find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=["beautifulsoup4>=4.9.3",
                       "bote>=1.1.1",
                       "compatibility>=1.0.0",
@@ -30,7 +30,6 @@ setuptools.setup(
                       "userprovided>=0.9.1"],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

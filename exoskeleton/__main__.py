@@ -65,7 +65,7 @@ class Exoskeleton:
             package_version=version.__version__,
             release_date=version.release_date,
             python_version_support={
-                'min_version': '3.6',
+                'min_version': '3.7',
                 'incompatible_versions': [],
                 'max_tested_version': '3.9'},
             nag_over_update={
