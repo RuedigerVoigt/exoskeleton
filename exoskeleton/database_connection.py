@@ -166,14 +166,18 @@ class DatabaseConnection:
 
     def __check_table_existence(self) -> bool:
         "Check if all expected tables exist."
-        tables_count = 0
+        # Merely comparing the length of the result set to the number of
+        # expected tables is not sufficient. The user might have added
+        # custom tables.
+        # Therefore check for each expected table if it is in the result.
         self.cur.execute('SHOW TABLES;')
         tables = self.cur.fetchall()
         if not tables:
             logging.error('The database exists, but no tables found!')
-            raise OSError('No tables found in database: Run generator script!')
+            raise RuntimeError('No tables found in database: Run generator script!')
 
         tables_found = [item[0] for item in tables]
+        tables_count = 0
         for table in self.TABLES:
             if table in tables_found:
                 tables_count += 1
