@@ -41,21 +41,18 @@ class RemoteControlChrome:
 
         self.browser_name = ''
         self.browser_present = False
-        self.errorhandling = crawling_error_manager_object
-        self.stats = stats_manager_object
-
         if not browser_name:
-            logging.warning(
-                'You must provide a browser name to be able to save as PDF.')
+            logging.info('Provide a browser name if you want to save as PDF.')
         else:
             self.browser_name = browser_name.strip()
             if not self.check_executable_existence(self.browser_name):
-                logging.exception(
-                    "No browser with this executable name found in the path.")
+                logging.exception("Browser not found in the path. Check name.")
                 self.suggest_executables()
                 raise ValueError(f"Browser {self.browser_name} not in path!")
             if self.check_browser_support(self.browser_name):
                 self.browser_present = True
+        self.errorhandling = crawling_error_manager_object
+        self.stats = stats_manager_object
 
     @staticmethod
     def check_executable_existence(browser_name: str) -> bool:
