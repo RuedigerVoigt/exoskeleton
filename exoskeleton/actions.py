@@ -54,7 +54,7 @@ class GetObjectBaseClass:
         if not url:
             raise ValueError('Missing parameter url')
         if not url_hash:
-            raise ValueError('Missing url_hash')       
+            raise ValueError('Missing url_hash')
         self.db_connection = objects['db_connection']
         self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.stats = objects['stats_manager_object']

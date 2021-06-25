@@ -62,12 +62,9 @@ class NotificationManager:
         self.mailer.send_mail(subject, body)
 
     def __send_msg_start(self) -> None:
-        "Send a notofication about the start of the bot."
-        self.mailer.send_mail(
-            f"Project {self.project_name} just started.",
-            ("The bot just started. This is a notification " +
-             "to inform you and to check the mail settings.")
-             )
+        "Send a notification about the start of the bot."
+        self.mailer.send_mail(f"Project {self.project_name} just started.",
+                              "The bot just started.")
         logging.debug('Sent a message announcing the start')
 
     def send_msg_finish(self,
