@@ -233,36 +233,28 @@ class DatabaseConnection:
         return True
 
     def __check_schema_version(self) -> None:
-        """Check if the database schema is compatible with this version
-           of exoskeleton"""
+        "Check if the database schema is a compatible version."
         # Other methods check for the existence of stored procedures, functions
-        # and tables. However, those might have changed. Foremost: this gives
-        # the user a hint how much has changed!
-        try:
-            self.cur.execute('SELECT version FROM exo_schema_version();')
-            schema = self.cur.fetchone()
-            if not schema:
-                logging.error(
-                    'Found no version information for the database schema.')
-            elif schema[0] == '1.4.0':
-                logging.info('Database schema matches version of exoskeleton.')
-            else:
-                logging.warning("Mismatch between version of exoskeleton " +
-                                f"({version.__version__}) and version of " +
-                                f"the database schema ({schema[0]}).")
-        except pymysql.ProgrammingError:
-            # means: the table does not exist (i.e. before version 1.1.0)
-            logging.error('Found no information about the version of the ' +
-                          'database schema. Please ensure your version of ' +
-                          'exoskeleton and the database script match!')
+        # and tables. However, those might have changed fields. Therefore this
+        # version check.
+        self.cur.execute('SELECT exo_schema_version() AS version;')
+        schema = self.cur.fetchone()
+        if not schema:
+            raise RuntimeError('Schema version info not found.')
+        if schema[0] == '1.4.0':
+            logging.info('Database schema matches version of exoskeleton.')
+        else:
+            logging.warning("Mismatch between version of exoskeleton " +
+                            f"({version.__version__}) and version of " +
+                            f"the database schema ({schema[0]}).")
 
     def check_db_schema(self) -> None:
         """Check whether all expected tables, stored procedures and functions
            are available in the database. Then look for a version string."""
-        self.__check_schema_version()
         self.__check_table_existence()
         self.__check_stored_procedures()
         self.__check_functions()
+        self.__check_schema_version()
 
     def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.
