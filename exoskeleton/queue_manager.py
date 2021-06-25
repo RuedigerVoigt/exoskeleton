@@ -77,8 +77,8 @@ class QueueManager:
         fqdn = fqdn.strip()
         if len(fqdn) > 255:
             raise ValueError(
-                'No valid FQDN can be longer than 255 characters. ' +
-                'Exoskeleton can only block a FQDN but not URLs.')
+                'Not a valid FQDN. Exoskeleton blocks on the hostname level ' +
+                '- not specific URLs.')
         return fqdn
 
     def check_blocklist(self,
@@ -221,7 +221,7 @@ class QueueManager:
 
     def get_filemaster_id_by_url(self,
                                  url: str) -> Optional[str]:
-        """Get the id of the filemaster entry associated with this URL"""
+        "Get the id of the filemaster entry associated with this URL"
 
         try:
             url = userprovided.url.normalize_url(url)
@@ -258,7 +258,7 @@ class QueueManager:
             except pymysql.err.OperationalError as e:
                 if e.args[0] == 2013:  # errno
                     # this error is unusual. Give the db some time:
-                    logging.error('Lost connection to database server. ' +
+                    logging.error('Lost database connection. ' +
                                   'Trying to restore it in 10 seconds ...')
                     time.sleep(10)
                     try:
@@ -266,7 +266,7 @@ class QueueManager:
                         next_in_queue = self.get_next_task()
                         logging.info('Restored database connection!')
                     except Exception as exc:
-                        msg = 'Could not reestablish lost database connection'
+                        msg = 'Could not reestablish database connection'
                         logging.exception(msg, exc_info=True)
                         self.notify.send_msg_abort_lost_db()
                         raise ConnectionError(msg) from exc
