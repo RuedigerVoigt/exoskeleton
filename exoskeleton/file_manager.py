@@ -22,7 +22,7 @@ from exoskeleton import database_connection
 
 
 class FileManager:
-    """File handling for the exoskeleton framework"""
+    "File handling for the exoskeleton framework"
 
     HASH_METHOD = 'sha256'
 
@@ -105,10 +105,9 @@ class FileManager:
 
     @staticmethod
     def get_file_size(file_path: pathlib.Path) -> int:
-        """File size in bytes."""
+        "File size in bytes."
         try:
             return file_path.stat().st_size
         except Exception:
-            logging.error('Cannot get file size of %s',
-                          file_path, exc_info=True)
+            logging.error('Cannot get size of %s', file_path, exc_info=True)
             raise
