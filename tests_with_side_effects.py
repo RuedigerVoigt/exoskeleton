@@ -372,7 +372,7 @@ def test_blocklist_too_long_fqdn():
     "try to add an invalid FQDN (longer than allowed by standard)"
     with pytest.raises(ValueError) as excinfo:
         exo.block_fqdn('foo'*255)
-    assert 'No valid FQDN can be longer than 255' in str(excinfo.value)
+    assert 'Not a valid FQDN' in str(excinfo.value)
 
 
 def test_remove_from_blocklist():
