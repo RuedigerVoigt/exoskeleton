@@ -99,9 +99,8 @@ class Exoskeleton:
 
         self.milestone: Optional[int] = mail_behavior.get('milestone_num',
                                                           None)
-        if self.milestone:
-            if not isinstance(self.milestone, int):
-                raise ValueError('milestone_num must be integer!')
+        if self.milestone and not isinstance(self.milestone, int):
+            raise ValueError('milestone_num must be integer!')
 
         self.notify = notification_manager.NotificationManager(
             self.project, mail_settings, mail_behavior)
@@ -173,7 +172,7 @@ class Exoskeleton:
             self.notify,
             self.labels,
             bot_behavior,
-            self.milestone  # type: ignore[arg-type]
+            self.milestone
             )
 
         self.jobs = job_manager.JobManager(self.cur)

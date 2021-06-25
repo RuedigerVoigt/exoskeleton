@@ -43,7 +43,7 @@ class QueueManager:
             notification_manager_object: notification_manager.NotificationManager,
             label_manager_object: label_manager.LabelManager,
             bot_behavior: dict,
-            milestone: int) -> None:
+            milestone: Optional[int] = None) -> None:
         # Connection object AND cursor for the queue manager to get a new
         # cursor in case there is a problem.
         # Planned to be replaced with a connection pool. See issue #20
@@ -336,7 +336,7 @@ class QueueManager:
                 else:
                     logging.error('Unknown action id!')
 
-                if self.milestone and self.check_is_milestone():
+                if self.check_is_milestone():
                     stats = self.stats.queue_stats()
                     remaining_tasks = (stats['tasks_without_error'] +
                                        stats['tasks_with_temp_errors'])
@@ -356,11 +356,11 @@ class QueueManager:
 
     def check_is_milestone(self) -> bool:
         "Check if a milestone is reached."
+        if self.milestone is None or self.milestone == 0:
+            return False
         processed = self.stats.get_processed_counter()
         # Check >0 in case the bot starts failing with the first item.
-        if (self.milestone and
-                processed > 0 and
-                (processed % self.milestone) == 0):
+        if (processed > 0 and (processed % self.milestone) == 0):
             logging.info("Milestone reached: %s processed", str(processed))
             return True
         return False
