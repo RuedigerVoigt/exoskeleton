@@ -36,9 +36,6 @@ class FileManager:
         logging.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)
 
-        if not userprovided.hashing.hash_available(self.HASH_METHOD):
-            raise ValueError(f"Hash method {self.HASH_METHOD} not available!")
-
     @staticmethod
     def __check_target_directory(target_directory: str) -> pathlib.Path:
         """Check if a target directory is set to write files to.
