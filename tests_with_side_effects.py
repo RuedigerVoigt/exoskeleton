@@ -51,10 +51,8 @@ import exoskeleton
 # CREATE INSTANCES OF EXOSKELETON
 # #############################################################################
 
-
-
-DB_PORT = 3306
-BROWSER = 'google-chrome'
+DB_PORT = 12345
+BROWSER = 'chromium-browser'
 
 
 def test_no_host_no_port_no_pw():
@@ -65,7 +63,7 @@ def test_no_host_no_port_no_pw():
         no_host_no_port_no_pass = exoskeleton.Exoskeleton(
             project_name='Exoskeleton Validation Test',
             database_settings={'database': 'exoskeleton',
-                            'username': 'exoskeleton'},
+                               'username': 'exoskeleton'},
             filename_prefix='EXO_',
             target_directory='./fileDownloads'
         )
