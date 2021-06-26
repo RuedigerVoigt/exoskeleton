@@ -27,7 +27,6 @@ class RemoteControlChrome:
        BEWARE: Some cookie-popups blank out the page and all what is stored
                is the dialogue."""
 
-    UNSUPPORTED_BROWSERS = {'firefox', 'safari', 'edge'}
     SUPPORTED_BROWSERS = {'google-chrome', 'chrome', 'chromium',
                           'chromium-browser'}
 
@@ -69,24 +68,16 @@ class RemoteControlChrome:
 
     def check_browser_support(self,
                               browser_name: str) -> bool:
-        """User might provide the name of an existing executable of an
-           unsupported browser. So checked if is a version of Chrome or
-           Chromium."""
+        """Return True if the browser is supported.
+           Else raise an exception."""
         if browser_name.lower() in self.SUPPORTED_BROWSERS:
             logging.info('Browser supported.')
-        elif browser_name.lower() in self.UNSUPPORTED_BROWSERS:
-            msg = (f"{browser_name} is unsupported. You must use Chromium " +
-                   "or Google Chrome for the 'save as PDF' feature.")
-            logging.exception(msg)
-            self.suggest_executables()
-            raise ValueError(msg)
-        else:
-            msg = ('Unknown browser. You must use Chromium or Google Chrome ' +
-                   'for the "save as PDF" feature.')
-            logging.exception(msg)
-            raise ValueError(msg)
-
-        return True
+            return True
+        msg = (f"{browser_name} is unsupported or unknown. You must use " +
+               "Chromium  or Google Chrome for the 'save as PDF' feature.")
+        logging.exception(msg)
+        self.suggest_executables()
+        raise ValueError(msg)
 
     def page_to_pdf(self,
                     url: str,

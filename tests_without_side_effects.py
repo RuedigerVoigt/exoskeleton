@@ -189,10 +189,10 @@ def test_RemoteControlChrome():
 
 def test_RemoteControlChrome_functions():
     my_chrome = remote_control_chrome.RemoteControlChrome(None, None, None)
+    # unsupported browser
     with pytest.raises(ValueError):
-        assert my_chrome.check_browser_support('test') is False
-    with pytest.raises(ValueError):
-        assert my_chrome.check_browser_support('SaFaRi') is False
+        my_chrome.check_browser_support('SaFaRi')
+    # Supported browser
     assert my_chrome.check_browser_support('google-chrome') is True
     # no browser selected but trying to save a page:
     with pytest.raises(ValueError):
