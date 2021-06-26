@@ -254,6 +254,11 @@ def test_get_label_ids():
     assert len(ids) == 2
 
 
+def test_get_label_ids_EMPTY_SET(caplog):
+    assert exo.labels.get_label_ids(set()) == set()
+    assert 'No labels provided' in caplog.text
+
+
 def test_same_url_different_task():
     """Add the same URL to the queue, but with a different task.
        Then add the same new label to filemaster and version.
