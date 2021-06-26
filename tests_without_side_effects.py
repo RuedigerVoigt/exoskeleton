@@ -194,6 +194,10 @@ def test_RemoteControlChrome_functions():
         my_chrome.check_browser_support('SaFaRi')
     # Supported browser
     assert my_chrome.check_browser_support('google-chrome') is True
+    # Unsupported browser
+    with pytest.raises(ValueError) as excinfo:
+        my_chrome.check_browser_support('Firefox')
+    assert "unsupported" in str(excinfo.value)   
     # no browser selected but trying to save a page:
     with pytest.raises(ValueError):
         my_chrome.page_to_pdf('https://www.example.com', './', '12343454')

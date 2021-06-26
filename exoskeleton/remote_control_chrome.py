@@ -122,7 +122,7 @@ class RemoteControlChrome:
                               exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 5)
             self.stats.log_permanent_error(url)
-        except Exception:  # pylint: disable=broad-except
-            logging.error('Exception.', exc_info=True)
+        except (Exception, subprocess.SubprocessError):  # pylint: disable=broad-except
+            logging.exception('Exception.', exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 0)
             self.stats.log_temporary_problem(url)
