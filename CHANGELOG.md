@@ -1,9 +1,11 @@
 # Changelog / History
 
-## UPCOMING
+## UPCOMING Version 2.0.0
 
 **Breaking Changes:**
-  * Dropped support for Python 3.6 as this version has end of life set for December 2021. Even server side systems like Debian 10 switched to 3.7.X by now.
+  * **Dropped support for Python 3.6 and 3.7!**
+    * Python 3.6 version has end of life set for December 2021.
+    * Had to also drop the support for Python 3.7 in order to get a stable API for asyncio.
   * The database now contains many more SQL functions and stored procedures. *You need to upgrade the schema using the corresponding part of the SQL script.* This is basically code that previously was found mixed with the Python code. It was moved to the database in order to make the code of the package easier to read and maintain.
   * The method `exoskeleton.prettify_html` has been moved to `exoskeleton.helpers.prettify_html`.
   * All methods directly regarding labels have been moved into the `LabelManager` class. Their aliases in the main class have been removed as they duplicated code. On init, the exoskelton object creates an instance of `LabelManager` named `labels`, so all functions can easily be accessed via `your_exo_object.labels.label_function`. That is, *if* you need to access them directly.
