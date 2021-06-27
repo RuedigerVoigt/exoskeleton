@@ -119,8 +119,6 @@ class CrawlingErrorManager:
         msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
                f"contact this host for {self.rate_limit_wait} seconds.")
         logging.error(msg)
-        # Always use SEC_TO_TIME() to avoid unexpected behavior if
-        # just adding seconds as a plain number.
         self.cur.callproc('add_rate_limit_SP', (fqdn, self.rate_limit_wait))
 
     def forget_specific_rate_limit(self,
