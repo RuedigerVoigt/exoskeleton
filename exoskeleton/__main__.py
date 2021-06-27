@@ -175,7 +175,7 @@ class Exoskeleton:
             self.milestone
             )
 
-        self.jobs = job_manager.JobManager(self.cur)
+        self.jobs = job_manager.JobManager(self.db)
 
         # Create other objects
         self.cnt: Counter = Counter()

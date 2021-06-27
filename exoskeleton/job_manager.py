@@ -15,6 +15,8 @@ import logging
 import userprovided
 import pymysql
 
+from exoskeleton import database_connection
+
 
 class JobManager:
     """Jobs are used to crawl multi-page results like search engine queries.
@@ -23,10 +25,10 @@ class JobManager:
     # pylint: disable=raise-missing-from
 
     def __init__(self,
-                 db_cursor: pymysql.cursors.Cursor) -> None:
-        """Sets defaults"""
-
-        self.cur = db_cursor
+                 db_connection: database_connection.DatabaseConnection
+                 ) -> None:
+        "Sets defaults"
+        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
 
     def define_new(self,
                    job_name: str,
@@ -94,12 +96,11 @@ class JobManager:
 
     def mark_as_finished(self,
                          job_name: str) -> None:
-        """ Mark a crawl job as finished. """
+        "Mark a crawl job as finished."
         if not job_name:
             raise ValueError('Missing job_name')
         job_name = job_name.strip()
-        # Execute instead of callproc, because execute return the number of
-        # affected rows and callproc does not!
+        # Contrary to callproc, execute returns the number of affected rows:
         affected_rows = self.cur.execute('CALL job_mark_as_finished_SP(%s);',
                                          (job_name, ))
         if affected_rows == 0:
