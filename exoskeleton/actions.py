@@ -11,6 +11,7 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
+from typing import Final
 from urllib.parse import urlparse
 
 
@@ -37,10 +38,10 @@ class GetObjectBaseClass:
     # they signal a permanent or temporary error. The following lists include
     # some non-standard codes. See:
     # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-    HTTP_PERMANENT_ERRORS = (400, 401, 402, 403, 404, 405, 406,
-                             407, 410, 451, 501)
+    HTTP_PERMANENT_ERRORS: Final = (400, 401, 402, 403, 404, 405, 406,
+                                    407, 410, 451, 501)
     # 429 (Rate Limit) is handeled separately:
-    HTTP_TEMP_ERRORS = (408, 500, 502, 503, 504, 509, 529, 598)
+    HTTP_TEMP_ERRORS: Final = (408, 500, 502, 503, 504, 509, 529, 598)
 
     def __init__(
             self,

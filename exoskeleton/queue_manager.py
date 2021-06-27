@@ -12,7 +12,7 @@ Released under the Apache License 2.0
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 import time
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
 import uuid
 
@@ -76,7 +76,7 @@ class QueueManager:
 
     def add_to_queue(self,
                      url: str,
-                     action: int,
+                     action: Literal[1, 2, 3, 4],
                      labels_master: set = None,
                      labels_version: set = None,
                      prettify_html: bool = False,
