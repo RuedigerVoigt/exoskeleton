@@ -26,6 +26,7 @@ import userprovided
 from exoskeleton import _version as version
 from exoskeleton import actions
 from exoskeleton import database_connection
+from exoskeleton import database_schema_check
 from exoskeleton import error_manager
 from exoskeleton import file_manager
 from exoskeleton import job_manager
@@ -87,6 +88,8 @@ class Exoskeleton:
         # Init database Connection
         self.db = database_connection.DatabaseConnection(database_settings)
         self.cur = self.db.get_cursor()
+
+        database_schema_check.DatabaseSchemaCheck(self.db)
 
         self.stats = statistics_manager.StatisticsManager(self.db)
 
