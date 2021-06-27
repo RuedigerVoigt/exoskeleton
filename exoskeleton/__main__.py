@@ -25,6 +25,7 @@ import userprovided
 # import other modules of this framework
 from exoskeleton import _version as version
 from exoskeleton import actions
+from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
 from exoskeleton import database_schema_check
 from exoskeleton import error_manager
@@ -167,8 +168,11 @@ class Exoskeleton:
             self.user_agent,
             self.connection_timeout)
 
+        self.blocklist = blocklist_manager.BlocklistManager(self.db)
+
         self.queue = queue_manager.QueueManager(
             self.db,
+            self.blocklist,
             self.time,
             self.stats,
             self.action,
@@ -325,13 +329,13 @@ class Exoskeleton:
                    comment: Optional[str] = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
         - like www.example.com - to the blocklist."""
-        self.queue.block_fqdn(fqdn, comment)
+        self.blocklist.block_fqdn(fqdn, comment)
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
         "Remove a specific FQDN from the blocklist."
-        self.queue.unblock_fqdn(fqdn.strip())
+        self.blocklist.unblock_fqdn(fqdn.strip())
 
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
-        self.queue.truncate_blocklist()
+        self.blocklist.truncate_blocklist()

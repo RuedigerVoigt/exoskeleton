@@ -22,6 +22,7 @@ import pymysql
 import userprovided
 
 from exoskeleton import actions
+from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
 from exoskeleton import label_manager
 from exoskeleton import notification_manager
@@ -37,6 +38,7 @@ class QueueManager:
     def __init__(
             self,
             db_connection: database_connection.DatabaseConnection,
+            blocklist_manager_object: blocklist_manager.BlocklistManager,
             time_manager_object: time_manager.TimeManager,
             stats_manager_object: statistics_manager.StatisticsManager,
             actions_object: actions.ExoActions,
@@ -49,6 +51,7 @@ class QueueManager:
         # Planned to be replaced with a connection pool. See issue #20
         self.db_connection = db_connection
         self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
+        self.blocklist = blocklist_manager_object
         self.time = time_manager_object
         self.stats = stats_manager_object
         self.action = actions_object
@@ -66,50 +69,6 @@ class QueueManager:
             "queue_revisit", self.queue_revisit, 10, 50, 50)
 
         self.milestone = milestone
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # HANDLE THE BLOCKLIST
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    @staticmethod
-    def __check_fqdn(fqdn: str) -> str:
-        "Remove whitespace and check if it can be a FQDN"
-        fqdn = fqdn.strip()
-        if len(fqdn) > 255:
-            raise ValueError(
-                'Not a valid FQDN. Exoskeleton blocks on the hostname level ' +
-                '- not specific URLs.')
-        return fqdn
-
-    def check_blocklist(self,
-                        fqdn: str) -> bool:
-        "Check if a specific FQDN is on the blocklist."
-        fqdn = self.__check_fqdn(fqdn)
-        self.cur.execute('SELECT fqdn_on_blocklist(%s);', (fqdn, ))
-        response = self.cur.fetchone()
-        return bool(response[0]) if response else False  # type: ignore[index]
-
-    def block_fqdn(self,
-                   fqdn: str,
-                   comment: Optional[str] = None) -> None:
-        """Add a specific fully qualified domain name (fqdn)
-           - like www.example.com - to the blocklist. Does not handle URLs."""
-        fqdn = self.__check_fqdn(fqdn)
-        try:
-            self.cur.callproc('block_fqdn_SP', (fqdn, comment))
-        except pymysql.err.IntegrityError:
-            logging.info('FQDN already on blocklist.')
-
-    def unblock_fqdn(self,
-                     fqdn: str) -> None:
-        "Remove a specific FQDN from the blocklist."
-        fqdn = self.__check_fqdn(fqdn)
-        self.cur.callproc('unblock_fqdn_SP', (fqdn, ))
-
-    def truncate_blocklist(self) -> None:
-        "Remove *all* entries from the blocklist."
-        self.cur.callproc('truncate_blocklist_SP')
-        logging.info("Truncated the blocklist.")
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ADDING TO AND REMOVING FROM THE QUEUE
@@ -131,7 +90,7 @@ class QueueManager:
 
         # Check if the FQDN of the URL is on the blocklist
         hostname = urlparse(url).hostname
-        if hostname and self.check_blocklist(hostname):
+        if hostname and self.blocklist.check_blocklist(hostname):
             logging.error('Cannot add URL to queue: FQDN is on blocklist.')
             return None
 
@@ -316,7 +275,7 @@ class QueueManager:
             # the task entered into the queue!
             # (We now that hostname is not None, as the URL was checked for
             # validity before beeing added: so ignore for mypy is OK)
-            if self.check_blocklist(
+            if self.blocklist.check_blocklist(
                     urlparse(url).hostname):  # type: ignore[arg-type]
                 logging.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
