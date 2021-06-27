@@ -86,7 +86,7 @@ class QueueManager:
 
         if action not in (1, 2, 3, 4):
             logging.error('Invalid value for action!')
-            return None
+            raise ValueError('Invalid value for action!')
 
         # Check if the FQDN of the URL is on the blocklist
         hostname = urlparse(url).hostname
