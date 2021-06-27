@@ -181,6 +181,15 @@ class LabelManager:
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
+    def version_labels_by_uuid(self,
+                               version_uuid: str) -> set:
+        """Get a list of label names (not id numbers!) attached
+            to a specific version of a file. Does not include
+            labels attached to the filemaster entry."""
+        self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
+        labels = self.cur.fetchall()
+        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
+
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
         """Get a set of ALL label names (not id numbers!) attached
@@ -239,15 +248,6 @@ class LabelManager:
                              (label_id, ))
         version_ids = self.cur.fetchall()
         return {(uuid[0]) for uuid in version_ids} if version_ids else set()  # type: ignore[index, assignment]
-
-    def version_labels_by_uuid(self,
-                               version_uuid: str) -> set:
-        """Get a list of label names (not id numbers!) attached
-            to a specific version of a file. Does not include
-            labels attached to the filemaster entry."""
-        self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
-        labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
     # #########################################################################
     # REMOVING LABELS
