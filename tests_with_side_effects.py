@@ -233,6 +233,37 @@ def test_add_same_task_with_different_labels():
     assert label_count() == len(all_added_labels)
 
 
+def get_filemaster_id():
+    # Add a task to the queue
+    test_uuid = exo.add_page_to_pdf('https://www.example.com/get-fm-id.html')
+    # We only know it is a non empty string
+    assert exo.labels.get_filemaster_id(test_uuid) != ''
+    # clean up
+    exo.delete_from_queue(test_uuid)
+    # query with a bogus version uuid
+    with pytest.raises(ValueError) as excinfo:
+        exo.labels.get_filemaster_id('bogus')
+    assert "Invalid" in str(excinfo.value)
+
+
+def test_version_uuids_by_label():
+    # guard clause catches unknown label:
+    with pytest.raises(ValueError) as excinfo:
+        exo.labels.version_uuids_by_label("never used")
+    assert "Unknown label" in str(excinfo.value)
+    # Add a task with label
+    test_uuid = exo.add_page_to_pdf('https://www.example.com/uuid_by_label.html',
+                                    labels_version={'uuid_by_label_check'})
+    # Searching with the label should return a set with one item
+    assert exo.labels.version_uuids_by_label('uuid_by_label_check') == {test_uuid}
+    # Switch to only processed items
+    assert exo.labels.version_uuids_by_label('uuid_by_label_check', processed_only=True) == set()
+    # clean up
+    exo.delete_from_queue(test_uuid)
+    # TO DO: function to remove unused labels from db
+    test_counter['num_expected_labels'] += 1
+
+
 def test_define_or_update_label():
     "Try to add an invalid label"
     before = label_count()
