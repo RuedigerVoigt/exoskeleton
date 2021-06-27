@@ -38,11 +38,10 @@ class JobManager:
             raise ValueError('Provide a valid job_name')
         if not start_url:
             raise ValueError('A job needs a Start URL.')
+        if not userprovided.parameters.string_in_range(job_name, 1, 127, True):
+            raise ValueError('job name must be between 1 and 127 characters.')
 
         job_name = job_name.strip()
-
-        if not userprovided.parameters.string_in_range(job_name, 1, 127):
-            raise ValueError('job name must be between 1 and 127 characters.')
 
         try:
             self.cur.callproc('define_new_job_SP', (job_name, start_url))
