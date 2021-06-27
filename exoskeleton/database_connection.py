@@ -50,8 +50,7 @@ class DatabaseConnection:
 
         self.db_port: int = database_settings.get('port', None)
         if not self.db_port:
-            logging.info(
-                'No port number supplied: will try standard port 3306.')
+            logging.info('No port number supplied: will try port 3306.')
             self.db_port = 3306
         elif not userprovided.parameters.is_port(self.db_port):
             raise ValueError('Database port outside valid range!')
@@ -94,11 +93,7 @@ class DatabaseConnection:
                 "Cannot connect to DBMS. Did you forget a parameter?",
                 exc_info=True)
             raise
-        except pymysql.InterfaceError:
-            logging.exception('Exception related to the database *interface*.',
-                              exc_info=True)
-            raise
-        except pymysql.DatabaseError:
+        except (pymysql.InterfaceError, pymysql.DatabaseError):
             logging.exception('Exception related to the database.',
                               exc_info=True)
             raise
@@ -110,7 +105,7 @@ class DatabaseConnection:
 
     def get_cursor(self) -> pymysql.cursors.Cursor:
         """Make the database cursor accessible from outside the class.
-        Try to reconnect if the connection is lost."""
+           Try to reconnect if the connection is lost."""
         if self.cur:
             return self.cur
         logging.info("Lost database connection. Trying to reconnect...")
