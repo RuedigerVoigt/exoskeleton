@@ -180,11 +180,9 @@ class Exoskeleton:
         # Create other objects
         self.cnt: Counter = Counter()
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # ACTIONS
-    #
-    # - Make some accessible from outside.
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # #########################################################################
+    # MAKE SOME METHOD CALLS EASILY ACCESSIBLE
+    # #########################################################################
 
     def random_wait(self) -> None:
         "Wait for a random time within the limits set to init TimeManager."
@@ -199,9 +197,7 @@ class Exoskeleton:
         "Immediately return a page's code. Do *not* store it in the database."
         return self.action.return_page_code(url)
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # JOB MANAGEMENT
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # JOB MANAGEMENT:
 
     def job_define_new(self,
                        job_name: str,
@@ -227,9 +223,7 @@ class Exoskeleton:
         "Mark a crawl job as finished."
         self.jobs.mark_as_finished(job_name)
 
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # QUEUE MANAGEMENT
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # QUEUE MANAGEMENT:
 
     def add_file_download(self,
                           url: str,
@@ -295,6 +289,8 @@ class Exoskeleton:
         "Remove all label links from a queue item and then delete it."
         self.queue.delete_from_queue(queue_id)
 
+    # ERROR HANDLING:
+
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of error,
            as if they are new tasks by removing that mark and any delay."""
@@ -318,6 +314,8 @@ class Exoskeleton:
            any delay. The number of the error has to correspond to the
            errorType database table."""
         self.errorhandling.forget_specific_error(specific_error)
+
+    # BLOCKLIST:
 
     def block_fqdn(self,
                    fqdn: str,
