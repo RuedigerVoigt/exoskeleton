@@ -29,6 +29,7 @@ from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
 from exoskeleton import database_schema_check
 from exoskeleton import error_manager
+from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import job_manager
 from exoskeleton import label_manager
@@ -233,46 +234,50 @@ class Exoskeleton:
     # QUEUE MANAGEMENT:
 
     def add_file_download(self,
-                          url: str,
+                          url: Union[exo_url.ExoUrl, str],
                           labels_master: set = None,
                           labels_version: set = None,
                           force_new_version: bool = False) -> Optional[str]:
         "Add a file download URL to the queue"
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         uuid = self.queue.add_to_queue(url, 1, labels_master,
                                        labels_version, False,
                                        force_new_version)
         return uuid
 
     def add_save_page_code(self,
-                           url: str,
+                           url: Union[exo_url.ExoUrl, str],
                            labels_master: set = None,
                            labels_version: set = None,
                            prettify_html: bool = False,
                            force_new_version: bool = False) -> Optional[str]:
-        """Add an URL to the queue to save its HTML code into the database."""
-        uuid = self.queue.add_to_queue(url, 2, labels_master,
-                                       labels_version, prettify_html,
-                                       force_new_version)
+        "Add an URL to the queue to save its HTML code into the database."
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
+        uuid = self.queue.add_to_queue(url, 2, labels_master, labels_version,
+                                       prettify_html, force_new_version)
         return uuid
 
     def add_page_to_pdf(self,
-                        url: str,
+                        url: Union[exo_url.ExoUrl, str],
                         labels_master: set = None,
                         labels_version: set = None,
                         force_new_version: bool = False) -> Optional[str]:
         "Add an URL to the queue to print it to PDF with headless Chrome. "
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         if not self.controlled_browser.browser_present:
             logging.warning(
                 'Will add this task to the queue, but without Chrome or ' +
                 'Chromium it cannot run! Provide the path to the ' +
                 'executable when you initialize exoskeleton.')
-        uuid = self.queue.add_to_queue(url, 3, labels_master,
-                                       labels_version, False,
-                                       force_new_version)
+        uuid = self.queue.add_to_queue(url, 3, labels_master, labels_version,
+                                       False, force_new_version)
         return uuid
 
     def add_save_page_text(self,
-                           url: str,
+                           url: Union[exo_url.ExoUrl, str],
                            labels_master: set = None,
                            labels_version: set = None,
                            force_new_version: bool = False) -> Optional[str]:
@@ -281,14 +286,17 @@ class Exoskeleton:
            This can be useful for some language processing tasks, but compared
            to add_save_page_code this removes the possiblity to work on a
            specific part using a CSS selector."""
-        uuid = self.queue.add_to_queue(url, 4, labels_master,
-                                       labels_version, True,
-                                       force_new_version)
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
+        uuid = self.queue.add_to_queue(url, 4, labels_master, labels_version,
+                                       True, force_new_version)
         return uuid
 
     def get_filemaster_id_by_url(self,
-                                 url: str) -> Optional[str]:
+                                 url: Union[exo_url.ExoUrl, str]) -> Optional[str]:
         "Get the id of the filemaster entry associated with this URL."
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         return self.queue.get_filemaster_id_by_url(url)
 
     def delete_from_queue(self,

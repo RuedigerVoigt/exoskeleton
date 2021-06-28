@@ -16,6 +16,7 @@ import userprovided
 import pymysql
 
 from exoskeleton import database_connection
+from exoskeleton import exo_url
 
 
 class LabelManager:
@@ -70,18 +71,16 @@ class LabelManager:
     # #########################################################################
 
     def assign_labels_to_master(self,
-                                url: str,
+                                url: Union[exo_url.ExoUrl, str],
                                 labels: Union[set, None]) -> None:
         """ Assigns one or multiple labels to the *fileMaster* entry.
             Removes duplicates and adds new labels to the label list
             if necessary."""
-        try:
-            url = userprovided.url.normalize_url(url)
-        except ValueError:
-            return None
-
         if not labels:
             return None
+
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
 
         # Using a set to avoid duplicates. However, accept either
         # a single string or a list type.
@@ -89,8 +88,8 @@ class LabelManager:
 
         for label in label_set:
             # Make sure all labels are in the database table.
-            # -> If they already exist or malformed the command
-            # will be ignored by the dbms.
+            # -> If they already exist or are malformed, the command
+            # will be ignored by the DBMS.
             self.define_new_label(label)
 
         # Get all label-ids
@@ -174,10 +173,10 @@ class LabelManager:
         return filemaster_id[0]  # type: ignore[index]
 
     def filemaster_labels_by_id(self,
-                                filemaster_id: str) -> set:
-        """Get a list of label names (not id numbers!) attached
-            to a specific filemaster entry."""
-        self.cur.callproc('labels_filemaster_by_id_SP', (filemaster_id, ))
+                                id: str) -> set:
+        """Get a list of label names (not id numbers!) attached to a specific
+           filemaster entry using its id you get with get_filemaster_id()."""
+        self.cur.callproc('labels_filemaster_by_id_SP', (id, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
@@ -215,7 +214,7 @@ class LabelManager:
         query = ("SELECT id " +
                  "FROM labels " +
                  "WHERE shortName " +
-                  "IN ({0});".format(', '.join(['%s'] * len(label_set))))
+                 "IN ({0});".format(', '.join(['%s'] * len(label_set))))
         self.cur.execute(query, tuple(label_set))
         label_id = self.cur.fetchall()
         return {(id[0]) for id in label_id} if label_id else set()  # type: ignore[index]

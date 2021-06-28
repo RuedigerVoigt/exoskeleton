@@ -12,7 +12,7 @@ Released under the Apache License 2.0
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 import time
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 from urllib.parse import urlparse
 import uuid
 
@@ -24,6 +24,7 @@ import userprovided
 from exoskeleton import actions
 from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
+from exoskeleton import exo_url
 from exoskeleton import label_manager
 from exoskeleton import notification_manager
 from exoskeleton import statistics_manager
@@ -34,6 +35,8 @@ class QueueManager:
     "Manage the queue and labels for the exoskeleton framework."
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-branches
 
     def __init__(
             self,
@@ -75,7 +78,7 @@ class QueueManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def add_to_queue(self,
-                     url: str,
+                     url: Union[exo_url.ExoUrl, str],
                      action: Literal[1, 2, 3, 4],
                      labels_master: set = None,
                      labels_version: set = None,
@@ -84,13 +87,15 @@ class QueueManager:
         """ More general function to add items to queue. Called by
             add_file_download, add_save_page_code and add_page_to_pdf."""
 
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
+
         if action not in (1, 2, 3, 4):
             logging.error('Invalid value for action!')
             raise ValueError('Invalid value for action!')
 
         # Check if the FQDN of the URL is on the blocklist
-        hostname = urlparse(url).hostname
-        if hostname and self.blocklist.check_blocklist(hostname):
+        if url.hostname and self.blocklist.check_blocklist(url.hostname):
             logging.error('Cannot add URL to queue: FQDN is on blocklist.')
             return None
 
@@ -98,19 +103,6 @@ class QueueManager:
             logging.error(
                 'Option prettify_html not supported for this action.')
             prettify_html = False
-
-        try:
-            url = userprovided.url.normalize_url(url)
-        except ValueError:
-            logging.error('Could not add url.')
-            return None
-
-        # Check if the scheme is either http or https
-        # (others are not supported by requests)
-        if not userprovided.url.is_url(url, ('http', 'https')):
-            logging.error(
-                'Could not add URL %s : invalid or unsupported scheme', url)
-            return None
 
         # Add labels for the master entry.
         # Ignore labels for the version at this point, as it might
@@ -149,12 +141,9 @@ class QueueManager:
         # generate a random uuid for the file version
         uuid_value = uuid.uuid4().hex
 
-        # get FQDN from URL
-        fqdn = urlparse(url).hostname
-
         # add the new task to the queue
         self.cur.callproc('add_to_queue_SP',
-                          (uuid_value, action, url, fqdn, prettify_html))
+                          (uuid_value, action, url, url.hostname, prettify_html))
 
         # link labels to version item
         if labels_version:
@@ -163,13 +152,15 @@ class QueueManager:
         return uuid_value
 
     def __get_queue_uuids(self,
-                          url: str,
+                          url: Union[exo_url.ExoUrl, str],
                           action: int) -> set:
         """Based on the URL and action ID this returns a set of UUIDs in the
            *queue* that match those. Normally this set has a single element,
            but as you can force exoskeleton to repeat tasks on the same
            URL it can be multiple. Returns an empty set if such combination
            is not in the queue."""
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         self.cur.execute('SELECT id FROM queue ' +
                          'WHERE urlHash = SHA2(%s,256) AND ' +
                          'action = %s ' +
@@ -179,14 +170,10 @@ class QueueManager:
         return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()  # type: ignore[index]
 
     def get_filemaster_id_by_url(self,
-                                 url: str) -> Optional[str]:
+                                 url: Union[exo_url.ExoUrl, str]) -> Optional[str]:
         "Get the id of the filemaster entry associated with this URL"
-
-        try:
-            url = userprovided.url.normalize_url(url)
-        except ValueError:
-            return None
-
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         self.cur.execute('SELECT id FROM fileMaster ' +
                          'WHERE urlHash = SHA2(%s,256);',
                          (url, ))
@@ -275,8 +262,7 @@ class QueueManager:
             # the task entered into the queue!
             # (We now that hostname is not None, as the URL was checked for
             # validity before beeing added: so ignore for mypy is OK)
-            if self.blocklist.check_blocklist(
-                    urlparse(url).hostname):  # type: ignore[arg-type]
+            if self.blocklist.check_blocklist(urlparse(url).hostname):  # type: ignore[arg-type]
                 logging.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)
