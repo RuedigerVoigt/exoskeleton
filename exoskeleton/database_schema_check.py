@@ -41,6 +41,7 @@ class DatabaseSchemaCheck:
                   'job_update_current_url_SP',
                   'label_define_or_update_SP',
                   'labels_filemaster_by_id_SP',
+                  'labels_filemaster_by_url_SP',
                   'labels_version_by_id_SP',
                   'mark_permanent_error_SP',
                   'next_queue_object_SP',

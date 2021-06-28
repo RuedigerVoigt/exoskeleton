@@ -31,7 +31,7 @@ class ExoUrl:
             logging.exception(
                 'Can not add URL %s : invalid or unsupported scheme',
                 url_string)
-            raise ValueError
+            raise ValueError('Cannot add URL: invalid or unsupported scheme')
 
         self.url = url_string
         self.hostname = urlparse(self.url).hostname

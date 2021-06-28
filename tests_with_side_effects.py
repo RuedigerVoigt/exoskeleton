@@ -183,9 +183,8 @@ def test_add_to_queue():
     "Under normal circumstances this function is not called directly"
     before = queue_count()
     # Try to add an unknown action type to the queue
-    exo.queue.add_to_queue('https://www.example.com', 99999)
-    # implemented behavior is not to raise an exception, but to return.
-    # => TO Do: maybe change that
+    with pytest.raises(ValueError):
+        exo.queue.add_to_queue('https://www.example.com', 99999)
     # Nothing should have been added to the queue:
     assert queue_count() == before, 'Unknown action added to the queue'
 
@@ -244,6 +243,72 @@ def get_filemaster_id():
     with pytest.raises(ValueError) as excinfo:
         exo.labels.get_filemaster_id('bogus')
     assert "Invalid" in str(excinfo.value)
+
+
+# def test_filemaster_labels_by_id():
+#     # Add a task with filemaster labels
+#     m_labels = {'test_fm_labels_by_id_1', 'test_fm_labels_by_id_2'}
+#     test_url = 'https://www.example.com/fm-labels-by-id.html'
+#     test_uuid = exo.add_page_to_pdf(test_url, labels_master=m_labels)
+#     # get filemaster id
+#     #fm_id = exo.labels.get_filemaster_id(test_uuid)
+#     fm_id = exo.queue.get_filemaster_id_by_url(test_url)
+#     # check the labels
+#     assert exo.labels.filemaster_labels_by_id(fm_id) == m_labels
+#     # clean up
+#     exo.delete_from_queue(test_uuid)
+#     test_counter['num_expected_labels'] += 2
+
+
+# def test_filemaster_labels_by_url():
+#     # Add a task with filemaster labels
+#     m_labels = {'test_fm_labels_by_url_1', 'test_fm_labels_by_url_2'}
+#     test_url = 'https://www.example.com/fm-labels.html'
+#     test_uuid = exo.add_page_to_pdf(test_url, labels_master=m_labels)
+#     assert exo.labels.filemaster_labels_by_url(test_url) == m_labels
+#     # clean up
+#     exo.delete_from_queue(test_uuid)
+#     test_counter['num_expected_labels'] += 2
+
+
+def test_version_labels_by_uuid():
+    # Add a task with version labels
+    v_labels = {'test_version_labels_by_uuid_1', 'test_version_labels_by_uuid_2'}
+    test_uuid = exo.add_page_to_pdf(
+        'https://www.example.com/version-labels.html',
+        labels_version=v_labels)
+    # Pull the version labels assigned and compare them:
+    assert exo.labels.version_labels_by_uuid(test_uuid) == v_labels
+    # clean up
+    exo.delete_from_queue(test_uuid)
+    test_counter['num_expected_labels'] += 2
+
+
+def test_assign_labels_to_master():
+    # Add a task without any filemaster label
+    test_url = 'https://www.example.com/assign-label-to-fm.html'
+    test_uuid = exo.add_page_to_pdf(test_url)
+    # Now use the URL to add some labels at filemaster level
+    fm_labels = {'assign_to_fm_test_1', 'assign_to_fm_test_2'}
+    exo.labels.assign_labels_to_master(test_url, fm_labels)
+    # pull the labels and compare them
+    assert exo.labels.filemaster_labels_by_url(test_url) == fm_labels
+    # clean up
+    exo.delete_from_queue(test_uuid)
+    test_counter['num_expected_labels'] += 2
+
+
+# def test_all_labels_by_uuid():
+#     # Add a task with labels for filemaster and version!
+#     test_uuid = exo.add_page_to_pdf(
+#         'https://www.example.com/all-labels.html',
+#         labels_master={'test_all_labels_1', 'test_all_labels_2'},
+#         labels_version={'test_all_labels_3'})
+#     expected = {'test_all_labels_1', 'test_all_labels_2', 'test_all_labels_3'}
+#     assert exo.labels.all_labels_by_uuid(test_uuid) == expected
+#     # clean up
+#     exo.delete_from_queue(test_uuid)
+#     test_counter['num_expected_labels'] += 3
 
 
 def test_version_uuids_by_label():
@@ -310,7 +375,9 @@ def test_same_url_different_task():
 
 
 def test_unsupported_protocol():
-    assert exo.add_file_download('ftp://www.ruediger-voigt.eu/') is None
+    with pytest.raises(ValueError) as excinfo:
+        assert exo.add_file_download('ftp://www.ruediger-voigt.eu/') is None
+    assert 'invalid or unsupported' in str(excinfo.value)
 
 
 def test_get_filemaster_id_by_url():
@@ -337,8 +404,9 @@ def test_force_download_text():
 
 def test_block_adding_malformed_url():
     # malformed URL: must not be added to the queue
-    uuid = exo.add_save_page_code('missingschema.example.com')
-    assert uuid is None, 'Added malformed URL to queue!'
+    with pytest.raises(ValueError) as excinfo:
+        _ = exo.add_save_page_code('missingschema.example.com')
+    assert 'Malformed' in str(excinfo.value)
 
 
 def test_remove_task_keep_labels():
