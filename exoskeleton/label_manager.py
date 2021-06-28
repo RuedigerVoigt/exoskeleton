@@ -180,6 +180,14 @@ class LabelManager:
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
+    def filemaster_labels_by_url(self,
+                                 url: str) -> set:
+        """Get a list of label names (not id numbers!) attached to a specific
+           filemaster entry using the URL associated."""
+        self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
+        labels = self.cur.fetchall()
+        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
+
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
         """Get a list of label names (not id numbers!) attached
