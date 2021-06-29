@@ -47,14 +47,11 @@ class GetObjectBaseClass:
             objects: dict,
             queue_id: str,
             url: exo_url.ExoUrl,
-            url_hash: str,
             prettify_html: bool = False):
         if not isinstance(queue_id, str):
             raise ValueError('The queue_id must be a string.')
         if not url:
             raise ValueError('Missing parameter url')
-        if not url_hash:
-            raise ValueError('Missing url_hash')
         self.db_connection = objects['db_connection']
         self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.stats = objects['stats_manager_object']
@@ -65,7 +62,6 @@ class GetObjectBaseClass:
         self.connection_timeout = objects['connection_timeout']
         self.queue_id = queue_id
         self.url = url
-        self.url_hash = url_hash
         self.prettify_html = prettify_html
 
         self.mime_type: str = ''
@@ -158,7 +154,7 @@ class GetFile(GetObjectBaseClass):
 
         try:
             self.cur.callproc('insert_file_SP',
-                              (self.url, self.url_hash,
+                              (self.url, self.url.hash,
                                self.queue_id,
                                self.mime_type,
                                str(self.file.target_dir),
@@ -198,7 +194,7 @@ class GetContent(GetObjectBaseClass):
             # Stored procedure saves the content, transfers the
             # labels from the queue, and removes the queue item:
             self.cur.callproc('insert_content_SP',
-                              (self.url, self.url_hash, self.queue_id,
+                              (self.url, self.url.hash, self.queue_id,
                                self.mime_type, page_content, 2))
         except pymysql.DatabaseError:
             logging.error(
@@ -258,31 +254,29 @@ class ExoActions:
                    queue_id: str,
                    action_type: str,
                    url: exo_url.ExoUrl,
-                   url_hash: str,
                    prettify_html: bool = False) -> None:
         "Generic function to either download a file or store a page's content."
 
         if action_type == 'file':
             if prettify_html:
                 logging.error('Wrong action_type: prettify_html ignored.')
-            GetFile(self.objects, queue_id, url, url_hash, False)
+            GetFile(self.objects, queue_id, url, False)
         elif action_type == 'content':
-            GetContent(self.objects, queue_id, url, url_hash, prettify_html)
+            GetContent(self.objects, queue_id, url, prettify_html)
         elif action_type == 'text':
-            GetText(self.objects, queue_id, url, url_hash, prettify_html)
+            GetText(self.objects, queue_id, url, prettify_html)
         else:
             raise ValueError('Invalid action_type!')
 
     def return_page_code(self,
-                         url: str) -> str:
+                         url: exo_url.ExoUrl) -> str:
         "Directly return a page's code. Do *not* store it in the database."
         if not url:
             raise ValueError('Missing URL')
-        url = url.strip()
 
         try:
             response = requests.get(
-                url,
+                str(url),
                 headers={"User-agent": str(self.user_agent)},
                 timeout=self.connection_timeout,
                 stream=False)
@@ -307,8 +301,7 @@ class ExoActions:
             raise
 
     def page_to_pdf(self,
-                    url: str,
-                    url_hash: str,
+                    url: exo_url.ExoUrl,
                     queue_id: str) -> None:
         """ Uses the Google Chrome or Chromium browser in headless mode
             to print the page to PDF and stores that.
@@ -324,7 +317,7 @@ class ExoActions:
 
         try:
             self.cur.callproc('insert_file_SP',
-                              (url, url_hash, queue_id, 'application/pdf',
+                              (url, url.hash, queue_id, 'application/pdf',
                                str(self.file.target_dir), filename,
                                self.file.get_file_size(path),
                                self.file.HASH_METHOD, hash_value, 3))

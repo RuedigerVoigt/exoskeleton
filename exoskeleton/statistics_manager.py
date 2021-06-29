@@ -11,11 +11,11 @@ Released under the Apache License 2.0
 from collections import Counter
 import logging
 from typing import Optional
-from urllib.parse import urlparse
 
 import pymysql
 
 from exoskeleton import database_connection
+from exoskeleton import exo_url
 
 
 class StatisticsManager:
@@ -78,7 +78,7 @@ class StatisticsManager:
         logging.info(message)
 
     def __update_host_statistics(self,
-                                 url: str,
+                                 url: exo_url.ExoUrl,
                                  successful_requests_increment: int = 0,
                                  temporary_problems_increment: int = 0,
                                  permanent_errors_increment: int = 0,
@@ -87,35 +87,33 @@ class StatisticsManager:
             the hostname. Increase the different counters."""
         # pylint: disable=too-many-arguments
 
-        fqdn = urlparse(url).hostname
-
         self.cur.callproc('update_host_stats_SP',
-                          (fqdn,
+                          (url.hostname,
                            successful_requests_increment,
                            temporary_problems_increment,
                            permanent_errors_increment,
                            hit_rate_limit_increment))
 
     def log_successful_request(self,
-                               url: str) -> None:
+                               url: exo_url.ExoUrl) -> None:
         """ Update the host based statistics: Log a succesful request
             for the host of the provided URL."""
         self.__update_host_statistics(url, successful_requests_increment=1)
 
     def log_temporary_problem(self,
-                              url: str) -> None:
+                              url: exo_url.ExoUrl) -> None:
         """ Update the host based statistics: Log a temporary error
             for the host of the provided URL."""
         self.__update_host_statistics(url, temporary_problems_increment=1)
 
     def log_permanent_error(self,
-                            url: str) -> None:
+                            url: exo_url.ExoUrl) -> None:
         """ Update the host based statistics: Log a permanent error
             for the host of the provided URL."""
         self.__update_host_statistics(url, permanent_errors_increment=1)
 
     def log_rate_limit_hit(self,
-                           url: str) -> None:
+                           url: exo_url.ExoUrl) -> None:
         """ Update the host based statistics: Log that the crawler hit the
             rate limit for the host of the provided URL."""
         self.__update_host_statistics(url, hit_rate_limit_increment=1)

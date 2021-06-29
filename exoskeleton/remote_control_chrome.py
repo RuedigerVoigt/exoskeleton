@@ -14,6 +14,7 @@ import shutil
 import subprocess
 
 from exoskeleton import error_manager
+from exoskeleton import exo_url
 from exoskeleton import statistics_manager
 
 
@@ -68,8 +69,7 @@ class RemoteControlChrome:
 
     def check_browser_support(self,
                               browser_name: str) -> bool:
-        """Return True if the browser is supported.
-           Else raise an exception."""
+        "Return True if the browser is supported. Else raise an exception."
         if browser_name.lower() in self.SUPPORTED_BROWSERS:
             logging.info('Browser supported.')
             return True
@@ -80,7 +80,7 @@ class RemoteControlChrome:
         raise ValueError(msg)
 
     def page_to_pdf(self,
-                    url: str,
+                    url: exo_url.ExoUrl,
                     file_path: pathlib.Path,
                     queue_id: str) -> None:
         """ Uses the Google Chrome or Chromium browser in headless mode
@@ -105,7 +105,7 @@ class RemoteControlChrome:
                             # No additional quotation marks around the path:
                             # subprocess does the necessary escaping!
                             f"--print-to-pdf={file_path}",
-                            url],
+                            str(url)],
                            shell=False,
                            timeout=30,
                            check=True)
@@ -113,8 +113,8 @@ class RemoteControlChrome:
             logging.debug('PDF of page saved to disk')
 
         except subprocess.TimeoutExpired:
-            logging.exception('Cannot create PDF due to subprocess timeout.',
-                              exc_info=True)
+            logging.exception(
+                'Cannot create PDF due to subprocess timeout.', exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 4)
             self.stats.log_temporary_problem(url)
         except subprocess.CalledProcessError:

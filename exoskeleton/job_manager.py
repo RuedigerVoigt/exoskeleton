@@ -16,6 +16,7 @@ import userprovided
 import pymysql
 
 from exoskeleton import database_connection
+from exoskeleton import exo_url
 
 
 class JobManager:
@@ -32,7 +33,7 @@ class JobManager:
 
     def define_new(self,
                    job_name: str,
-                   start_url: str) -> None:
+                   start_url: exo_url.ExoUrl) -> None:
         "Create a new crawl job identified by its name and add a start URL."
         if not job_name:
             raise ValueError('Provide a valid job_name')
@@ -61,7 +62,7 @@ class JobManager:
 
     def update_current_url(self,
                            job_name: str,
-                           current_url: str) -> None:
+                           current_url: exo_url.ExoUrl) -> None:
         "Set the currentUrl for a specific job. "
         if not job_name:
             raise ValueError('Provide the job name.')

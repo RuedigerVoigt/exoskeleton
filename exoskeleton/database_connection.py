@@ -71,7 +71,7 @@ class DatabaseConnection:
         # make sure the connection is closed instead of waiting for timeout:
         try:
             self.connection.close()  # type: ignore[attr-defined]
-        except (Exception, pymysql.Error):
+        except (Exception, pymysql.Error):  # pylint: disable=broad-except
             pass
 
     def establish_db_connection(self) -> None:

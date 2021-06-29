@@ -13,7 +13,6 @@ from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 import time
 from typing import Literal, Optional, Union
-from urllib.parse import urlparse
 import uuid
 
 
@@ -254,30 +253,29 @@ class QueueManager:
             # Got a task from the queue!
             queue_id = next_in_queue[0]
             action = next_in_queue[1]
-            url = next_in_queue[2]
-            url_hash = next_in_queue[3]
+            url = exo_url.ExoUrl(next_in_queue[2])
             prettify_html = (next_in_queue[4] == 1)
 
             # The FQDN might have been added to the blocklist *after*
             # the task entered into the queue!
             # (We now that hostname is not None, as the URL was checked for
             # validity before beeing added: so ignore for mypy is OK)
-            if self.blocklist.check_blocklist(urlparse(url).hostname):  # type: ignore[arg-type]
+            if self.blocklist.check_blocklist(url.hostname):  # type: ignore[arg-type]
                 logging.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)
                 logging.info('Removed item from queue: FQDN on blocklist.')
             else:
                 if action == 1:  # download file to disk
-                    self.action.get_object(queue_id, 'file', url, url_hash)
+                    self.action.get_object(queue_id, 'file', url)
                 elif action == 2:  # save page code into database
                     self.action.get_object(
-                        queue_id, 'content', url, url_hash, prettify_html)
+                        queue_id, 'content', url, prettify_html)
                 elif action == 3:  # headless Chrome to create PDF
-                    self.action.page_to_pdf(url, url_hash, queue_id)
+                    self.action.page_to_pdf(url, queue_id)
                 elif action == 4:  # save page text into database
                     self.action.get_object(
-                        queue_id, 'text', url, url_hash, prettify_html)
+                        queue_id, 'text', url, prettify_html)
                 else:
                     logging.error('Unknown action id!')
 

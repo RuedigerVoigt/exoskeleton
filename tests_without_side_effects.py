@@ -91,7 +91,6 @@ def test_actions_BAD_QUEUE_ID():
                 objects=dict(),
                 queue_id=1,  # !
                 url='https://www.example.com',
-                url_hash='abcd',
                 prettify_html=False
                 )
     assert "queue_id must be a string" in str(excinfo.value)
@@ -104,23 +103,9 @@ def test_actions_MISSING_URL():
                 objects=dict(),
                 queue_id='foo',
                 url=None,
-                url_hash='abcd',
                 prettify_html=False
                 )
     assert "Missing parameter url" in str(excinfo.value)
-
-
-def test_actions_MISSING_URL_HASH():
-    # queue id is not a string
-    with pytest.raises(ValueError) as excinfo:
-        _ = actions.GetObjectBaseClass(
-                objects=dict(),
-                queue_id='foo',
-                url='https://www.example.com',
-                url_hash=None,
-                prettify_html=False
-                )
-    assert "Missing url_hash" in str(excinfo.value)
 
 # #############################################################################
 # HELPER FUNCTIONS

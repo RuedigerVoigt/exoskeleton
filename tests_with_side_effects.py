@@ -45,6 +45,7 @@ import pymysql
 import pytest
 
 import exoskeleton
+from exoskeleton import exo_url
 
 
 # #############################################################################
@@ -159,6 +160,21 @@ url_t1_1 = 'https://www.ruediger-voigt.eu/'
 # Check database state before running tests:
 assert queue_count() == 0, "Database / Queue is not empty at test-start"
 assert label_count() == 0, "Database / Table labels is not empty at test-start"
+
+
+# #############################################################################
+# ExoUrl class
+# #############################################################################
+@pytest.mark.parametrize("url", [
+    ('https://www.example.com'),
+    ('https://github.com/RuedigerVoigt/exoskeleton')
+])
+def test_generate_sha256_hash(url: str):
+    hash_python = exo_url.ExoUrl(url).hash
+    exo.cur.execute('SELECT SHA2(%s, 256);', (url, ))
+    hash_db = exo.cur.fetchone()[0]
+    assert hash_python == hash_db
+
 
 
 # #############################################################################

@@ -201,22 +201,31 @@ class Exoskeleton:
         self.queue.process_queue()
 
     def return_page_code(self,
-                         url: str) -> str:
+                         url: Union[exo_url.ExoUrl, str]) -> str:
         "Immediately return a page's code. Do *not* store it in the database."
+        if not url:
+            raise ValueError('Missing URL')
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         return self.action.return_page_code(url)
 
     # JOB MANAGEMENT:
 
     def job_define_new(self,
                        job_name: str,
-                       start_url: str) -> None:
+                       start_url: Union[exo_url.ExoUrl, str]) -> None:
         " Create a new crawl job identified by it name and an URL"
+        if not isinstance(start_url, exo_url.ExoUrl):
+            start_url = exo_url.ExoUrl(start_url)
         self.jobs.define_new(job_name, start_url)
 
     def job_update_current_url(self,
                                job_name: str,
-                               current_url: str) -> None:
+                               current_url: Union[exo_url.ExoUrl, str]
+                               ) -> None:
         "Set the currentUrl for a specific job."
+        if not isinstance(current_url, exo_url.ExoUrl):
+            current_url = exo_url.ExoUrl(current_url)
         self.jobs.update_current_url(job_name, current_url)
 
     def job_get_current_url(self,
