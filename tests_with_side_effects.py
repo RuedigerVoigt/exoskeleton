@@ -477,13 +477,13 @@ def test_block_unblock():
     # Add another task to the queue
     blocked_task_uuid = exo.add_save_page_code('https://www.github.com')
     # NOW set the host on the blocklist
-    exo.block_fqdn('www.github.com')
+    exo.blocklist.block_fqdn('www.github.com')
     # task remains
     assert queue_count() == before + 1, 'Task removed after host added to blocklist'
     # Add the same FQDN to blocklist (is ignored)
-    exo.block_fqdn('www.github.com')
+    exo.blocklist.block_fqdn('www.github.com')
     # unblock it again
-    exo.unblock_fqdn('www.github.com')
+    exo.blocklist.unblock_fqdn('www.github.com')
     # empty the queue completly
     exo.delete_from_queue(blocked_task_uuid)
 
@@ -491,14 +491,14 @@ def test_block_unblock():
 def test_blocklist_too_long_fqdn():
     "try to add an invalid FQDN (longer than allowed by standard)"
     with pytest.raises(ValueError) as excinfo:
-        exo.block_fqdn('foo'*255)
+        exo.blocklist.block_fqdn('foo'*255)
     assert 'Not a valid FQDN' in str(excinfo.value)
 
 
 def test_remove_from_blocklist():
     before = queue_count()
     # Add host to blocklist
-    exo.block_fqdn('www.google.com')
+    exo.blocklist.block_fqdn('www.google.com')
     # try to add URL with blocked FQDN
     uuid = exo.add_page_to_pdf(
         'https://www.google.com/search?q=exoskeleton+python',
@@ -508,7 +508,7 @@ def test_remove_from_blocklist():
     assert label_count() == test_counter['num_expected_labels']
     # Remove the fqdn from the blocklist.
     # Add the previously blocked URL with a task
-    exo.unblock_fqdn('www.google.com')
+    exo.blocklist.unblock_fqdn('www.google.com')
     exo.add_save_page_code(
         'https://www.google.com/search?q=exoskeleton+python')
     test_counter['num_expected_labels'] += 0
@@ -695,7 +695,7 @@ def test_job_manager():
 
 
 def test_clean_up_functions():
-    exo.truncate_blocklist()
+    exo.blocklist.truncate_blocklist()
 
 
 # #############################################################################

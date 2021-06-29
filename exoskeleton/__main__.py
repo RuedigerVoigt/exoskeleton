@@ -61,7 +61,7 @@ class Exoskeleton:
                  mail_settings: Union[dict, None] = None,
                  mail_behavior: Union[dict, None] = None,
                  chrome_name: str = ''):
-        "Sets defaults"
+        "Set defaults, create instances, ..."
 
         compatibility.Check(
             package_name='exoskeleton',
@@ -338,21 +338,3 @@ class Exoskeleton:
            any delay. The number of the error has to correspond to the
            errorType database table."""
         self.errorhandling.forget_specific_error(specific_error)
-
-    # BLOCKLIST:
-
-    def block_fqdn(self,
-                   fqdn: str,
-                   comment: Optional[str] = None) -> None:
-        """Add a specific fully qualified domain name (fqdn)
-        - like www.example.com - to the blocklist."""
-        self.blocklist.block_fqdn(fqdn, comment)
-
-    def unblock_fqdn(self,
-                     fqdn: str) -> None:
-        "Remove a specific FQDN from the blocklist."
-        self.blocklist.unblock_fqdn(fqdn.strip())
-
-    def truncate_blocklist(self) -> None:
-        "Remove *all* entries from the blocklist."
-        self.blocklist.truncate_blocklist()
