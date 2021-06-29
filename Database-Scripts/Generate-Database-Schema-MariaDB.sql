@@ -679,12 +679,12 @@ WHERE q.causesError IS NOT NULL;
 
 -- ----------------------------------------------------------
 -- ----------------------------------------------------------
--- BELOW CHANGES FOR EXOSKELETON VERSION 1.4.0
+-- BELOW CHANGES FOR EXOSKELETON VERSION 2.0.0
 -- ----------------------------------------------------------
 -- ----------------------------------------------------------
 
-INSERT INTO exoInfo VALUES ('schema', '1.4.0') 
-ON DUPLICATE KEY UPDATE exoValue = '1.4.0';
+INSERT INTO exoInfo VALUES ('schema', '2.0.0') 
+ON DUPLICATE KEY UPDATE exoValue = '2.0.0';
 
 
 CREATE FUNCTION num_tasks_with_active_rate_limit ()
