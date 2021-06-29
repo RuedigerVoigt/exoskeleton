@@ -12,8 +12,6 @@ Released under the Apache License 2.0
 # standard library:
 import logging
 from typing import Final
-from urllib.parse import urlparse
-
 
 import pymysql
 import requests
@@ -22,6 +20,7 @@ import userprovided
 
 from exoskeleton import database_connection
 from exoskeleton import error_manager
+from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
 from exoskeleton import remote_control_chrome
@@ -47,7 +46,7 @@ class GetObjectBaseClass:
             self,
             objects: dict,
             queue_id: str,
-            url: str,
+            url: exo_url.ExoUrl,
             url_hash: str,
             prettify_html: bool = False):
         if not isinstance(queue_id, str):
@@ -65,7 +64,7 @@ class GetObjectBaseClass:
         self.user_agent = objects['user_agent']
         self.connection_timeout = objects['connection_timeout']
         self.queue_id = queue_id
-        self.url = url.strip()
+        self.url = url
         self.url_hash = url_hash
         self.prettify_html = prettify_html
 
@@ -90,7 +89,7 @@ class GetObjectBaseClass:
             elif response.status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit => increase min_wait.')
-                fqdn = urlparse(self.url).hostname
+                fqdn = self.url.hostname
                 if fqdn:
                     self.errorhandling.add_rate_limit(fqdn)
                 self.stats.log_rate_limit_hit(self.url)
@@ -117,12 +116,6 @@ class GetObjectBaseClass:
             self.stats.log_rate_limit_hit(self.url)
             self.time.increase_wait()
 
-        except requests.exceptions.MissingSchema:
-            logging.error('Missing Schema Exception. Does your URL contain ' +
-                          'the protocol i.e. http:// or https:// ? ' +
-                          'See queue_id = %s', self.queue_id)
-            self.errorhandling.mark_permanent_error(self.queue_id, 1)
-
         except Exception:
             logging.error('Unknown exception while trying to download.',
                           exc_info=True)
@@ -147,7 +140,7 @@ class GetFile(GetObjectBaseClass):
     def handle_action(self) -> requests.Response:
         logging.debug('starting download of queue id %s', self.queue_id)
         response = requests.get(
-            self.url,
+            str(self.url),
             headers={"User-agent": self.user_agent},
             timeout=self.connection_timeout,
             stream=True)
@@ -157,7 +150,7 @@ class GetFile(GetObjectBaseClass):
                      response: requests.Response,
                      strip_code: bool = False) -> None:
         extension = userprovided.url.determine_file_extension(
-            self.url, self.mime_type)
+            str(self.url), self.mime_type)
         new_filename = f"{self.file.file_prefix}{self.queue_id}{extension}"
         file_path = self.file.write_response_to_file(
             response, new_filename)
@@ -184,7 +177,7 @@ class GetContent(GetObjectBaseClass):
     def handle_action(self) -> requests.Response:
         logging.debug('retrieving content of queue id %s', self.queue_id)
         response = requests.get(
-            self.url,
+            str(self.url),
             headers={"User-agent": self.user_agent},
             timeout=self.connection_timeout,
             stream=False)
@@ -264,7 +257,7 @@ class ExoActions:
     def get_object(self,
                    queue_id: str,
                    action_type: str,
-                   url: str,
+                   url: exo_url.ExoUrl,
                    url_hash: str,
                    prettify_html: bool = False) -> None:
         "Generic function to either download a file or store a page's content."
