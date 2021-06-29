@@ -11,7 +11,7 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
-from typing import Final
+from typing import Final, Literal
 
 import pymysql
 import requests
@@ -252,7 +252,7 @@ class ExoActions:
 
     def get_object(self,
                    queue_id: str,
-                   action_type: str,
+                   action_type: Literal['file', 'content', 'text'],
                    url: exo_url.ExoUrl,
                    prettify_html: bool = False) -> None:
         "Generic function to either download a file or store a page's content."
