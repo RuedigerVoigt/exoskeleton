@@ -61,17 +61,17 @@ class TimeManager:
             logging.info("increased maximum wait time by 1 second.")
 
     def absolute_run_time(self) -> float:
-        """Return seconds since init. """
+        "Return seconds since init. "
         return time.monotonic() - self.bot_start
 
     def get_process_time(self) -> float:
-        """Return execution time since init"""
+        "Return execution time since init"
         return time.process_time() - self.process_time_start
 
     def estimate_remaining_time(self,
                                 already_processed: int,
                                 num_items_in_queue: int) -> int:
-        """Estimate remaining seconds to finish crawl."""
+        "Estimate remaining seconds to finish crawl."
         time_so_far = self.absolute_run_time()
         if already_processed == 0 and num_items_in_queue == 0:
             return -1
