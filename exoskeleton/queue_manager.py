@@ -48,15 +48,12 @@ class QueueManager:
             label_manager_object: label_manager.LabelManager,
             bot_behavior: dict,
             milestone: Optional[int] = None) -> None:
-        # Connection object AND cursor for the queue manager to get a new
-        # cursor in case there is a problem.
-        # Planned to be replaced with a connection pool. See issue #20
         self.db_connection = db_connection
         self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.blocklist = blocklist_manager_object
         self.time = time_manager_object
         self.stats = stats_manager_object
-        self.action = actions_object
+        self.actions = actions_object
         self.notify = notification_manager_object
         self.labels = label_manager_object
 
@@ -267,15 +264,13 @@ class QueueManager:
                 logging.info('Removed item from queue: FQDN on blocklist.')
             else:
                 if action == 1:  # download file to disk
-                    self.action.get_object(queue_id, 'file', url)
+                    self.actions.get_object(queue_id, 'file', url)
                 elif action == 2:  # save page code into database
-                    self.action.get_object(
-                        queue_id, 'content', url, prettify_html)
+                    self.actions.get_object(queue_id, 'content', url, prettify_html)
                 elif action == 3:  # headless Chrome to create PDF
-                    self.action.page_to_pdf(url, queue_id)
+                    self.actions.page_to_pdf(url, queue_id)
                 elif action == 4:  # save page text into database
-                    self.action.get_object(
-                        queue_id, 'text', url, prettify_html)
+                    self.actions.get_object(queue_id, 'text', url, prettify_html)
                 else:
                     logging.error('Unknown action id!')
 
