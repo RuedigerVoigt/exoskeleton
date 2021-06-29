@@ -264,11 +264,11 @@ class QueueManager:
                 logging.info('Removed item from queue: FQDN on blocklist.')
             else:
                 if action == 1:  # download file to disk
-                    self.actions.get_object(queue_id, 'file', url)
+                    self.actions.get_object(queue_id, 'file', url, False)
                 elif action == 2:  # save page code into database
                     self.actions.get_object(queue_id, 'content', url, prettify_html)
                 elif action == 3:  # headless Chrome to create PDF
-                    self.actions.page_to_pdf(url, queue_id)
+                    self.actions.get_object(queue_id, 'page_to_pdf', url, False)
                 elif action == 4:  # save page text into database
                     self.actions.get_object(queue_id, 'text', url, prettify_html)
                 else:

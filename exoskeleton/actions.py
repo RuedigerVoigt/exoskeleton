@@ -210,6 +210,49 @@ class GetText(GetContent):
         return super().store_result(response, strip_code)
 
 
+class GetPDF():
+    """Use the Google Chrome or Chromium browser in headless mode to print the
+       page to PDF and store it.
+       BEWARE: Some cookie-popups blank out the page and all what is stored,
+       is the dialogue."""
+    # pylint: disable=too-many-instance-attributes
+
+    # too different to use the same base class as the others
+    def __init__(self,
+                 objects: dict,
+                 queue_id: str,
+                 url: exo_url.ExoUrl) -> None:
+        self.db_connection = objects['db_connection']
+        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
+        self.file = objects['file_manager_object']
+        self.controlled_browser = objects['controlled_browser']
+        self.url = url
+        self.queue_id = queue_id
+        self.filename = f"{self.file.file_prefix}{self.queue_id}.pdf"
+        self.path = self.file.target_dir.joinpath(self.filename)
+
+        self.handle_action()
+        self.store_result()
+
+    def handle_action(self) -> None:
+        "Get the PDF using a headless Chrome/Chromium"
+        self.controlled_browser.page_to_pdf(self.url, self.path, self.queue_id)
+
+    def store_result(self) -> None:
+        "Store the PDF info in the database"
+        try:
+            self.cur.callproc(
+                'insert_file_SP',
+                (self.url, self.url.hash, self.queue_id, 'application/pdf',
+                 str(self.file.target_dir), self.filename,
+                 self.file.get_file_size(self.path),
+                 self.file.HASH_METHOD, self.file.get_file_hash(self.path), 3))
+        except pymysql.DatabaseError:
+            logging.error(
+                'Transaction failed: Could not add file %s to the database!',
+                self.path, exc_info=True)
+
+
 class ExoActions:
     """Manage actions (i.e. interactions with servers)
        except remote control of the chromium browser. """
@@ -247,12 +290,13 @@ class ExoActions:
             'time_manager_object': self.time,
             'crawling_error_manager_object': self.errorhandling,
             'user_agent': self.user_agent,
-            'connection_timeout': self.connection_timeout
+            'connection_timeout': self.connection_timeout,
+            'controlled_browser': self.controlled_browser
         }
 
     def get_object(self,
                    queue_id: str,
-                   action_type: Literal['file', 'content', 'text'],
+                   action_type: Literal['file', 'content', 'text', 'page_to_pdf'],
                    url: exo_url.ExoUrl,
                    prettify_html: bool = False) -> None:
         "Generic function to either download a file or store a page's content."
@@ -265,6 +309,8 @@ class ExoActions:
             GetContent(self.objects, queue_id, url, prettify_html)
         elif action_type == 'text':
             GetText(self.objects, queue_id, url, prettify_html)
+        elif action_type == 'page_to_pdf':
+            GetPDF(self.objects, queue_id, url)
         else:
             raise ValueError('Invalid action_type!')
 
@@ -299,29 +345,3 @@ class ExoActions:
             logging.exception('Exception while trying to get page-code',
                               exc_info=True)
             raise
-
-    def page_to_pdf(self,
-                    url: exo_url.ExoUrl,
-                    queue_id: str) -> None:
-        """ Uses the Google Chrome or Chromium browser in headless mode
-            to print the page to PDF and stores that.
-            BEWARE: Some cookie-popups blank out the page and all what is
-            stored is the dialogue."""
-
-        filename = f"{self.file.file_prefix}{queue_id}.pdf"
-        path = self.file.target_dir.joinpath(filename)
-
-        self.controlled_browser.page_to_pdf(url, path, queue_id)
-
-        hash_value = self.file.get_file_hash(path)
-
-        try:
-            self.cur.callproc('insert_file_SP',
-                              (url, url.hash, queue_id, 'application/pdf',
-                               str(self.file.target_dir), filename,
-                               self.file.get_file_size(path),
-                               self.file.HASH_METHOD, hash_value, 3))
-        except pymysql.DatabaseError:
-            logging.error(
-                'Transaction failed: Could not add file %s to the database!',
-                path, exc_info=True)
