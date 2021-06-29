@@ -173,10 +173,10 @@ class LabelManager:
         return filemaster_id[0]  # type: ignore[index]
 
     def filemaster_labels_by_id(self,
-                                id: str) -> set:
+                                fm_id: str) -> set:
         """Get a list of label names (not id numbers!) attached to a specific
            filemaster entry using its id you get with get_filemaster_id()."""
-        self.cur.callproc('labels_filemaster_by_id_SP', (id, ))
+        self.cur.callproc('labels_filemaster_by_id_SP', (fm_id, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
