@@ -275,23 +275,17 @@ class ExoActions:
         self.db_connection = db_connection
         self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.stats = stats_manager_object
-        self.file = file_manager_object
-        self.time = time_manager_object
-        self.errorhandling = crawling_error_manager_object
         self.user_agent = user_agent
         self.connection_timeout = connection_timeout
-
-        self.controlled_browser = remote_control_chrome_object
-
         self.objects = {
             'db_connection': self.db_connection,
             'stats_manager_object': self.stats,
-            'file_manager_object': self.file,
-            'time_manager_object': self.time,
-            'crawling_error_manager_object': self.errorhandling,
+            'file_manager_object': file_manager_object,
+            'time_manager_object': time_manager_object,
+            'crawling_error_manager_object': crawling_error_manager_object,
             'user_agent': self.user_agent,
             'connection_timeout': self.connection_timeout,
-            'controlled_browser': self.controlled_browser
+            'controlled_browser': remote_control_chrome_object
         }
 
     def get_object(self,
