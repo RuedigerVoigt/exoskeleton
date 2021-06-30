@@ -175,12 +175,15 @@ class DatabaseSchemaCheck:
 
         db_schema = schema[0]  # type: ignore[index]
 
-        if db_schema == '1.4.0':
+        # Not taking the comparison value from _version as multiple versions
+        # of exoskeleton might share the same database schema.
+        if db_schema == '2.0.0':
             logging.info('Database schema matches version of exoskeleton.')
         else:
-            logging.warning("Mismatch between version of exoskeleton " +
-                            f"({version.__version__}) and version of " +
-                            f"the database schema ({db_schema}).")
+            raise RuntimeError(
+                "Mismatch between version of exoskeleton " +
+                f"({version.__version__}) and version of the database " +
+                f"schema ({db_schema}).")
 
     def check_db_schema(self) -> None:
         """Check whether all expected tables, stored procedures and functions
