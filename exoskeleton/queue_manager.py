@@ -245,22 +245,20 @@ class QueueManager:
 
             # The FQDN might have been added to the blocklist *after*
             # the task entered into the queue!
-            # (We now that hostname is not None, as the URL was checked for
-            # validity before beeing added: so ignore for mypy is OK)
-            if self.blocklist.check_blocklist(url.hostname):  # type: ignore[arg-type]
+            if self.blocklist.check_blocklist(str(url.hostname)):
                 logging.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)
                 logging.info('Removed item from queue: FQDN on blocklist.')
             else:
                 if action == 1:  # download file to disk
-                    self.actions.get_object(queue_id, 'file', url, False)
+                    self.actions.get_object(queue_id, 'file', url)
                 elif action == 2:  # save page code into database
                     self.actions.get_object(queue_id, 'content', url, prettify_html)
                 elif action == 3:  # headless Chrome to create PDF
-                    self.actions.get_object(queue_id, 'page_to_pdf', url, False)
+                    self.actions.get_object(queue_id, 'page_to_pdf', url)
                 elif action == 4:  # save page text into database
-                    self.actions.get_object(queue_id, 'text', url, False)
+                    self.actions.get_object(queue_id, 'text', url)
                 else:
                     logging.error('Unknown action id!')
 
