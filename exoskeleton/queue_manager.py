@@ -82,23 +82,16 @@ class QueueManager:
                      force_new_version: bool = False) -> Optional[str]:
         """ More general function to add items to queue. Called by
             add_file_download, add_save_page_code and add_page_to_pdf."""
+        if action not in (1, 2, 3, 4):
+            raise ValueError('Invalid value for action!')
 
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-
-        if action not in (1, 2, 3, 4):
-            logging.error('Invalid value for action!')
-            raise ValueError('Invalid value for action!')
 
         # Check if the FQDN of the URL is on the blocklist
         if url.hostname and self.blocklist.check_blocklist(url.hostname):
             logging.error('Cannot add URL to queue: FQDN is on blocklist.')
             return None
-
-        if prettify_html and action != 2:
-            logging.error(
-                'Option prettify_html not supported for this action.')
-            prettify_html = False
 
         # Add labels for the master entry.
         # Ignore labels for the version at this point, as it might
@@ -270,7 +263,7 @@ class QueueManager:
                 elif action == 3:  # headless Chrome to create PDF
                     self.actions.get_object(queue_id, 'page_to_pdf', url, False)
                 elif action == 4:  # save page text into database
-                    self.actions.get_object(queue_id, 'text', url, prettify_html)
+                    self.actions.get_object(queue_id, 'text', url, False)
                 else:
                     logging.error('Unknown action id!')
 
