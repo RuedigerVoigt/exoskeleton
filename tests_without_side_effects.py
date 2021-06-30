@@ -159,10 +159,6 @@ def test_FileManager_target_directory(fs):
 # #############################################################################
 
 
-def test_NotificationManager():
-    notification_manager.NotificationManager('test', None, None)
-
-
 # #############################################################################
 # RemoteControlChrome Class
 # #############################################################################

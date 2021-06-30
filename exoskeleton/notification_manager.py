@@ -52,9 +52,9 @@ class NotificationManager:
             self.send_finish_msg = mail_behavior.get('send_finish_msg', False)
             userprovided.parameters.enforce_boolean(
                 self.send_finish_msg, 'send_finish_msg')
-            self.time = time_manager_object
-            self.stats = stats_manager_object
-            self.milestone = milestone
+        self.time = time_manager_object
+        self.stats = stats_manager_object
+        self.milestone = milestone
 
     def __check_is_milestone(self) -> bool:
         "Check if a milestone is reached."
