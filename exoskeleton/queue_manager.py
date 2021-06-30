@@ -121,8 +121,7 @@ class QueueManager:
                               'in this way. Adding task to the queue.')
             else:
                 # File has not been processed yet.
-                # If the exact same task is *not* already in the queue,
-                # add it.
+                # If the exact same task is *not* already in the queue, add it.
                 if self.__get_queue_uuids(url, action):
                     logging.info('Exact same task already in queue.')
                     return None
@@ -141,15 +140,13 @@ class QueueManager:
         return uuid_value
 
     def __get_queue_uuids(self,
-                          url: Union[exo_url.ExoUrl, str],
+                          url: exo_url.ExoUrl,
                           action: int) -> set:
         """Based on the URL and action ID this returns a set of UUIDs in the
            *queue* that match those. Normally this set has a single element,
            but as you can force exoskeleton to repeat tasks on the same
            URL it can be multiple. Returns an empty set if such combination
            is not in the queue."""
-        if not isinstance(url, exo_url.ExoUrl):
-            url = exo_url.ExoUrl(url)
         self.cur.execute('SELECT id FROM queue ' +
                          'WHERE urlHash = SHA2(%s,256) AND ' +
                          'action = %s ' +
