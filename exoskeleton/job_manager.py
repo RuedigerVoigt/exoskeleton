@@ -10,6 +10,7 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
+from typing import Union
 
 # external dependencies:
 import userprovided
@@ -33,17 +34,17 @@ class JobManager:
 
     def define_new(self,
                    job_name: str,
-                   start_url: exo_url.ExoUrl) -> None:
+                   start_url: Union[exo_url.ExoUrl, str]) -> None:
         "Create a new crawl job identified by its name and add a start URL."
         if not job_name:
             raise ValueError('Provide a valid job_name')
-        if not start_url:
-            raise ValueError('A job needs a Start URL.')
         if not userprovided.parameters.string_in_range(job_name, 1, 127, True):
             raise ValueError('job name must be between 1 and 127 characters.')
-
+        if not start_url:
+            raise ValueError('A job needs a Start URL.')
+        if not isinstance(start_url, exo_url.ExoUrl):
+            start_url = exo_url.ExoUrl(start_url)
         job_name = job_name.strip()
-
         try:
             self.cur.callproc('define_new_job_SP', (job_name, start_url))
             logging.debug('Defined new job.')
@@ -62,13 +63,14 @@ class JobManager:
 
     def update_current_url(self,
                            job_name: str,
-                           current_url: exo_url.ExoUrl) -> None:
+                           current_url: Union[exo_url.ExoUrl, str]) -> None:
         "Set the currentUrl for a specific job. "
         if not job_name:
             raise ValueError('Provide the job name.')
         if not current_url:
             raise ValueError('Current URL must not be empty.')
-
+        if not isinstance(current_url, exo_url.ExoUrl):
+            current_url = exo_url.ExoUrl(current_url)
         # execute returns affected rows, callproc does not
         affected_rows = self.cur.execute(
             'CALL job_update_current_url_SP(%s, %s);',

@@ -176,6 +176,63 @@ def test_generate_sha256_hash(url: str):
     assert hash_python == hash_db
 
 
+# #############################################################################
+# TEST ADDING AND REMOVING TASKS TO THE QUEUE
+# #############################################################################
+
+
+def test_add_file_download():
+    # unsupported protocol
+    with pytest.raises(ValueError) as excinfo:
+        _ = exo.add_file_download('ftp://www.ruediger-voigt.eu/')
+    assert 'invalid or unsupported' in str(excinfo.value)
+    # standard add
+    uuid_1 = exo.add_file_download(
+        'https://www.ruediger-voigt.eu/examplefile.txt')
+    assert uuid_1 is not None, 'File download was not added'
+    exo.delete_from_queue(uuid_1)
+    # check with exoUrl
+    uuid_2 = exo.add_file_download(exo_url.ExoUrl('https://www.example.com/exo-url-test.html'))
+    assert uuid_2 is not None, 'File download was not added'
+    exo.delete_from_queue(uuid_2)
+
+
+def test_add_file_download_FORCE_NEW_VERSION():
+    uuid_1 = exo.add_file_download(
+        'https://www.ruediger-voigt.eu/examplefile.txt')
+    assert uuid_1 is not None
+    # now force downloading a second version
+    uuid_2 = exo.add_file_download(
+        'https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
+    assert uuid_2 is not None, 'Second version was not forced, but should'
+
+
+def test_add_save_page_code():
+    # malformed URL: must not be added to the queue
+    with pytest.raises(ValueError) as excinfo:
+        _ = exo.add_save_page_code('missingschema.example.com')
+    assert 'Malformed' in str(excinfo.value)
+    # add task
+    uuid_1 = exo.add_save_page_code('https://www.ruediger-voigt.eu/')
+    exo.delete_from_queue(uuid_1)
+    # add task with ExoUrl
+    uuid_2 = exo.add_save_page_code(exo_url.ExoUrl('https://www.ruediger-voigt.eu/'))
+    exo.delete_from_queue(uuid_2)
+
+
+def test_add_save_page_text():
+    # standard call
+    uuid_1 = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt')
+    exo.delete_from_queue(uuid_1)
+    # standard call with ExoUrl
+    uuid_2a = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt')
+    # force adding a second version of the same task
+    uuid_2b = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
+    assert uuid_2b is not None, 'Did not force downloading page text'
+    # clean up
+    exo.delete_from_queue(uuid_2a)
+    exo.delete_from_queue(uuid_2b)
+
 
 # #############################################################################
 # MAIN CLASS
@@ -390,39 +447,12 @@ def test_same_url_different_task():
     assert exo.labels.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
 
 
-def test_unsupported_protocol():
-    with pytest.raises(ValueError) as excinfo:
-        assert exo.add_file_download('ftp://www.ruediger-voigt.eu/') is None
-    assert 'invalid or unsupported' in str(excinfo.value)
-
-
 def test_get_filemaster_id_by_url():
     exo.get_filemaster_id_by_url(url_t1_1)
 
 
-def test_queue_file_download():
-    uuid_t1_4 = exo.add_file_download(
-        'https://www.ruediger-voigt.eu/examplefile.txt')
-    assert uuid_t1_4 is not None, 'File download was not added'
 
 
-def test_force_download_second_version():
-    # force downloading a second version
-    uuid_t1_5 = exo.add_file_download(
-        'https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
-    assert uuid_t1_5 is not None, 'Second version was ot forced, but should'
-
-
-def test_force_download_text():
-    uuid = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
-    assert uuid is not None, 'Did not force downloading page text'
-
-
-def test_block_adding_malformed_url():
-    # malformed URL: must not be added to the queue
-    with pytest.raises(ValueError) as excinfo:
-        _ = exo.add_save_page_code('missingschema.example.com')
-    assert 'Malformed' in str(excinfo.value)
 
 
 def test_remove_task_keep_labels():
@@ -462,6 +492,7 @@ def test_process_queue():
     exo.process_queue()
     # check_queue_count returns the number of items which did *not* cause permanent errors
     assert queue_count() == 0, 'Did not process everything it should have'
+
 
 
 # #############################################################################
@@ -640,47 +671,51 @@ def test_hit_a_rate_limit():
 
 
 def test_job_manager():
-    exo.job_define_new('Example Job', 'https://www.example.com')
+    exo.jobs.define_new('Example Job', 'https://www.example.com')
     # Define the job again with the same parameters
     # which is ignored except for a log entry
-    exo.job_define_new('Example Job', 'https://www.example.com')
+    exo.jobs.define_new('Example Job', 'https://www.example.com')
     # Job name too long:
     with pytest.raises(ValueError):
-        exo.job_define_new('foo' * 127, 'https://www.example.com')
+        exo.jobs.define_new('foo' * 127, 'https://www.example.com')
     # try to define job with same name but different start url
     with pytest.raises(ValueError):
-        exo.job_define_new('Example Job', 'https://www.example.com/foo.html')
+        exo.jobs.define_new('Example Job', 'https://www.example.com/foo.html')
     # Missing required job parameters
     with pytest.raises(ValueError):
-        exo.job_define_new('Example Job', '')
+        exo.jobs.define_new('Example Job', '')
     with pytest.raises(ValueError):
-        exo.job_define_new('', 'https://www.example.com')
+        exo.jobs.define_new('', 'https://www.example.com')
     # Update the URL
-    exo.job_update_current_url('Example Job', 'https://www.example.com/bar.html')
+    exo.jobs.update_current_url('Example Job', 'https://www.example.com/bar.html')
     with pytest.raises(ValueError):
-        exo.job_update_current_url(None, 'https://www.example.com/bar.html')
+        exo.jobs.update_current_url(None, 'https://www.example.com/bar.html')
     with pytest.raises(ValueError):
-        exo.job_update_current_url('Example Job', None)
+        exo.jobs.update_current_url('Example Job', None)
     with pytest.raises(ValueError):
-        exo.job_update_current_url('Unknown Job', 'https://www.example.com/')
+        exo.jobs.update_current_url('Unknown Job', 'https://www.example.com/')
     # Get the URL
-    assert exo.job_get_current_url('Example Job') == 'https://www.example.com/bar.html'
+    assert exo.jobs.get_current_url('Example Job') == 'https://www.example.com/bar.html'
     with pytest.raises(ValueError):
-        exo.job_get_current_url('Unknown Job')
+        exo.jobs.get_current_url('Unknown Job')
     # mark a job as finished
-    exo.job_mark_as_finished('Example Job')
+    exo.jobs.mark_as_finished('Example Job')
     with pytest.raises(ValueError):
-        exo.job_mark_as_finished('   ')
+        exo.jobs.mark_as_finished('   ')
     with pytest.raises(ValueError):
-        exo.job_mark_as_finished(None)
+        exo.jobs.mark_as_finished(None)
     # try to get the current URL of a finished job
     with pytest.raises(RuntimeError):
-        exo.job_get_current_url('Example Job')
+        exo.jobs.get_current_url('Example Job')
+    # Use methods with ExoUrl object instead of URL string
+    exo.jobs.define_new('ExoUrl Job', exo_url.ExoUrl('https://www.example.com/exourl.html'))
+    exo.jobs.update_current_url('ExoUrl Job', exo_url.ExoUrl('https://www.example.com/exourl-2.html'))
+    exo.jobs.mark_as_finished('ExoUrl Job')
 
 
 # try to change the current URL of a finished job
 # TO DO
-# exo.job_update_current_url('Example Job', 'https://www.github.com/')
+# exo.jobs.update_current_url('Example Job', 'https://www.github.com/')
 
 
 # #############################################################################

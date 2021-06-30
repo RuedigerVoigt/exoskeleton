@@ -209,37 +209,6 @@ class Exoskeleton:
             url = exo_url.ExoUrl(url)
         return self.action.return_page_code(url)
 
-    # JOB MANAGEMENT:
-
-    def job_define_new(self,
-                       job_name: str,
-                       start_url: Union[exo_url.ExoUrl, str]) -> None:
-        " Create a new crawl job identified by it name and an URL"
-        if not isinstance(start_url, exo_url.ExoUrl):
-            start_url = exo_url.ExoUrl(start_url)
-        self.jobs.define_new(job_name, start_url)
-
-    def job_update_current_url(self,
-                               job_name: str,
-                               current_url: Union[exo_url.ExoUrl, str]
-                               ) -> None:
-        "Set the currentUrl for a specific job."
-        if not isinstance(current_url, exo_url.ExoUrl):
-            current_url = exo_url.ExoUrl(current_url)
-        self.jobs.update_current_url(job_name, current_url)
-
-    def job_get_current_url(self,
-                            job_name: str) -> str:
-        """ Returns the current URL for this job. If none is stored, this
-            returns the start URL. Raises exception if the job is already
-            finished."""
-        return self.jobs.get_current_url(job_name)
-
-    def job_mark_as_finished(self,
-                             job_name: str) -> None:
-        "Mark a crawl job as finished."
-        self.jobs.mark_as_finished(job_name)
-
     # QUEUE MANAGEMENT:
 
     def add_file_download(self,
