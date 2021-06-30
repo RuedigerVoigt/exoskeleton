@@ -44,6 +44,7 @@ import pytest
 
 from exoskeleton import actions
 from exoskeleton import database_connection
+from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
 from exoskeleton import notification_manager
@@ -108,8 +109,25 @@ def test_actions_MISSING_URL():
     assert "Missing parameter url" in str(excinfo.value)
 
 # #############################################################################
+# ExoUrl class
+# #############################################################################
+
+
+def test_exo_url_GUARDS():
+    with pytest.raises(ValueError) as excinfo:
+        exo_url.ExoUrl(None)
+    assert "Missing URL" in str(excinfo.value)
+
+
+def test_exo_url_DUNDERS():
+    url_str = 'https://www.example.com'
+    myUrl = exo_url.ExoUrl(url_str)
+    assert str(myUrl) == url_str
+
+# #############################################################################
 # HELPER FUNCTIONS
 # #############################################################################
+
 
 def test_helpers():
     # prettify_html

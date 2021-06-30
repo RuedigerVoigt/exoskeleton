@@ -333,15 +333,15 @@ def get_filemaster_id():
 #     test_counter['num_expected_labels'] += 2
 
 
-# def test_filemaster_labels_by_url():
-#     # Add a task with filemaster labels
-#     m_labels = {'test_fm_labels_by_url_1', 'test_fm_labels_by_url_2'}
-#     test_url = 'https://www.example.com/fm-labels.html'
-#     test_uuid = exo.add_page_to_pdf(test_url, labels_master=m_labels)
-#     assert exo.labels.filemaster_labels_by_url(test_url) == m_labels
-#     # clean up
-#     exo.delete_from_queue(test_uuid)
-#     test_counter['num_expected_labels'] += 2
+def test_filemaster_labels_by_url():
+    # Add a task with filemaster labels
+    m_labels = {'test_fm_labels_by_url_1', 'test_fm_labels_by_url_2'}
+    test_url = 'https://www.example.com/fm-labels.html'
+    test_uuid = exo.add_page_to_pdf(test_url, labels_master=m_labels)
+    assert exo.labels.filemaster_labels_by_url(test_url) == m_labels
+    # clean up
+    exo.delete_from_queue(test_uuid)
+    test_counter['num_expected_labels'] += 2
 
 
 def test_version_labels_by_uuid():
