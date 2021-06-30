@@ -46,8 +46,7 @@ class QueueManager:
             actions_object: actions.ExoActions,
             notification_manager_object: notification_manager.NotificationManager,
             label_manager_object: label_manager.LabelManager,
-            bot_behavior: dict,
-            milestone: Optional[int] = None) -> None:
+            bot_behavior: dict) -> None:
         self.db_connection = db_connection
         self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.blocklist = blocklist_manager_object
@@ -66,8 +65,6 @@ class QueueManager:
         self.queue_revisit: int = bot_behavior.get('queue_revisit', 20)
         self.queue_revisit = userprovided.parameters.int_in_range(
             "queue_revisit", self.queue_revisit, 10, 50, 50)
-
-        self.milestone = milestone
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # ADDING TO AND REMOVING FROM THE QUEUE
@@ -262,22 +259,8 @@ class QueueManager:
                 else:
                     logging.error('Unknown action id!')
 
-                if self.check_is_milestone():
-                    self.notify.send_milestone_msg()
+                self.notify.send_msg_milestone()
 
                 # wait some interval to avoid overloading the server
                 self.time.random_wait()
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    # MILESTONES
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def check_is_milestone(self) -> bool:
-        "Check if a milestone is reached."
-        if self.milestone is None or self.milestone == 0:
-            return False
-        processed = self.stats.get_processed_counter()
-        # Check >0 in case the bot starts failing with the first item.
-        if (processed > 0 and (processed % self.milestone) == 0):
-            logging.info("Milestone reached: %s processed", str(processed))
-            return True
-        return False

@@ -10,6 +10,7 @@ Released under the Apache License 2.0
 """
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
+from typing import Optional
 
 import bote
 import userprovided
@@ -28,7 +29,8 @@ class NotificationManager:
                  mail_settings: dict,
                  mail_behavior: dict,
                  time_manager_object: time_manager.TimeManager,
-                 stats_manager_object: statistics_manager.StatisticsManager):
+                 stats_manager_object: statistics_manager.StatisticsManager,
+                 milestone: Optional[int] = None):
         """Sets defaults"""
 
         self.project_name = project_name
@@ -52,11 +54,24 @@ class NotificationManager:
                 self.send_finish_msg, 'send_finish_msg')
             self.time = time_manager_object
             self.stats = stats_manager_object
+            self.milestone = milestone
 
-    def send_milestone_msg(self) -> None:
-        """Once a milestone is reached, send an email with an estimate
-           how long it will take for the bot to finish."""
+    def __check_is_milestone(self) -> bool:
+        "Check if a milestone is reached."
+        if self.milestone is None or self.milestone == 0:
+            return False
+        processed = self.stats.get_processed_counter()
+        # Check >0 in case the bot starts failing with the first item.
+        if (processed > 0 and (processed % self.milestone) == 0):
+            logging.info("Milestone reached: %s processed", str(processed))
+            return True
+        return False
 
+    def send_msg_milestone(self) -> None:
+        """In case a milestone is defined and reached, send an email with
+           an estimate how long it will take for the bot to finish."""
+        if not self.__check_is_milestone():
+            return
         stats = self.stats.queue_stats()
         processed = self.stats.get_processed_counter()
         remaining = (stats['tasks_without_error'] +

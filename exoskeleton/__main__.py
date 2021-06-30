@@ -141,7 +141,7 @@ class Exoskeleton:
             bot_behavior.get('wait_max', 30))
 
         self.notify = notification_manager.NotificationManager(
-            self.project, mail_settings, mail_behavior, self.time, self.stats)
+            self.project, mail_settings, mail_behavior, self.time, self.stats, self.milestone)
 
         self.labels = label_manager.LabelManager(self.db)
 
@@ -181,9 +181,7 @@ class Exoskeleton:
             self.action,
             self.notify,
             self.labels,
-            bot_behavior,
-            self.milestone
-            )
+            bot_behavior)
 
         self.jobs = job_manager.JobManager(self.db)
 
