@@ -180,9 +180,11 @@ class LabelManager:
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
     def filemaster_labels_by_url(self,
-                                 url: str) -> set:
+                                 url: Union[exo_url.ExoUrl, str]) -> set:
         """Get a list of label names (not id numbers!) attached to a specific
            filemaster entry using the URL associated."""
+        if not isinstance(url, exo_url.ExoUrl):
+            url = exo_url.ExoUrl(url)
         self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
