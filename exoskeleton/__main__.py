@@ -302,7 +302,8 @@ class Exoskeleton:
         return uuid
 
     def get_filemaster_id_by_url(self,
-                                 url: Union[exo_url.ExoUrl, str]) -> Optional[str]:
+                                 url: Union[exo_url.ExoUrl, str]
+                                 ) -> Optional[str]:
         "Get the id of the filemaster entry associated with this URL."
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
@@ -312,29 +313,3 @@ class Exoskeleton:
                           queue_id: str) -> None:
         "Remove all label links from a queue item and then delete it."
         self.queue.delete_from_queue(queue_id)
-
-    # ERROR HANDLING:
-
-    def forget_all_errors(self) -> None:
-        """Treat all queued tasks, that are marked to cause any type of error,
-           as if they are new tasks by removing that mark and any delay."""
-        self.errorhandling.forget_all_errors()
-
-    def forget_permanent_errors(self) -> None:
-        """Treat all queued tasks, that are marked to cause a *permanent*
-           error, as if they are new tasks by removing that mark and
-           any delay."""
-        self.errorhandling.forget_error_group(True)
-
-    def forget_temporary_errors(self) -> None:
-        """Treat all queued tasks, that are marked to cause a *temporary*
-        error, as if they are new tasks by removing that mark and any delay."""
-        self.errorhandling.forget_error_group(False)
-
-    def forget_specific_error(self,
-                              specific_error: int) -> None:
-        """Treat all queued tasks, that are marked to cause a *specific*
-           error, as if they are new tasks by removing that mark and
-           any delay. The number of the error has to correspond to the
-           errorType database table."""
-        self.errorhandling.forget_specific_error(specific_error)
