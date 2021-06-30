@@ -558,17 +558,17 @@ def test_exceed_retries():
 
 def test_forget_errors():
     check_error_codes({3, 451, 402, 404, 407, 410})
-    exo.forget_specific_error(404)
+    exo.errorhandling.forget_specific_error(404)
     check_error_codes({3, 451, 402, 407, 410})
-    exo.forget_permanent_errors()
+    exo.errorhandling.forget_permanent_errors()
     check_error_codes(set())
-    exo.forget_temporary_errors()
+    exo.errorhandling.forget_temporary_errors()
     # process the queue again
     exo.process_queue()
     # Check they all are marked as errors again:
     check_error_codes({3, 451, 402, 404, 407, 410})
     # Now remove all errors
-    exo.forget_all_errors()
+    exo.errorhandling.forget_all_errors()
     check_error_codes(set())
     # Truncate the queue
     exo.cur.execute('TRUNCATE TABLE queue;')
