@@ -259,7 +259,7 @@ class ExoActions:
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
 
-    MAX_PATH_LENGTH = 255
+    MAX_PATH_LENGTH: Final = 255
 
     def __init__(
             self,
@@ -327,21 +327,18 @@ class ExoActions:
                 timeout=self.connection_timeout,
                 stream=False)
 
+            if response.status_code == 404:
+                raise RuntimeError('Not found: check URL')
             if response.status_code != 200:
                 raise RuntimeError('Cannot return page code')
             return response.text
 
-        except TimeoutError:
-            logging.error('Reached timeout.', exc_info=True)
+        except (TimeoutError, ConnectionError):
+            logging.exception(
+                'Exception while getting page-code', exc_info=True)
             self.stats.log_temporary_problem(url)
             raise
-
-        except ConnectionError:
-            logging.error('Connection Error', exc_info=True)
-            self.stats.log_temporary_problem(url)
-            raise
-
         except Exception:
-            logging.exception('Exception while trying to get page-code',
-                              exc_info=True)
+            logging.exception(
+                'Exception while getting page-code', exc_info=True)
             raise
