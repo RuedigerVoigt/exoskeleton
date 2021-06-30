@@ -71,7 +71,7 @@ class QueueManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def add_to_queue(self,
-                     url: Union[exo_url.ExoUrl, str],
+                     url: exo_url.ExoUrl,
                      action: Literal[1, 2, 3, 4],
                      labels_master: set = None,
                      labels_version: set = None,
@@ -79,11 +79,10 @@ class QueueManager:
                      force_new_version: bool = False) -> Optional[str]:
         """ More general function to add items to queue. Called by
             add_file_download, add_save_page_code and add_page_to_pdf."""
+        if not isinstance(url, exo_url.ExoUrl):
+            raise ValueError('url must be of class ExoUrl.')
         if action not in (1, 2, 3, 4):
             raise ValueError('Invalid value for action!')
-
-        if not isinstance(url, exo_url.ExoUrl):
-            url = exo_url.ExoUrl(url)
 
         # Check if the FQDN of the URL is on the blocklist
         if url.hostname and self.blocklist.check_blocklist(url.hostname):
