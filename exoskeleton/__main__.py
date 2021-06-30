@@ -107,8 +107,7 @@ class Exoskeleton:
         if self.milestone and not isinstance(self.milestone, int):
             raise ValueError('milestone_num must be integer!')
 
-        self.notify = notification_manager.NotificationManager(
-            self.project, mail_settings, mail_behavior)
+
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Bot Behavior
@@ -140,6 +139,9 @@ class Exoskeleton:
         self.time = time_manager.TimeManager(
             bot_behavior.get('wait_min', 5),
             bot_behavior.get('wait_max', 30))
+
+        self.notify = notification_manager.NotificationManager(
+            self.project, mail_settings, mail_behavior, self.time, self.stats)
 
         self.labels = label_manager.LabelManager(self.db)
 

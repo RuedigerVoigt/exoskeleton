@@ -228,7 +228,7 @@ class QueueManager:
                     if num_permanent_errors > 0:
                         logging.error("%s permanent errors!",
                                       num_permanent_errors)
-                    self.notify.send_msg_finish(num_permanent_errors)
+                    self.notify.send_msg_finish()
                     break
 
                 logging.debug(
@@ -263,16 +263,7 @@ class QueueManager:
                     logging.error('Unknown action id!')
 
                 if self.check_is_milestone():
-                    stats = self.stats.queue_stats()
-                    remaining_tasks = (stats['tasks_without_error'] +
-                                       stats['tasks_with_temp_errors'])
-                    self.notify.send_milestone_msg(
-                        self.stats.get_processed_counter(),
-                        remaining_tasks,
-                        self.time.estimate_remaining_time(
-                            self.stats.get_processed_counter(),
-                            remaining_tasks)
-                            )
+                    self.notify.send_milestone_msg()
 
                 # wait some interval to avoid overloading the server
                 self.time.random_wait()

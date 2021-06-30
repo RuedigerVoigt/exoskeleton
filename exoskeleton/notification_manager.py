@@ -14,6 +14,9 @@ import logging
 import bote
 import userprovided
 
+from exoskeleton import statistics_manager
+from exoskeleton import time_manager
+
 
 class NotificationManager:
     """Notification management for the exoskeleton crawler framework.
@@ -23,7 +26,9 @@ class NotificationManager:
     def __init__(self,
                  project_name: str,
                  mail_settings: dict,
-                 mail_behavior: dict):
+                 mail_behavior: dict,
+                 time_manager_object: time_manager.TimeManager,
+                 stats_manager_object: statistics_manager.StatisticsManager):
         """Sets defaults"""
 
         self.project_name = project_name
@@ -45,13 +50,20 @@ class NotificationManager:
             self.send_finish_msg = mail_behavior.get('send_finish_msg', False)
             userprovided.parameters.enforce_boolean(
                 self.send_finish_msg, 'send_finish_msg')
+            self.time = time_manager_object
+            self.stats = stats_manager_object
 
-    def send_milestone_msg(self,
-                           processed: int,
-                           remaining: int,
-                           time_to_finish_seconds: int) -> None:
+    def send_milestone_msg(self) -> None:
         """Once a milestone is reached, send an email with an estimate
            how long it will take for the bot to finish."""
+
+        stats = self.stats.queue_stats()
+        processed = self.stats.get_processed_counter()
+        remaining = (stats['tasks_without_error'] +
+                     stats['tasks_with_temp_errors'])
+        time_to_finish_seconds = self.time.estimate_remaining_time(
+            processed, remaining)
+
         # TO DO: more precise estimate requires to account for rate limits
         subject = (
             f"Project {self.project_name} Milestone: {processed} processed")
@@ -67,14 +79,14 @@ class NotificationManager:
                               "The bot just started.")
         logging.debug('Sent a message announcing the start')
 
-    def send_msg_finish(self,
-                        num_permanent_errors: int) -> None:
+    def send_msg_finish(self) -> None:
         """If configured so, send an email once the queue is empty
            and the bot stopped."""
         if self.send_mails and self.send_finish_msg:
             subject = f"{self.project_name}: queue empty / bot stopped"
             body = (f"The queue is empty. The bot {self.project_name} " +
-                    f"stopped as configured. {num_permanent_errors} errors.")
+                    "stopped as configured. " +
+                    f"{self.stats.num_tasks_w_permanent_errors()} errors.")
             self.mailer.send_mail(subject, body)
 
     def send_msg_abort_lost_db(self) -> None:
