@@ -259,8 +259,6 @@ class ExoActions:
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
 
-    MAX_PATH_LENGTH: Final = 255
-
     def __init__(
             self,
             db_connection: database_connection.DatabaseConnection,
