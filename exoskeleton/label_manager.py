@@ -72,7 +72,7 @@ class LabelManager:
 
     def assign_labels_to_master(self,
                                 url: Union[exo_url.ExoUrl, str],
-                                labels: Union[set, None]) -> None:
+                                labels: set) -> None:
         """ Assigns one or multiple labels to the *fileMaster* entry.
             Removes duplicates and adds new labels to the label list
             if necessary."""
@@ -121,10 +121,9 @@ class LabelManager:
 
     def assign_labels_to_uuid(self,
                               uuid_string: str,
-                              labels: Union[set, None]) -> None:
+                              labels: set) -> None:
         """Assigns one or multiple labels to a specific version of a file.
             Removes duplicates and adds new labels if necessary."""
-
         if not labels:
             return
 
@@ -164,8 +163,8 @@ class LabelManager:
 
     def get_filemaster_id(self,
                           version_uuid: str) -> str:
-        """Get the id of the filemaster entry associated with
-            a specific version identified by its UUID."""
+        """Get the id of the filemaster entry associated with a specific
+           version identified by its UUID."""
         self.cur.execute('SELECT get_filemaster_id(%s);', (version_uuid, ))
         filemaster_id = self.cur.fetchone()
         if not filemaster_id:
@@ -190,9 +189,9 @@ class LabelManager:
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
-        """Get a list of label names (not id numbers!) attached
-            to a specific version of a file. Does not include
-            labels attached to the filemaster entry."""
+        """Get a list of label names (not id numbers!) attached to a specific
+           version of a file. Does not include labels attached to the
+           filemaster entry."""
         self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
         labels = self.cur.fetchall()
         return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
@@ -200,7 +199,7 @@ class LabelManager:
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
         """Get a set of ALL label names (not id numbers!) attached
-            to a specific version of a file AND its filemaster entry."""
+           to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
         filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
