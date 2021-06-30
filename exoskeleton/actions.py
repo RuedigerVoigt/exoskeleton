@@ -302,8 +302,6 @@ class ExoActions:
         "Generic function to either download a file or store a page's content."
 
         if action_type == 'file':
-            if prettify_html:
-                logging.error('Wrong action_type: prettify_html ignored.')
             GetFile(self.objects, queue_id, url, False)
         elif action_type == 'content':
             GetContent(self.objects, queue_id, url, prettify_html)
