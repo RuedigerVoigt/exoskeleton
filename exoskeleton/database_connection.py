@@ -94,13 +94,11 @@ class DatabaseConnection:
                 exc_info=True)
             raise
         except (pymysql.InterfaceError, pymysql.DatabaseError):
-            logging.exception('Exception related to the database.',
-                              exc_info=True)
+            logging.exception('Database related exception', exc_info=True)
             raise
         except (pymysql.Error, Exception):
             logging.exception(
-                'Unknown exception while trying to connect to the DBMS.',
-                exc_info=True)
+                'Exception while connecting to the DBMS.', exc_info=True)
             raise
 
     def get_cursor(self) -> pymysql.cursors.Cursor:
