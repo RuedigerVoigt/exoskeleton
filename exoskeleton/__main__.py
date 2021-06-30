@@ -270,14 +270,6 @@ class Exoskeleton:
                                        True, force_new_version)
         return uuid
 
-    def get_filemaster_id_by_url(self,
-                                 url: Union[exo_url.ExoUrl, str]
-                                 ) -> Optional[str]:
-        "Get the id of the filemaster entry associated with this URL."
-        if not isinstance(url, exo_url.ExoUrl):
-            url = exo_url.ExoUrl(url)
-        return self.queue.get_filemaster_id_by_url(url)
-
     def delete_from_queue(self,
                           queue_id: str) -> None:
         "Remove all label links from a queue item and then delete it."

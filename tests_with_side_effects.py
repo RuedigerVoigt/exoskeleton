@@ -169,7 +169,7 @@ assert label_count() == 0, "Database / Table labels is not empty at test-start"
     ('https://www.example.com'),
     ('https://github.com/RuedigerVoigt/exoskeleton')
 ])
-def test_generate_sha256_hash(url: str):
+def test_exo_url_generate_sha256_hash(url: str):
     hash_python = exo_url.ExoUrl(url).hash
     exo.cur.execute('SELECT SHA2(%s, 256);', (url, ))
     hash_db = exo.cur.fetchone()[0]
@@ -445,12 +445,6 @@ def test_same_url_different_task():
     test_counter['num_expected_labels'] += 1
     assert label_count() == test_counter['num_expected_labels']
     assert exo.labels.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
-
-
-def test_get_filemaster_id_by_url():
-    exo.get_filemaster_id_by_url(url_t1_1)
-
-
 
 
 

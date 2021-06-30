@@ -152,7 +152,8 @@ class QueueManager:
         return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()  # type: ignore[index]
 
     def get_filemaster_id_by_url(self,
-                                 url: Union[exo_url.ExoUrl, str]) -> Optional[str]:
+                                 url: Union[exo_url.ExoUrl, str]
+                                 ) -> Optional[str]:
         "Get the id of the filemaster entry associated with this URL"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
