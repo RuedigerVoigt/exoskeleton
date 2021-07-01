@@ -37,7 +37,9 @@ Released under the Apache License 2.0
 from collections import Counter
 import hashlib
 import logging
+import subprocess
 from unittest.mock import patch
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -46,7 +48,7 @@ import pytest
 
 import exoskeleton
 from exoskeleton import exo_url
-from exoskeleton import exceptions
+from exoskeleton import err
 
 
 # #############################################################################
@@ -226,13 +228,22 @@ def test_add_save_page_text():
     uuid_1 = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt')
     exo.delete_from_queue(uuid_1)
     # standard call with ExoUrl
-    uuid_2a = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt')
+    uuid_2a = exo.add_save_page_text(exo_url.ExoUrl('https://www.ruediger-voigt.eu/examplefile.txt'))
     # force adding a second version of the same task
-    uuid_2b = exo.add_save_page_text('https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
+    uuid_2b = exo.add_save_page_text(exo_url.ExoUrl('https://www.ruediger-voigt.eu/examplefile.txt'), None, None, True)
     assert uuid_2b is not None, 'Did not force downloading page text'
     # clean up
     exo.delete_from_queue(uuid_2a)
     exo.delete_from_queue(uuid_2b)
+
+
+def test_add_page_to_pdf():
+    uuid_1 = exo.add_page_to_pdf('https://www.example.com')
+    uuid_2 = exo.add_page_to_pdf(exo_url.ExoUrl('https://www.example.com'))
+    # clean up
+    exo.delete_from_queue(uuid_1)
+    exo.delete_from_queue(uuid_2)
+
 
 
 # #############################################################################
@@ -362,11 +373,16 @@ def test_assign_labels_to_master():
     # Add a task without any filemaster label
     test_url = 'https://www.example.com/assign-label-to-fm.html'
     test_uuid = exo.add_page_to_pdf(test_url)
+    # test guard
+    exo.labels.assign_labels_to_master(test_url, set()) is None
+    exo.labels.assign_labels_to_master(test_url, None) is None
     # Now use the URL to add some labels at filemaster level
     fm_labels = {'assign_to_fm_test_1', 'assign_to_fm_test_2'}
     exo.labels.assign_labels_to_master(test_url, fm_labels)
     # pull the labels and compare them
     assert exo.labels.filemaster_labels_by_url(test_url) == fm_labels
+    # repeat with ExoUrl
+    assert exo.labels.filemaster_labels_by_url(exo_url.ExoUrl(test_url)) == fm_labels
     # clean up
     exo.delete_from_queue(test_uuid)
     test_counter['num_expected_labels'] += 2
@@ -383,6 +399,17 @@ def test_assign_labels_to_master():
 #     # clean up
 #     exo.delete_from_queue(test_uuid)
 #     test_counter['num_expected_labels'] += 3
+
+
+def test_remove_labels_from_uuid():
+    # Add a task without any filemaster label
+    test_url = 'https://www.example.com/assign-label-to-fm.html'
+    test_labels = {'remove_me_1', 'remove_me_2'}
+    uuid_1 = exo.add_page_to_pdf(test_url, labels_version=test_labels)
+    test_counter['num_expected_labels'] += 2
+    exo.labels.remove_labels_from_uuid(uuid_1, test_labels)
+    # TO DO: how many labels are attached?
+    exo.delete_from_queue(uuid_1)
 
 
 def test_version_uuids_by_label():
@@ -448,8 +475,6 @@ def test_same_url_different_task():
     assert exo.labels.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
 
 
-
-
 def test_remove_task_keep_labels():
     """Add new task to the queue with unique labels.
        Remove it from the queue before it is executed.
@@ -473,6 +498,7 @@ def test_remove_task_keep_labels():
 
 def test_return_page_code():
     exo.return_page_code('https://www.ruediger-voigt.eu/')
+    exo.return_page_code(exo_url.ExoUrl('https://www.ruediger-voigt.eu/'))
     with pytest.raises(ValueError) as excinfo:
         exo.return_page_code(None)
     assert 'Missing URL' in str(excinfo.value)
@@ -525,7 +551,7 @@ def test_remove_from_blocklist():
     # Add host to blocklist
     exo.blocklist.block_fqdn('www.google.com')
     # try to add URL with blocked FQDN
-    with pytest.raises(exceptions.HostOnBlocklistError):
+    with pytest.raises(err.HostOnBlocklistError):
         _ = exo.add_page_to_pdf(
             'https://www.google.com/search?q=exoskeleton+python',
             {'label_that_should-be_ignored'},
@@ -598,6 +624,18 @@ def test_forget_errors():
     check_error_codes(set())
     # Truncate the queue
     exo.cur.execute('TRUNCATE TABLE queue;')
+
+
+def test_log_temporary_problem():
+    test_url = 'https://www.example.com'
+    exo.stats.log_temporary_problem(exo_url.ExoUrl(test_url))
+    exo.errorhandling.forget_temporary_errors()
+
+
+def test_log_rate_limit_hit():
+    test_url = 'https://www.example.com'
+    exo.stats.log_rate_limit_hit(exo_url.ExoUrl(test_url))
+    exo.errorhandling.forget_permanent_errors()
 
 
 # #############################################################################
@@ -717,6 +755,23 @@ def test_job_manager():
 # TEST NOTIFICATIONS
 # #############################################################################
 
+
+# #############################################################################
+# TEST CONTROLLED BROWSER
+# #############################################################################
+
+
+def test_page_to_pdf_EXCEPTIONS():
+    with patch('subprocess.run', side_effect=subprocess.TimeoutExpired):
+        exo.controlled_browser.page_to_pdf(
+            url=exo_url.ExoUrl('https://www.ruediger-voigt.eu'),
+            file_path='./fileDownloads/setup-to-fail.pdf',
+            queue_id='foo')
+    with patch('subprocess.run', side_effect=subprocess.CalledProcessError):
+        exo.controlled_browser.page_to_pdf(
+            url=exo_url.ExoUrl('https://www.ruediger-voigt.eu'),
+            file_path='./fileDownloads/setup-to-fail.pdf',
+            queue_id='foo')
 
 
 # ############################################

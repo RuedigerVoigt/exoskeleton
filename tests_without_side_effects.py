@@ -129,12 +129,17 @@ def test_exo_url_DUNDERS():
 # #############################################################################
 
 
-def test_helpers():
+def test_prettify_html():
     # prettify_html
     # Not checking how the improved version looks like as this may change
     # slightly with newer version of beautiful soup.
     broken_html = "<a href='https://www.example.com'>example</b></b><p></p>"
     assert helpers.prettify_html(broken_html) != broken_html
+
+
+def test_strip_code():
+    text_with_html = '<h1>Example</h1> foo'
+    assert helpers.strip_code(text_with_html) == 'Example foo'
 
 # #############################################################################
 # FileManager Class

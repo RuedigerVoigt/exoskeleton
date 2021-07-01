@@ -23,7 +23,7 @@ import userprovided
 from exoskeleton import actions
 from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
-from exoskeleton import exceptions
+from exoskeleton import err
 from exoskeleton import exo_url
 from exoskeleton import label_manager
 from exoskeleton import notification_manager
@@ -89,7 +89,7 @@ class QueueManager:
         if url.hostname and self.blocklist.check_blocklist(url.hostname):
             msg = 'Cannot add URL to queue: FQDN is on blocklist.'
             logging.exception(msg)
-            raise exceptions.HostOnBlocklistError(msg)
+            raise err.HostOnBlocklistError(msg)
 
         # Add labels for the master entry.
         # Ignore labels for the version at this point, as it might
