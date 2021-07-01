@@ -265,4 +265,3 @@ class QueueManager:
 
                 # wait some interval to avoid overloading the server
                 self.time.random_wait()
-

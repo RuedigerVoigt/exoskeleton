@@ -18,7 +18,6 @@ import pymysql
 
 
 from exoskeleton import database_connection
-from exoskeleton import exceptions
 
 
 class BlocklistManager:

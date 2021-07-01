@@ -32,6 +32,7 @@ class NotificationManager:
                  stats_manager_object: statistics_manager.StatisticsManager,
                  milestone: Optional[int] = None):
         """Sets defaults"""
+        # pylint: disable=too-many-arguments
 
         self.project_name = project_name
 
