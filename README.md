@@ -7,14 +7,16 @@
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
 [![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
-For my dissertation I downloaded hundreds of thousands of documents and feed them into a machine learning pipeline. Using a high-speed-connection carries the risk to run an involuntary denial-of-service attack on the servers that provide those documents.
+Machine Learning and other applications make it necessary to download thousands or sometimes hundreds of thousands of files.
+
+Using a high-speed-connection carries the risk to run an involuntary denial-of-service attack on the servers that provide those files and webpages.
 
 Exoskeleton is a Python framework that helps you build a crawler / scraper that avoids too high loads on the connection and instead runs permanently and fault tolerant to ultimately download all files.
 
-Main functionalities are:
-* Managing the download queue within a MariaDB database.
+Its main functionalities are:
+* Managing the download queue and document data within a MariaDB database.
 * Avoid processing the same URL more than once.
-* Working through that queue by either
+* Working through the queue by either
     * downloading files to disk,
     * storing the page source code into a database table,
     * storing the page text,
@@ -23,7 +25,6 @@ Main functionalities are:
     * Storing multiple versions of a specific file.
     * Assigning labels to downloads, so they can be found and grouped easily.
 * Sending progress reports to the admin.
-
 
 # Documentation
 

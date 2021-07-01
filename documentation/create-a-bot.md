@@ -41,7 +41,7 @@ import logging
 
 import exoskeleton
 
-# exoskeleton makes heavy use of the built-in
+# Exoskeleton makes heavy use of the built-in
 # logging functionality. Change the level to
 # INFO to see less messages.
 logging.basicConfig(level=logging.DEBUG)
@@ -112,7 +112,7 @@ The dictionary `database_settings` knows the following parameters and defaults:
 
 ## First Test
 
-Now let us *extend* the python code with:
+Now let us *extend* the Python code with:
 ```python
 # Add two files to the queue for download
 exo.add_file_download('https://www.ruediger-voigt.eu/examplefile.txt')
@@ -127,6 +127,10 @@ If you run this extended script exoskeleton downloads the first file, waits a bi
 :heavy_exclamation_mark: *Notice*: In the default setup the bot will not stop after downloading these two files. Instead it will wait for 20 seconds and see if new jobs were added to the queue. You must stop the python program with (depending on your system) CTRL+C and/or CTRL+D.
 
 
-Now look into the folder you specified with the `target_directory` parameter. The files are *not* named `examplefile.txt` and `README.md` but instead have the `filename_prefix` you specified followed by an alphanumeric id as name. The reason for such strange names is simple: if you download hundreds or thousands of files there will be many name collisions. That means you will have many files with the name `index.html` or similar which would overwrite each other. You would have to rename them into `index_a.html`, `index_b.html`, `index_c.html` and so on. *Here the alphanumeric id after the prefix is the id within the database. So, you can look up the source URL, the download date, and so on.*
+Now look into the folder you specified with the `target_directory` parameter. The files are *not* named `examplefile.txt` and `README.md` but instead have the `filename_prefix` you specified followed by an alphanumeric id as name. For example: `EXO_1e95728cf99e460abecaf1c02e4f884e.pdf`.
+
+The reason for such "strange" names is simple: if you download many files there will be name collisions. That means you will have many files with the name `index.html` or similar which would overwrite each other. You would have to rename them into `index_a.html`, `index_b.html`, `index_c.html` and so on.
+
+*The alphanumeric id after the prefix is also the id within the database. So, you can look up the source URL, the download date, and so on.*
 
 > :arrow_right: **[Now learn how to parse search results](parse-search-results.md)**

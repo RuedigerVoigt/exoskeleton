@@ -3,6 +3,8 @@
 
  ## Bug Reports
 
+Reporting a bug is always appreciated.
+
 Guidelines:
 
  * Avoid raising duplicate issues.
@@ -24,7 +26,7 @@ Guidelines:
  * The code should include documentation.
  * Variable names should be speaking.
  * The code uses type-annotations. Part of the built is an automatic run of `mypy`.
- * Do not Copy-Paste foreign code to avoid copyright and license issues.
+ * *Do not Copy-Paste foreign code to avoid copyright and license issues.*
  * Your contribution to this project will be published under the Apache-2.0 License.
 
 ## Adding Tests

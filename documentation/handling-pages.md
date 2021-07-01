@@ -4,7 +4,7 @@
 
 The Queue is the central concept behind exoskeleton. With the exception of `return_page_code()` for throwaway information, you always add tasks to the queue.
 
-With the `process_queue()` command you tell exoskeleton to work through that queue. It tries to work on tasks in the order they were added. However, if a server does not respond or throws an error, it automatically picks another task and retries that failed one later.
+**With the `process_queue()` command you tell exoskeleton to work through the queue.** It tries to work on tasks in the order they were added (FiFo). However, if a server does not respond or throws an error, it automatically picks another task and retries that failed one later.
 
 
 
@@ -23,7 +23,7 @@ Then you [created the bot](create-a-bot.md) you set two parameters:
 
 So if you pass an URL to `add_file_download()` and start the processing, exoskeleton will download the file into the specified directory. The filename will consist of the chosen prefix and the alphanumeric UUID used in the database to identify the document version.
 
-Sometimes the URL does not contain the appropriate file ending. This is very often the case if you process a homepage and have an URL like `https://www.example.com` instead of `https://www.example.com/index.html`. As this case is so common, exoskeleton analyzes the HTTP header send by the server. So if the server announces the mime type 'text/html', the file will be stored with the file ending `.html` and accordingly with other file types.
+Sometimes the URL does not contain the appropriate file ending. This is very often the case if you process a homepage and have an URL like `https://www.example.com` instead of `https://www.example.com/index.html`. As this case is so common, exoskeleton analyzes the HTTP header send by the server. So if the server announces the mime type `text/html`, the file will be stored with the file ending `.html`. That works accordingly with other file types.
 
 
 ## Saving the Page Code
@@ -115,7 +115,7 @@ This feature uses headless Chrome / Chromium to save a website as PDF. For it to
 
 ## Saving just the text of a HTML page
 
-Saving the HTML code provides the benefit, that you later can select the part of the page you are interested it. Nonetheless exoskeleton has the option to save just the text displayed on a web page. be aware, that this includes headers and similar.
+Saving the HTML code provides the benefit, that you later can select the part of the page you are interested it. Nonetheless exoskeleton has the option to save just the text displayed on a web page. Be aware, that this includes headers and similar.
 
 ```python
 def add_save_page_text(url: str,

@@ -26,13 +26,13 @@ The exoskeleton function `return_page_code()` gives back the code of a page with
 
 There is a high risk to run into a rate limit on result page 400 or 500. You do not want to start again from scratch. *Therefore, we define a job to store the progress.* There are four exoskeleton functions for this:
 
-`job_define_new(job_name, start_url)`: defines a job. It stores the given URL in the database. So it can be accessed even after the scripts fail.
+`jobs.define_new(job_name, start_url)`: defines a job. It stores the given URL in the database. So it can be accessed even after the scripts fail.
 
-`job_update_current_url(job_name, current_url)`: overwrites the stored URL / start URL. Do this every time you completely analyzed a search result page.
+`jobs.update_current_url(job_name, current_url)`: overwrites the stored URL / start URL. Do this every time you completely analyzed a search result page.
 
-`job_get_current_url(job_name)`: looks up the current URL, that is the state of progress.
+`jobs.get_current_url(job_name)`: looks up the current URL, that is the state of progress.
 
-`job_mark_as_finished(job_name)`: after you reached the last page, mark the job as finished.
+`jobs.mark_as_finished(job_name)`: after you reached the last page, mark the job as finished.
 
 So, this is a way to loop through all search result pages:
 
@@ -62,7 +62,7 @@ def crawl(job: str,
 
         try:
             # At which page are we?
-            page_to_crawl = exo.job_get_current_url(job)
+            page_to_crawl = exo.jobs.get_current_url(job)
         except RuntimeError:
             # That means the job is already finished
             # leave the while loop
@@ -95,11 +95,11 @@ def crawl(job: str,
                 # combine base and content of href attribute:
                 next_page = f"{url_base}{next_page['href']}"
 
-                exo.job_update_current_url(job, next_page)
+                exo.jobs.update_current_url(job, next_page)
                 exo.random_wait()
             else:
                 # next_page is *not* defined
-                exo.job_mark_as_finished(job)
+                exo.jobs.mark_as_finished(job)
                 break # finish while loop
         except:
             raise
@@ -107,7 +107,7 @@ def crawl(job: str,
     print('Crawl done')
 
 
-exo.job_define_new('Example Job',
+exo.jobs.define_new('Example Job',
                    'https://www.example.com?keyword=example')
 
 # Actually start the crawl through the SERPs

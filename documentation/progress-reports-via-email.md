@@ -2,7 +2,7 @@
 
 Exoskeleton can send email
 * when it starts,
-* when it reaches a milestone
+* when it reaches a milestone,
 * after it stops.
 
 
@@ -12,7 +12,7 @@ Note, that it usually does not work to send email from a system with a dynamic I
 
 Even if you send from a machine with static IP, many things might go wrong. For example, there might be a [SPF setting](https://en.wikipedia.org/wiki/Sender_Policy_Framework "Wikipedia explaining the Sender Policy Framework") for the sending domain that limits sending mails to a server specified in the MX record of your DNS entry.
 
-Exoskeleton can use a local mail server. It can also connect to the remote mail server of your ISP and send mails via that.
+*Exoskeleton can use a local mail server. It can also connect to the remote mail server of your ISP and send mails via that.*
 
 ## Activating Mails
 
@@ -21,7 +21,7 @@ When you create your bot, you can set the parameter `mail_settings` which expect
 
 * **server** (default: 'localhost'): either your local machine or a remote server
 * **server_port** (default: None)
-* **encryption** (default: 'off')
+* **encryption** (default: 'off'): either `off`, `ssl`, or `starttls`.
 * **username** (default: None)
 * **passphrase** (default: None)
 * **recipient** (default: None): email address of the recipient
