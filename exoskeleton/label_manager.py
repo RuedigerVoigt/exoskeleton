@@ -59,8 +59,8 @@ class LabelManager:
                                shortname: str,
                                description: str = None) -> None:
         """ Insert a new label into the database or update its description
-            in case it already exists. Use __define_new_label if an update
-            has to be avoided. """
+            in case it already exists.
+            Use __define_new_label if an update has to be avoided. """
         if not self.__shortname_ok(shortname):
             return
         self.cur.callproc('label_define_or_update_SP',
@@ -171,14 +171,6 @@ class LabelManager:
             raise ValueError("Invalid filemaster ID")
         return filemaster_id[0]  # type: ignore[index]
 
-    def filemaster_labels_by_id(self,
-                                fm_id: str) -> set:
-        """Get a list of label names (not id numbers!) attached to a specific
-           filemaster entry using its id you get with get_filemaster_id()."""
-        self.cur.callproc('labels_filemaster_by_id_SP', (fm_id, ))
-        labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
-
     def filemaster_labels_by_url(self,
                                  url: Union[exo_url.ExoUrl, str]) -> set:
         """Get a list of label names (not id numbers!) attached to a specific
@@ -204,7 +196,11 @@ class LabelManager:
            to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
-        filemaster_labels = self.filemaster_labels_by_id(filemaster_id)
+        self.cur.execute('SELECT url FROM fileMaster WHERE id = %s;', (filemaster_id, ))
+        filemaster_url = self.cur.fetchone()
+        filemaster_labels = set()
+        if filemaster_url:
+            filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])
         joined_set = version_labels | filemaster_labels
         return joined_set
 

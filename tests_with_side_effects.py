@@ -40,9 +40,6 @@ import logging
 import subprocess
 from unittest.mock import patch
 
-
-logging.basicConfig(level=logging.DEBUG)
-
 import pymysql
 import pytest
 
@@ -50,6 +47,7 @@ import exoskeleton
 from exoskeleton import exo_url
 from exoskeleton import err
 
+logging.basicConfig(level=logging.DEBUG)
 
 # #############################################################################
 # CREATE INSTANCES OF EXOSKELETON
@@ -58,23 +56,7 @@ from exoskeleton import err
 DB_PORT = 12345
 BROWSER = 'chromium-browser'
 
-
-def test_no_host_no_port_no_pw():
-    """The parameters host, port, and password have defaults.
-       However that will yield an exception as the database
-       service requires a password."""
-    with pytest.raises(pymysql.OperationalError):
-        no_host_no_port_no_pass = exoskeleton.Exoskeleton(
-            project_name='Exoskeleton Validation Test',
-            database_settings={'database': 'exoskeleton',
-                               'username': 'exoskeleton'},
-            filename_prefix='EXO_',
-            target_directory='./fileDownloads'
-        )
-
-
 logging.info('Create an instance to use in furter tests')
-
 
 # Create an instance that is used for tests
 exo = exoskeleton.Exoskeleton(
@@ -157,9 +139,6 @@ logging.info('Define counters etc')
 # to track changes, track expectations:
 test_counter = Counter()
 
-# Test URLs
-url_t1_1 = 'https://www.ruediger-voigt.eu/'
-
 # Check database state before running tests:
 assert queue_count() == 0, "Database / Queue is not empty at test-start"
 assert label_count() == 0, "Database / Table labels is not empty at test-start"
@@ -202,12 +181,15 @@ def test_add_file_download():
 
 def test_add_file_download_FORCE_NEW_VERSION():
     uuid_1 = exo.add_file_download(
-        'https://www.ruediger-voigt.eu/examplefile.txt')
+        'https://www.ruediger-voigt.eu/force-new-version.txt')
     assert uuid_1 is not None
     # now force downloading a second version
     uuid_2 = exo.add_file_download(
-        'https://www.ruediger-voigt.eu/examplefile.txt', None, None, True)
-    assert uuid_2 is not None, 'Second version was not forced, but should'
+        'https://www.ruediger-voigt.eu/force-new-version.txt', None, None, True)
+    assert uuid_2 is not None, 'Second version was not forced, but should be'
+    # clean up:
+    exo.delete_from_queue(uuid_1)
+    exo.delete_from_queue(uuid_2)
 
 
 def test_add_save_page_code():
@@ -243,7 +225,6 @@ def test_add_page_to_pdf():
     # clean up
     exo.delete_from_queue(uuid_1)
     exo.delete_from_queue(uuid_2)
-
 
 
 # #############################################################################
@@ -284,44 +265,51 @@ def test_add_same_task_with_different_labels():
        * version labels are not added at all"""
     before = queue_count()
     # Add to queue "save a page as PDF"
-    t1_1_filemaster_labels = {'i1fml1', 'i1fml2'}
-    t1_1_version_labels = {'i1vl1', 'i1vl2', 'i1vl3'}
-    url_hash_t1_1 = hashlib.sha256(url_t1_1.encode('utf-8')).hexdigest()
-    uuid_t1_1 = exo.add_page_to_pdf(url_t1_1,
-                                    t1_1_filemaster_labels,
-                                    t1_1_version_labels)
+    filemaster_labels_1 = {'i1fml1', 'i1fml2'}
+    version_labels_1 = {'i1vl1', 'i1vl2', 'i1vl3'}
+    test_url = 'https://www.google.com'
+    url_hash_1 = hashlib.sha256(test_url.encode('utf-8')).hexdigest()
+    uuid_1 = exo.add_page_to_pdf(test_url,
+                                 filemaster_labels_1,
+                                 version_labels_1)
     assert queue_count() == before + 1
     test_counter['num_expected_labels'] += 5
 
     # Check if all the labels were added:
-    assert exo.labels.version_labels_by_uuid(uuid_t1_1) == t1_1_version_labels
-    assert filemaster_labels_by_url(url_t1_1) == t1_1_filemaster_labels
+    assert exo.labels.version_labels_by_uuid(uuid_1) == version_labels_1
+    assert filemaster_labels_by_url(test_url) == filemaster_labels_1
 
-    t1_2_filemaster_labels = {'i1fml2', 'i1fml3'}
-    t1_2_version_labels_to_be_ignored = {'ignore_me1', 'ignore_me2'}
+    filemaster_labels_2 = {'i1fml2', 'i1fml3'}
+    version_labels_to_be_ignored = {'ignore_me1', 'ignore_me2'}
     # the URL is not added, but a label:
-    uuid_t1_2 = exo.add_page_to_pdf(url_t1_1,
-                                    t1_2_filemaster_labels,
-                                    t1_2_version_labels_to_be_ignored)
-    assert uuid_t1_2 is None, "uuid_item: falsely added item to the queue!"
+    uuid_2 = exo.add_page_to_pdf(test_url,
+                                 filemaster_labels_2,
+                                 version_labels_to_be_ignored)
+    assert uuid_2 is None, "uuid_item: falsely added item to the queue!"
     test_counter['num_expected_labels'] += 1
 
-    expected_fm_labels = t1_1_filemaster_labels | t1_2_filemaster_labels
+    expected_fm_labels = filemaster_labels_1 | filemaster_labels_2
     # The same filemaster entry as the item before:
-    assert filemaster_labels_by_url(url_t1_1) == expected_fm_labels
+    assert filemaster_labels_by_url(test_url) == expected_fm_labels
 
     # See if version labels for item 2 are not in the label list by counting:
-    all_added_labels = (t1_1_filemaster_labels | t1_1_version_labels |
-                        t1_2_filemaster_labels)
+    all_added_labels = (filemaster_labels_1 | version_labels_1 |
+                        filemaster_labels_2)
 
     assert label_count() == len(all_added_labels)
 
 
 def get_filemaster_id():
     # Add a task to the queue
-    test_uuid = exo.add_page_to_pdf('https://www.example.com/get-fm-id.html')
-    # We only know it is a non empty string
-    assert exo.labels.get_filemaster_id(test_uuid) != ''
+    test_url = 'https://www.example.com/get-fm-id.html'
+    test_uuid = exo.add_page_to_pdf(test_url)
+    # Get the filemaster ID
+    fm_id = exo.labels.get_filemaster_id(test_uuid)
+    # Get the URL via the id
+    exo.cur.execute("SELECT url FROM fileMaster WHERE id = %s;", (fm_id, ))
+    url_in_db = exo.cur.fetchone()[0]
+    # Compare
+    assert test_url == url_in_db
     # clean up
     exo.delete_from_queue(test_uuid)
     # query with a bogus version uuid
@@ -330,25 +318,20 @@ def get_filemaster_id():
     assert "Invalid" in str(excinfo.value)
 
 
-# def test_filemaster_labels_by_id():
-#     # Add a task with filemaster labels
-#     m_labels = {'test_fm_labels_by_id_1', 'test_fm_labels_by_id_2'}
-#     test_url = 'https://www.example.com/fm-labels-by-id.html'
-#     test_uuid = exo.add_page_to_pdf(test_url, labels_master=m_labels)
-#     # get filemaster id
-#     #fm_id = exo.labels.get_filemaster_id(test_uuid)
-#     fm_id = exo.queue.get_filemaster_id_by_url(test_url)
-#     # check the labels
-#     assert exo.labels.filemaster_labels_by_id(fm_id) == m_labels
-#     # clean up
-#     exo.delete_from_queue(test_uuid)
-#     test_counter['num_expected_labels'] += 2
+def test_queue_get_filemaster_id_by_url():
+    # Add a task to the queue
+    test_url = 'https://www.example.com/get-fm-id-by-url.html'
+    test_uuid = exo.add_page_to_pdf(test_url)
+    # Compare results of different methods to get the id
+    assert exo.labels.get_filemaster_id(test_uuid) == exo.queue.get_filemaster_id_by_url(test_url)
+    # clean up
+    exo.delete_from_queue(test_uuid)
 
 
 def test_filemaster_labels_by_url():
     # Add a task with filemaster labels
     m_labels = {'test_fm_labels_by_url_1', 'test_fm_labels_by_url_2'}
-    test_url = 'https://www.example.com/fm-labels.html'
+    test_url = 'https://www.example.com/fm-labels-by-url.html'
     test_uuid = exo.add_page_to_pdf(test_url, labels_master=m_labels)
     assert exo.labels.filemaster_labels_by_url(test_url) == m_labels
     # clean up
@@ -390,11 +373,16 @@ def test_assign_labels_to_master():
 
 # def test_all_labels_by_uuid():
 #     # Add a task with labels for filemaster and version!
+#     test_url = 'https://www.example.com/all-labels.html'
 #     test_uuid = exo.add_page_to_pdf(
-#         'https://www.example.com/all-labels.html',
+#         test_url,
 #         labels_master={'test_all_labels_1', 'test_all_labels_2'},
 #         labels_version={'test_all_labels_3'})
 #     expected = {'test_all_labels_1', 'test_all_labels_2', 'test_all_labels_3'}
+#     assert len(exo.labels.version_labels_by_uuid(test_uuid)) == 1
+#     exo.cur.execute('SELECT url FROM fileMaster WHERE id = %s;', (exo.labels.get_filemaster_id(test_uuid), ))
+#     filemaster_url = exo.cur.fetchone()
+#     assert filemaster_url == test_url
 #     assert exo.labels.all_labels_by_uuid(test_uuid) == expected
 #     # clean up
 #     exo.delete_from_queue(test_uuid)
@@ -467,7 +455,7 @@ def test_same_url_different_task():
     before = queue_count()
 
     uuid_t1_3 = exo.add_save_page_code(
-        url_t1_1, {'item3_label'}, {'item3_label'})
+        'https://www.google.com', {'item3_label'}, {'item3_label'})
 
     assert queue_count() == before + 1
     test_counter['num_expected_labels'] += 1
@@ -784,8 +772,61 @@ def test_clean_up_functions():
 
 
 # #############################################################################
+# TEST DATABASE CONNECTION
+# #############################################################################
+
+def test_establish_db_connection_OPERATIONAL_ERROR(caplog):
+    with patch('pymysql.connect', side_effect=pymysql.OperationalError):
+        with pytest.raises(pymysql.OperationalError):
+            exo.db.establish_db_connection()
+    assert 'Did you forget a parameter' in caplog.text
+
+
+def test_establish_db_connection_INTERFACE_ERROR(caplog):
+    with patch('pymysql.connect', side_effect=pymysql.InterfaceError):
+        with pytest.raises(pymysql.InterfaceError):
+            exo.db.establish_db_connection()
+    assert 'Database related exception' in caplog.text
+
+
+def test_establish_db_connection_DATABASE_ERROR(caplog):
+    with patch('pymysql.connect', side_effect=pymysql.InterfaceError):
+        with pytest.raises(pymysql.InterfaceError):
+            exo.db.establish_db_connection()
+    assert 'Database related exception' in caplog.text
+
+
+def test_establish_db_connection_CATCHALL_ERROR_1(caplog):
+    with patch('pymysql.connect', side_effect=pymysql.Error):
+        with pytest.raises(pymysql.Error):
+            exo.db.establish_db_connection()
+    assert 'Exception while connecting' in caplog.text
+
+
+def test_establish_db_connection_CATCHALL_ERROR_2(caplog):
+    with patch('pymysql.connect', side_effect=Exception):
+        with pytest.raises(Exception):
+            exo.db.establish_db_connection()
+    assert 'Exception while connecting' in caplog.text
+
+# #############################################################################
 # CREATE INSTANCES WITH DIFFERENT PARAMETERS
 # #############################################################################
+
+
+def test_no_host_no_port_no_pw():
+    """The parameters host, port, and password have defaults.
+       However that will yield an exception as the database
+       service requires a password."""
+    with pytest.raises(pymysql.OperationalError):
+        no_host_no_port_no_pass = exoskeleton.Exoskeleton(
+            project_name='Exoskeleton Validation Test',
+            database_settings={'database': 'exoskeleton',
+                               'username': 'exoskeleton'},
+            filename_prefix='EXO_',
+            target_directory='./fileDownloads'
+        )
+
 
 with pytest.raises(ValueError) as excinfo:
     non_existent_browser = exoskeleton.Exoskeleton(

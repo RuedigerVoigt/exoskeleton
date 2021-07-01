@@ -950,21 +950,6 @@ RETURN(SELECT fileMasterID FROM fileVersions WHERE id = uuid_p);
 
 -- label names (not id numbers!) attached to a filemaster entry
 DELIMITER $$
-CREATE PROCEDURE labels_filemaster_by_id_SP (IN id_p INT UNSIGNED)
-READS SQL DATA
-BEGIN
-SELECT DISTINCT shortName 
-FROM labels 
-WHERE ID IN (
-    SELECT labelID FROM labelToMaster WHERE urlHash = (
-        SELECT urlHash from fileMaster WHERE id = id_p
-    )
-    );
-END $$
-DELIMITER ;
-
--- label names (not id numbers!) attached to a filemaster entry
-DELIMITER $$
 CREATE PROCEDURE labels_filemaster_by_url_SP (IN url_p TEXT)
 READS SQL DATA
 BEGIN
