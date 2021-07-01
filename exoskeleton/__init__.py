@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"Exoskeleton Crawler Framwork for Python"
+
 from exoskeleton.__main__ import Exoskeleton
 from exoskeleton import _version
 

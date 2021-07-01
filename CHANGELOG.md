@@ -1,19 +1,30 @@
 # Changelog / History
 
-## UPCOMING Version 2.0.0
+## Upcoming
+
+Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is not done *yet*, because the queue has to be modified in order to distribute the load evenly on multiple target hosts.
+
+
+## Version 2.0.0 (2021-07-02)
+
+Due to refactoring there are quite a lot of changes to the interface and the database. A new major version was chosen to signal this break.
 
 **Breaking Changes:**
   * **Dropped support for Python 3.6 and 3.7!**
     * Python 3.6 version has end of life set for December 2021.
     * Had to also drop the support for Python 3.7 in order to get a stable API for asyncio.
-  * The database now contains many more SQL functions and stored procedures. *You need to upgrade the schema using the corresponding part of the SQL script.* This is basically code that previously was found mixed with the Python code. It was moved to the database in order to make the code of the package easier to read and maintain.
-  * The method `exoskeleton.prettify_html` has been moved to `exoskeleton.helpers.prettify_html`.
-  * All methods directly regarding labels have been moved into the `LabelManager` class. Their aliases in the main class have been removed as they duplicated code. On init, the exoskelton object creates an instance of `LabelManager` named `labels`, so all functions can easily be accessed via `your_exo_object.labels.label_function`. That is, *if* you need to access them directly.
+  * The database now contains many more SQL functions and stored procedures. *You must upgrade the schema using the corresponding part of the SQL script.* This is basically code that previously was found mixed with the Python code. It was moved to the database in order to make the code of the package easier to read and maintain.
+  * **Some functions have been moved!** (or to be precise: Their aliases in the main class have been removed to reduce duplicated code.)
+    * All methods directly regarding labels can easily be accessed via `your_exo_object.labels.label_function`. That is, *if* you need to access them directly.
+    * All methods regarding the host blocklist have been moved. They can be accessed via `your_exo_object.blocklist.blocklist_function`.
+    * All methods regarding error handling must be accessed via `your_exo_object.errorhandling.errohandling_method`.
+    * The method `exoskeleton.prettify_html` has been moved to `exoskeleton.helpers.prettify_html`.
+    * All methods with the prefix `job_` now are found in `your_exoskeleton_object.jobs.without_the_prefix`. For example: `exoskeleton.job_define_new` is now `exoskeleton.jobs.define_new()`.
 
 **Other Changes**:
 
 * Small bugfixes.
-* Updated dependencies.
+* Updated and new dependencies.
 * Improved code tests:
   * Increased test coverage.
   * All tests now also run with Python version `3.10.0-beta.3`. Building the `lxml` dependency requires an extra step, but besides this, there seem to be no issues with the upcoming version of Python.

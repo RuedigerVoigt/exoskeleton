@@ -91,7 +91,7 @@ class Exoskeleton:
         self.db = database_connection.DatabaseConnection(database_settings)
         self.cur = self.db.get_cursor()
 
-        database_schema_check.DatabaseSchemaCheck(self.db)
+        self.db_check = database_schema_check.DatabaseSchemaCheck(self.db)
 
         self.stats = statistics_manager.StatisticsManager(self.db)
 
