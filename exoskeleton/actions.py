@@ -72,29 +72,26 @@ class GetObjectBaseClass:
         "Get the object and handle exceptions that might occur"
         try:
             response = self.handle_action()
+            status_code = response.status_code
 
-            if response.status_code == 200:
+            if status_code == 200:
                 content_type = response.headers.get('content-type')
                 if content_type:
                     self.mime_type = (content_type).split(';')[0]
                 self.store_result(response)
-            elif response.status_code in self.HTTP_PERMANENT_ERRORS:
-                self.errorhandling.mark_permanent_error(
-                    self.queue_id, response.status_code)
+            elif status_code in self.HTTP_PERMANENT_ERRORS:
+                self.errorhandling.mark_permanent_error(self.queue_id, status_code)
                 self.stats.log_permanent_error(self.url)
-            elif response.status_code == 429:
+            elif status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
                 logging.error('The bot hit a rate limit => increase min_wait.')
-                fqdn = self.url.hostname
-                if fqdn:
-                    self.errorhandling.add_rate_limit(fqdn)
+                self.errorhandling.add_rate_limit(self.url.hostname)
                 self.stats.log_rate_limit_hit(self.url)
-            elif response.status_code in self.HTTP_TEMP_ERRORS:
+            elif status_code in self.HTTP_TEMP_ERRORS:
                 logging.info('Temporary error. Adding delay to queue item.')
-                self.errorhandling.add_crawl_delay(
-                    self.queue_id, response.status_code)
+                self.errorhandling.add_crawl_delay(self.queue_id, status_code)
             else:
-                logging.error('Unhandled return code %s', response.status_code)
+                logging.error('Unhandled return code %s', status_code)
                 self.stats.log_permanent_error(self.url)
         except TimeoutError:
             logging.error('Reached timeout.', exc_info=True)
