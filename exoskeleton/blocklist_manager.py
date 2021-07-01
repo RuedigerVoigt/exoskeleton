@@ -18,6 +18,7 @@ import pymysql
 
 
 from exoskeleton import database_connection
+from exoskeleton import exceptions
 
 
 class BlocklistManager:
@@ -56,7 +57,8 @@ class BlocklistManager:
         try:
             self.cur.callproc('block_fqdn_SP', (fqdn, comment))
         except pymysql.err.IntegrityError:
-            logging.info('FQDN already on blocklist.')
+            # Just log, do not raise as it does not matter.
+            logging.info("FQDN {fqdn} already on blocklist.")
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:

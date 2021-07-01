@@ -15,6 +15,7 @@ import pymysql
 
 from exoskeleton import _version as version
 from exoskeleton import database_connection
+from exoskeleton import exceptions
 
 
 class DatabaseSchemaCheck:
@@ -93,7 +94,7 @@ class DatabaseSchemaCheck:
         if not tables:
             msg = 'No tables found in database: Run generator script!'
             logging.exception(msg)
-            raise RuntimeError(msg)
+            raise exceptions.InvalidDatabaseSchemaError(msg)
 
         tables_found = [item[0] for item in tables]  # type: ignore[index]
         tables_count = 0
@@ -104,7 +105,8 @@ class DatabaseSchemaCheck:
                 logging.error('Table %s not found.', table)
 
         if tables_count != len(self.TABLES):
-            raise RuntimeError('Database Schema Incomplete: Missing Tables!')
+            raise exceptions.InvalidDatabaseSchemaError(
+                'Database Schema Incomplete: Missing Tables!')
 
         logging.debug('Database schema: found all expected tables.')
         return True
@@ -131,7 +133,7 @@ class DatabaseSchemaCheck:
             else:
                 count += 1
         if count != len(self.PROCEDURES):
-            raise RuntimeError(
+            raise exceptions.InvalidDatabaseSchemaError(
                 'Database Schema Incomplete: Missing Stored Procedures!')
         logging.debug('Database schema: found all expected stored procedures.')
         return True
@@ -156,7 +158,7 @@ class DatabaseSchemaCheck:
             else:
                 count += 1
         if count != len(self.FUNCTIONS):
-            raise RuntimeError(
+            raise exceptions.InvalidDatabaseSchemaError(
                 'Database Schema Incomplete: Missing Functions!')
         logging.debug('Database schema: found all expected functions.')
         return True
@@ -180,7 +182,7 @@ class DatabaseSchemaCheck:
         if db_schema == '2.0.0':
             logging.info('Database schema matches version of exoskeleton.')
         else:
-            raise RuntimeError(
+            raise exceptions.InvalidDatabaseSchemaError(
                 "Mismatch between version of exoskeleton " +
                 f"({version.__version__}) and version of the database " +
                 f"schema ({db_schema}).")

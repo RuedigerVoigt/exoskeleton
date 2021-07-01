@@ -43,8 +43,8 @@ class FileManager:
            If a directory is set, but not accessible, fail early."""
 
         if not target_directory or target_directory.strip() == '':
-            logging.error("Target directory is not set. Using the " +
-                          "current working directory as a fallback!")
+            logging.warning("Target directory is not set. Using the " +
+                            "current working directory as a fallback!")
             return pathlib.Path.cwd()
 
         # Assuming that if a directory was set, it has to be used.
@@ -98,7 +98,7 @@ class FileManager:
 
     def get_file_hash(self,
                       file_path: pathlib.Path) -> str:
-        "Calculate the hash of a file (method currently fixed to SHA256)."
+        "Calculate the hash of a file (method fixed to SHA256)."
         hash_value = userprovided.hashing.calculate_file_hash(
             file_path, self.HASH_METHOD)
         return hash_value

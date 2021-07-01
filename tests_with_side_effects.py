@@ -46,6 +46,7 @@ import pytest
 
 import exoskeleton
 from exoskeleton import exo_url
+from exoskeleton import exceptions
 
 
 # #############################################################################
@@ -488,7 +489,6 @@ def test_process_queue():
     assert queue_count() == 0, 'Did not process everything it should have'
 
 
-
 # #############################################################################
 # TEST BLOCKLIST FEATURE
 # #############################################################################
@@ -525,10 +525,11 @@ def test_remove_from_blocklist():
     # Add host to blocklist
     exo.blocklist.block_fqdn('www.google.com')
     # try to add URL with blocked FQDN
-    uuid = exo.add_page_to_pdf(
-        'https://www.google.com/search?q=exoskeleton+python',
-        {'label_that_should-be_ignored'},
-        {'another_label_to_ignore'})
+    with pytest.raises(exceptions.HostOnBlocklistError):
+        _ = exo.add_page_to_pdf(
+            'https://www.google.com/search?q=exoskeleton+python',
+            {'label_that_should-be_ignored'},
+            {'another_label_to_ignore'})
     assert queue_count() == before, 'URL added to queue even though host on blocklist'
     assert label_count() == test_counter['num_expected_labels']
     # Remove the fqdn from the blocklist.
