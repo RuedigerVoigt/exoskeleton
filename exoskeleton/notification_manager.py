@@ -80,7 +80,6 @@ class NotificationManager:
         time_to_finish_seconds = self.time.estimate_remaining_time(
             processed, remaining)
 
-        # TO DO: more precise estimate requires to account for rate limits
         subject = (
             f"Project {self.project_name} Milestone: {processed} processed")
         body = (f"{processed} processed.\n" +
