@@ -186,8 +186,8 @@ class QueueManager:
         while True:
             try:
                 next_in_queue = self.get_next_task()
-            except pymysql.err.OperationalError as e:
-                if e.args[0] == 2013:  # errno
+            except pymysql.err.OperationalError as op_err:
+                if op_err.args[0] == 2013:  # errno
                     # this error is unusual. Give the db some time:
                     logging.error('Lost database connection. ' +
                                   'Trying to restore it in 10 seconds ...')
