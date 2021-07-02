@@ -5,7 +5,7 @@
 ![Build](https://github.com/RuedigerVoigt/exoskeleton/workflows/Build/badge.svg)
 ![Last commit](https://img.shields.io/github/last-commit/RuedigerVoigt/exoskeleton)
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
-[![Coverage](https://img.shields.io/badge/coverage-78%25-yellow)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-lightgreen)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
 Machine Learning and other applications make it necessary to download thousands or sometimes hundreds of thousands of files.
 

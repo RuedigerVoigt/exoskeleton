@@ -810,6 +810,25 @@ def test_establish_db_connection_CATCHALL_ERROR_2(caplog):
     assert 'Exception while connecting' in caplog.text
 
 # #############################################################################
+# TEST SCHEMA CHECK
+# #############################################################################
+
+
+def test_schema_check():
+    # Mess up the tables with expected elements to provoke exceptions:
+    exo.db_check.PROCEDURES.append('foo')
+    exo.db_check.FUNCTIONS.append('foo')
+    exo.db_check.TABLES.append('foo')
+    # See if there are exceptions
+    with pytest.raises(err.InvalidDatabaseSchemaError):
+        exo.db_check._DatabaseSchemaCheck__check_stored_procedures()
+    with pytest.raises(err.InvalidDatabaseSchemaError):
+        exo.db_check._DatabaseSchemaCheck__check_functions()
+    with pytest.raises(err.InvalidDatabaseSchemaError):
+        exo.db_check._DatabaseSchemaCheck__check_table_existence()
+
+
+# #############################################################################
 # CREATE INSTANCES WITH DIFFERENT PARAMETERS
 # #############################################################################
 
