@@ -5,6 +5,11 @@
 Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is not done *yet*, because the queue has to be modified in order to distribute the load evenly on multiple target hosts.
 
 
+## Upcoming Version 2.0.1
+
+* Tests of Python 3.10 now run with Beta 4 instead of Beta 3.
+
+
 ## Version 2.0.0 (2021-07-02)
 
 Due to refactoring there are quite a lot of changes to the interface and the database. A new major version was chosen to signal this break.
