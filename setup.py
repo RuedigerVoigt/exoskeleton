@@ -30,7 +30,7 @@ setuptools.setup(
         "lxml>=4.6.3",
         "pycares>=4.0.0",
         "pymysql>=1.0.2",
-        "requests>=2.25.1",
+        "requests>=2.26.0",
         "urllib3>=1.26.6",
         "userprovided>=0.9.2"],
     classifiers=[
