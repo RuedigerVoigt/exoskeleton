@@ -3,6 +3,7 @@
 ## Upcoming
 
 Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is not done *yet*, because the queue has to be modified in order to distribute the load evenly on multiple target hosts.
+* Update dependencies.
 
 
 ## Upcoming Version 2.0.1
