@@ -27,8 +27,10 @@ jobs:
 
     steps:
 
-    - name: APT Update
-      run: sudo apt update
+    - name: APT Update / Upgrade
+      run: |
+        sudo apt update
+        sudo apt upgrade
 
     - name: Checkout
       uses: actions/checkout@v2
