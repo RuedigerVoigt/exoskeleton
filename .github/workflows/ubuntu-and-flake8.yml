@@ -67,10 +67,11 @@ jobs:
     # The next step need to wait until the MariaDB container is ready.
     # This pings it until it gets an answer:
     - name: Wait for MariaDB to initialize
-      run: |
-        while ! mysqladmin ping -h"127.0.0.1" -P"12345" --silent; do
-          sleep 1
-        done
+      run: sleep 10
+    #  run: |
+    #    while ! mysqladmin ping -h"127.0.0.1" -P"12345" --silent; do
+    #      sleep 1
+    #    done
 
     - name: Fill exoskeleton database
       env:
