@@ -22,9 +22,9 @@ setuptools.setup(
     python_requires=">=3.7",
     install_requires=[
         "aiodns>=3.0.0",
-        "aiohttp>=3.7.4",
-        "beautifulsoup4>=4.9.3",
-        "bote>=1.2.1",
+        "aiohttp>=3.8.0",
+        "beautifulsoup4>=4.10.0",
+        "bote>=1.2.2",
         "chardet>=4.0.0",
         "compatibility>=1.0.1",
         "lxml>=4.6.3",
@@ -32,7 +32,7 @@ setuptools.setup(
         "pymysql>=1.0.2",
         "requests>=2.26.0",
         "urllib3>=1.26.6",
-        "userprovided>=0.9.3"],
+        "userprovided>=0.9.4"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
