@@ -27,7 +27,7 @@ setuptools.setup(
         "bote>=1.2.2",
         "chardet>=4.0.0",
         "compatibility>=1.0.1",
-        "lxml>=4.6.3",
+        "lxml>=4.6.4",
         "pycares>=4.0.0",
         "pymysql>=1.0.2",
         "requests>=2.26.0",
