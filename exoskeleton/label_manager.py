@@ -196,11 +196,12 @@ class LabelManager:
            to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
-        self.cur.execute('SELECT url FROM fileMaster WHERE id = %s;', (filemaster_id, ))
+        self.cur.execute('SELECT url FROM fileMaster WHERE id = %s;',
+                         (filemaster_id, ))
         filemaster_url = self.cur.fetchone()
         filemaster_labels = set()
         if filemaster_url:
-            filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])
+            filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])  # type: ignore
         joined_set = version_labels | filemaster_labels
         return joined_set
 

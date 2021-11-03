@@ -115,8 +115,8 @@ class QueueManager:
                     return None
 
                 # log and simply go on
-                logging.debug('The file has already been processed, BUT not ' +
-                              'in this way. Adding task to the queue.')
+                logging.debug(
+                    'File already processed, BUT not this way: Added to queue.')
             else:
                 # File has not been processed yet.
                 # If the exact same task is *not* already in the queue, add it.
