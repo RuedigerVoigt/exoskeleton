@@ -6,9 +6,10 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 * Update dependencies.
 
 
-## Upcoming Version 2.0.1
+## Version 2.1.0 (2021-11-03)
 
-* Tests of Python 3.10 now run with Beta 4 instead of Beta 3.
+* Compatible with Python 3.10.
+* Updated dependencies, especially `lxml` and `beautifulsoup`.
 
 
 ## Version 2.0.0 (2021-07-02)
