@@ -28,10 +28,10 @@ setuptools.setup(
         "chardet>=4.0.0",
         "compatibility>=1.0.1",
         "lxml>=4.6.4",
-        "pycares>=4.0.0",
+        "pycares>=4.1.2",
         "pymysql>=1.0.2",
         "requests>=2.26.0",
-        "urllib3>=1.26.6",
+        "urllib3>=1.26.7",
         "userprovided>=0.9.4"],
     classifiers=[
         "Programming Language :: Python :: 3",
