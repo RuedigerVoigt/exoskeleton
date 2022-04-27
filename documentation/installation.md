@@ -27,8 +27,7 @@ python --version
 python3 --version
 ```
 
-Python 3.9 is tested and fully supported.
-Beta versions of 3.10 are already used for testing.
+Python 3.9 and 3.10 are tested and fully supported.
 
 ### Installing with Pip
 
