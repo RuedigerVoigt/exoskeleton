@@ -103,5 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Specific test directories
+# Specific test directories and files
 fileDownloads/*
+salted-cache.sqlite3
