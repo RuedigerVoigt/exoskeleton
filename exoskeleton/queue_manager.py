@@ -151,7 +151,7 @@ class QueueManager:
                          'ORDER BY addedToQueue ASC;',
                          (url, action))
         queue_uuids = self.cur.fetchall()
-        return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()  # type: ignore[index]
+        return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()
 
     def get_filemaster_id_by_url(self,
                                  url: Union[exo_url.ExoUrl, str]
@@ -163,7 +163,7 @@ class QueueManager:
                          'WHERE urlHash = SHA2(%s,256);',
                          (url, ))
         id_in_file_master = self.cur.fetchone()
-        return id_in_file_master[0] if id_in_file_master else None  # type: ignore[index]
+        return id_in_file_master[0] if id_in_file_master else None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # PROCESSING THE QUEUE

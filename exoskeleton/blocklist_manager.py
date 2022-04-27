@@ -45,7 +45,7 @@ class BlocklistManager:
         fqdn = self.__check_fqdn(fqdn)
         self.cur.execute('SELECT fqdn_on_blocklist(%s);', (fqdn, ))
         response = self.cur.fetchone()
-        return bool(response[0]) if response else False  # type: ignore[index]
+        return bool(response[0]) if response else False
 
     def block_fqdn(self,
                    fqdn: str,

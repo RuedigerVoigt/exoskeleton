@@ -169,7 +169,7 @@ class LabelManager:
         filemaster_id = self.cur.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")
-        return filemaster_id[0]  # type: ignore[index]
+        return filemaster_id[0]
 
     def filemaster_labels_by_url(self,
                                  url: Union[exo_url.ExoUrl, str]) -> set:
@@ -179,7 +179,7 @@ class LabelManager:
             url = exo_url.ExoUrl(url)
         self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
         labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
+        return {(label[0]) for label in labels} if labels else set()
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
@@ -188,7 +188,7 @@ class LabelManager:
            filemaster entry."""
         self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
         labels = self.cur.fetchall()
-        return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
+        return {(label[0]) for label in labels} if labels else set()
 
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
@@ -201,7 +201,7 @@ class LabelManager:
         filemaster_url = self.cur.fetchone()
         filemaster_labels = set()
         if filemaster_url:
-            filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])  # type: ignore
+            filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])
         joined_set = version_labels | filemaster_labels
         return joined_set
 
@@ -223,7 +223,7 @@ class LabelManager:
                  "IN ({0});".format(', '.join(['%s'] * len(label_set))))
         self.cur.execute(query, tuple(label_set))
         label_id = self.cur.fetchall()
-        return {(id[0]) for id in label_id} if label_id else set()  # type: ignore[index]
+        return {(id[0]) for id in label_id} if label_id else set()
 
     def version_uuids_by_label(self,
                                single_label: str,
@@ -252,7 +252,7 @@ class LabelManager:
                              "WHERE labelID = %s;",
                              (label_id, ))
         version_ids = self.cur.fetchall()
-        return {(uuid[0]) for uuid in version_ids} if version_ids else set()  # type: ignore[index, assignment]
+        return {(uuid[0]) for uuid in version_ids} if version_ids else set()
 
     # #########################################################################
     # REMOVING LABELS

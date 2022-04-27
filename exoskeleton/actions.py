@@ -15,7 +15,7 @@ from typing import Final, Literal
 
 import pymysql
 import requests
-import urllib3  # type: ignore
+import urllib3
 import userprovided
 
 from exoskeleton import database_connection

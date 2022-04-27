@@ -54,7 +54,7 @@ class JobManager:
             self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
                              (job_name, ))
             response = self.cur.fetchone()
-            existing_start_url = response[0] if response else None  # type: ignore[index]
+            existing_start_url = response[0] if response else None
             if existing_start_url != start_url:
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
@@ -90,11 +90,11 @@ class JobManager:
 
         if job_state is None:
             raise ValueError('Job is unknown!')
-        if job_state[0] is not None:  # type: ignore[index]
+        if job_state[0] is not None:
             # Field 0 contains the status: finished (not None) or not (None)
             raise RuntimeError(f"Job {job_name} already finished.")
         # Field 1 contains either the current or the start URL
-        return job_state[1]  # type: ignore[index]
+        return job_state[1]
 
     def mark_as_finished(self,
                          job_name: str) -> None:

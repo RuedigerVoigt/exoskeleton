@@ -95,7 +95,7 @@ class DatabaseSchemaCheck:
             logging.exception(msg)
             raise err.InvalidDatabaseSchemaError(msg)
 
-        tables_found = [item[0] for item in tables]  # type: ignore[index]
+        tables_found = [item[0] for item in tables]
         tables_count = 0
         for table in self.TABLES:
             if table in tables_found:
@@ -120,7 +120,7 @@ class DatabaseSchemaCheck:
             logging.exception(msg)
             raise RuntimeError(msg)
 
-        procedures_found = [item[0] for item in procedures]  # type: ignore[index]
+        procedures_found = [item[0] for item in procedures]
         count = 0
         for procedure in self.PROCEDURES:
             if procedure not in procedures_found:
@@ -147,7 +147,7 @@ class DatabaseSchemaCheck:
             logging.exception(msg)
             raise RuntimeError(msg)
 
-        functions_found = [item[0] for item in functions]  # type: ignore[index]
+        functions_found = [item[0] for item in functions]
         count = 0
         for function in self.FUNCTIONS:
             if function not in functions_found:
@@ -174,7 +174,7 @@ class DatabaseSchemaCheck:
             logging.exception(msg)
             raise RuntimeError(msg)
 
-        db_schema = schema[0]  # type: ignore[index]
+        db_schema = schema[0]
 
         # Not taking the comparison value from _version as multiple versions
         # of exoskeleton might share the same database schema.

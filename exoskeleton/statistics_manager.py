@@ -32,26 +32,26 @@ class StatisticsManager:
            any kind of error."""
         self.cur.execute("SELECT num_tasks_in_queue_without_error();")
         without_error = self.cur.fetchone()
-        return int(without_error[0]) if without_error else None  # type: ignore[index]
+        return int(without_error[0]) if without_error else None
 
     def num_tasks_w_permanent_errors(self) -> int:
         "Number of tasks in the queue marked as causing a *permanent* error."
         self.cur.execute('SELECT num_items_with_permanent_error();')
         num_permanent_errors = self.cur.fetchone()
-        return int(num_permanent_errors[0]) if num_permanent_errors else 0  # type: ignore[index]
+        return int(num_permanent_errors[0]) if num_permanent_errors else 0
 
     def num_tasks_w_temporary_errors(self) -> int:
         "Number of tasks in the queue marked as causing a *temporary* error."
         self.cur.execute('SELECT num_items_with_temporary_errors();')
         num_temp_errors = self.cur.fetchone()
-        return int(num_temp_errors[0]) if num_temp_errors else 0  # type: ignore[index]
+        return int(num_temp_errors[0]) if num_temp_errors else 0
 
     def num_tasks_w_rate_limit(self) -> int:
         """Number of tasks in the queue that do not yield a permanent error,
            but are currently affected by a rate limit."""
         self.cur.execute("SELECT num_tasks_with_active_rate_limit();")
         num_rate_limited = self.cur.fetchone()
-        return int(num_rate_limited[0]) if num_rate_limited else 0  # type: ignore[index]
+        return int(num_rate_limited[0]) if num_rate_limited else 0
 
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""

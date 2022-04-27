@@ -55,7 +55,7 @@ class CrawlingErrorManager:
         # Increase the tries counter and get the new count
         self.cur.callproc('increment_num_tries_SP', (queue_id, ))
         response = self.cur.fetchone()
-        num_tries = int(response[0]) if response else 0  # type: ignore[index]
+        num_tries = int(response[0]) if response else 0
 
         # Does the number of tries exceed the configured maximum?
         if num_tries == self.queue_max_retries:
