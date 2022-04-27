@@ -6,6 +6,11 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 * Update dependencies.
 
 
+## Version 2.1.1 (2022-04-27)
+
+* Updated dependencies
+
+
 ## Version 2.1.0 (2021-11-03)
 
 * Compatible with Python 3.10.

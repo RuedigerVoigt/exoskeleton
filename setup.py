@@ -19,7 +19,7 @@ setuptools.setup(
     url="https://github.com/RuedigerVoigt/exoskeleton",
     package_data={"exoskeleton": ["py.typed"]},
     packages=setuptools.find_packages(),
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     install_requires=[
         "aiodns>=3.0.0",
         "aiohttp>=3.8.1",
