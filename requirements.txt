@@ -1,12 +1,11 @@
 aiodns>=3.0.0
-aiohttp>=3.8.1
+aiohttp>=3.8.5
 beautifulsoup4>=4.11.1
 bote>=1.2.2
-chardet>=4.0.0
 compatibility>=1.0.1
-lxml>=4.8.0
+lxml>=4.9.2
 pycares>=4.1.2
 pymysql>=1.0.2
 requests>=2.27.1
 urllib3>=1.26.9
-userprovided>=0.9.4
+userprovided>=1.0.0

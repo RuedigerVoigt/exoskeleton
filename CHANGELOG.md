@@ -5,6 +5,8 @@
 Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is not done *yet*, because the queue has to be modified in order to distribute the load evenly on multiple target hosts.
 * Update dependencies.
 
+* Support for Python 3.11.
+
 
 ## Version 2.1.1 (2022-04-27)
 
