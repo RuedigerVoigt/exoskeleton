@@ -74,8 +74,8 @@ class QueueManager:
     def add_to_queue(self,
                      url: exo_url.ExoUrl,
                      action: Literal[1, 2, 3, 4],
-                     labels_master: set = None,
-                     labels_version: set = None,
+                     labels_master: Optional[set] = None,
+                     labels_version: Optional[set] = None,
                      prettify_html: bool = False,
                      force_new_version: bool = False) -> Optional[str]:
         """ More general function to add items to queue. Called by

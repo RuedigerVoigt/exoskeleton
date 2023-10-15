@@ -7,7 +7,7 @@ Exoskeleton Crawler Framework
 A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 Source: https://github.com/RuedigerVoigt/exoskeleton
-(c) 2019-2021 Rüdiger Voigt:
+(c) 2019-2023 Rüdiger Voigt:
 Released under the Apache License 2.0
 """
 
@@ -70,7 +70,7 @@ class Exoskeleton:
             python_version_support={
                 'min_version': '3.8',
                 'incompatible_versions': [],
-                'max_tested_version': '3.10'},
+                'max_tested_version': '3.11'},
             nag_over_update={
                     'nag_days_after_release': 120,
                     'nag_in_hundred': 100},
@@ -213,8 +213,8 @@ class Exoskeleton:
 
     def add_file_download(self,
                           url: Union[exo_url.ExoUrl, str],
-                          labels_master: set = None,
-                          labels_version: set = None,
+                          labels_master: Optional[set] = None,
+                          labels_version: Optional[set] = None,
                           force_new_version: bool = False) -> Optional[str]:
         "Add a file download URL to the queue"
         if not isinstance(url, exo_url.ExoUrl):
@@ -226,8 +226,8 @@ class Exoskeleton:
 
     def add_save_page_code(self,
                            url: Union[exo_url.ExoUrl, str],
-                           labels_master: set = None,
-                           labels_version: set = None,
+                           labels_master: Optional[set] = None,
+                           labels_version: Optional[set] = None,
                            prettify_html: bool = False,
                            force_new_version: bool = False) -> Optional[str]:
         "Add an URL to the queue to save its HTML code into the database."
@@ -239,8 +239,8 @@ class Exoskeleton:
 
     def add_page_to_pdf(self,
                         url: Union[exo_url.ExoUrl, str],
-                        labels_master: set = None,
-                        labels_version: set = None,
+                        labels_master: Optional[set] = None,
+                        labels_version: Optional[set] = None,
                         force_new_version: bool = False) -> Optional[str]:
         "Add an URL to the queue to print it to PDF with headless Chrome. "
         if not isinstance(url, exo_url.ExoUrl):
@@ -256,8 +256,8 @@ class Exoskeleton:
 
     def add_save_page_text(self,
                            url: Union[exo_url.ExoUrl, str],
-                           labels_master: set = None,
-                           labels_version: set = None,
+                           labels_master: Optional[set] = None,
+                           labels_version: Optional[set] = None,
                            force_new_version: bool = False) -> Optional[str]:
         """Add the task 'Extract the text (not the code) from a HTML page and
            store it into the database' to the queue.

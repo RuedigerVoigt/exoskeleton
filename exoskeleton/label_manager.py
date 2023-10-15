@@ -42,7 +42,7 @@ class LabelManager:
 
     def define_new_label(self,
                          shortname: str,
-                         description: str = None) -> None:
+                         description: Optional[str] = None) -> None:
         """If the label is not already used, define a new label and description.
            In case the label already exists, do not update the description."""
         if not self.__shortname_ok(shortname):
@@ -57,7 +57,7 @@ class LabelManager:
 
     def define_or_update_label(self,
                                shortname: str,
-                               description: str = None) -> None:
+                               description: Optional[str] = None) -> None:
         """ Insert a new label into the database or update its description
             in case it already exists.
             Use __define_new_label if an update has to be avoided. """
