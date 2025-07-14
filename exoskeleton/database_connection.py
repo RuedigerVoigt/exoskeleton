@@ -11,6 +11,8 @@ Released under the Apache License 2.0
 # standard library:
 from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
+from typing import cast
+
 
 # external dependencies:
 import pymysql
@@ -43,12 +45,12 @@ class DatabaseConnection:
             raise ValueError('You must provide a database user.')
 
         # Check settings and fallback to default if necessary:
-        self.db_host: str = database_settings.get('host', None)
+        self.db_host: str = cast(str, database_settings.get('host', None))
         if not self.db_host:
             logging.warning('No hostname provided. Will try localhost.')
             self.db_host = 'localhost'
 
-        self.db_port: int = database_settings.get('port', None)
+        self.db_port: int = cast(int, database_settings.get('port', None))
         if not self.db_port:
             logging.info('No port number supplied: will try port 3306.')
             self.db_port = 3306

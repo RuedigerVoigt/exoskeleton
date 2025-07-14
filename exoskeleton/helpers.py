@@ -11,6 +11,7 @@ Released under the Apache License 2.0
 
 
 from bs4 import BeautifulSoup  # type: ignore
+from typing import cast
 
 
 def prettify_html(content: str) -> str:
@@ -21,11 +22,11 @@ def prettify_html(content: str) -> str:
          * Empty elements are NOT removed as they might be used to find
            specific elements within the tree.
     """
-    content = BeautifulSoup(content, 'lxml').prettify()
-    return content
+    soup = BeautifulSoup(content, 'lxml')
+    return cast(str, soup.prettify(encoding=None))
 
 
 def strip_code(content: str) -> str:
-    "Remove code tags from HTMl and return the text"
+    "Remove code tags from HTML and return the text"
     soup = BeautifulSoup(content, 'lxml')
     return soup.get_text()
