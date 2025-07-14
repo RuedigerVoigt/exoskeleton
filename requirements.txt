@@ -1,9 +1,9 @@
-beautifulsoup4>=4.11.1
+beautifulsoup4>=4.13.4
 bote>=1.2.2
 compatibility>=1.0.1
-lxml>=4.9.2
+lxml>=5.4.0
 pycares>=4.1.2
-pymysql>=1.0.2
-requests>=2.31.0
+pymysql>=1.1.1
+requests>=2.5.0
 urllib3>=1.26.9
 userprovided>=1.0.0
