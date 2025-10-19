@@ -1,9 +1,5 @@
 # This workflow runs Unit-Tests for exoskeleton on MacOS
 # with the oldest and latest supported Python versions.
-#
-# Flake8 will be run with the Ubuntu Workflow.
-# Mypy runs separately.
-# => There is no need to repeat these here.
 
 name: MacOS Test
 
