@@ -19,7 +19,7 @@ setuptools.setup(
     url="https://github.com/RuedigerVoigt/exoskeleton",
     package_data={"exoskeleton": ["py.typed"]},
     packages=setuptools.find_packages(),
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=[
         "beautifulsoup4>=4.11.1",
         "bote>=1.2.2",
@@ -32,11 +32,11 @@ setuptools.setup(
         "userprovided>=1.0.0"],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Development Status :: 5 - Production/Stable",

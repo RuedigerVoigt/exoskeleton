@@ -1,11 +1,22 @@
 # Changelog / History
 
-## Upcoming
-
 Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is not done *yet*, because the queue has to be modified in order to distribute the load evenly on multiple target hosts.
-* Update dependencies.
 
-* Support for Python 3.11.
+
+
+## Upcoming (2025)
+
+
+* Supported Python versions:
+  * Drop support for Python 3.8 and 3.9 (EOL).
+  * Support Python 3.13 and 3.14
+* Security:
+  * Add tests with bandit.
+* Dependencies:
+  * Update versions of all.
+  * Add SqlAlchemy as a dependency.
+  * Add python-dotenv as a dependency.
+
 
 
 ## Version 2.1.1 (2022-04-27)
