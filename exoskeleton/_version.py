@@ -6,4 +6,4 @@
 from datetime import date
 
 __version__ = '2.1.1'
-release_date = date(2022, 4, 27)
+release_date = date(2025, 11, 4)
