@@ -15,9 +15,6 @@ jobs:
 
     steps:
 
-    - name: System Update
-      run: softwareupdate -i -a
-
     - name: Checkout
       uses: actions/checkout@v4
 
