@@ -37,12 +37,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install wheel
-        pip install -r requirements.txt
-
-    - name: Install test utilities
-      run: |
-        pip install pytest pytest_mock pyfakefs
+        pip install .[dev]
+        pip install pytest_mock pyfakefs
 
     - name: Install Chromium
       run: sudo apt install chromium-browser

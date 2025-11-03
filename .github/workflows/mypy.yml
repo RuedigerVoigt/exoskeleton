@@ -22,17 +22,15 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install Dependencies and Mypy
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install wheel
-        pip install -r requirements.txt
-        pip install mypy
+        pip install .[dev]
 
     - name: Install stubs for third-party libraries (necessary since mypy 0.9.0)
       run: |
-        python3 -m pip install types-PyMySQL
-        python3 -m pip install types-requests
+        pip install types-PyMySQL
+        pip install types-requests
 
     - name: Check code with Mypy
       run: mypy exoskeleton/

@@ -26,14 +26,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install wheel
-        pip install -r requirements.txt
+        pip install .[dev]
+        pip install pytest_mock pyfakefs
 
-    - name: Install test utilities
-      run: |
-        pip install pytest pytest_mock pyfakefs
-
-# Some tests currently require a Linux container as Windows workers
+# Some tests currently require a Linux container as MacOS workers
 # cannot spin up a MariaDB service. So run a subset.
     - name: Run a subset of the tests
       run: pytest tests/tests_without_side_effects.py
