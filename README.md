@@ -7,6 +7,12 @@
 [![Downloads](https://pepy.tech/badge/exoskeleton)](https://pepy.tech/project/exoskeleton)
 [![Coverage](https://img.shields.io/badge/coverage-85%25-lightgreen)](https://www.ruediger-voigt.eu/coverage/exoskeleton/index.html)
 
+
+## New Version Upcoming
+
+**Exoskeleton 3 will be released in November 2025. Version 2 will not be updated further. Please see the development branch for status quo / updates.**
+
+
 Machine Learning and other applications make it necessary to download thousands or sometimes hundreds of thousands of files.
 
 Using a high-speed-connection carries the risk to run an involuntary denial-of-service attack on the servers that provide those files and webpages.
