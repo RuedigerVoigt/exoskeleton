@@ -54,6 +54,60 @@ flake8 = "^7.0.0"
 mypy = "^1.0.0"
 bandit = "^1.7.0"
 
+[project]
+name = "exoskeleton"
+version = "2.1.1"
+description = "A library to create a bot / spider / crawler."
+authors = [{name = "Rüdiger Voigt", email = "projects@ruediger-voigt.eu"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["crawler", "scraper", "spider", "bot", "web-scraping"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Text Processing :: Markup :: HTML",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+]
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "bote>=1.2.2",
+    "compatibility>=2.0.0",
+    "lxml>=5.4.0",
+    "pycares>=4.1.2",
+    "pymysql>=1.1.1",
+    "python-dotenv>=1.1.1",
+    "requests>=2.5.0",
+    "urllib3>=1.26.9",
+    "userprovided>=2.1.1",
+    "SQLAlchemy>=2.0.41",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "coverage>=7.0.0",
+    "flake8>=7.0.0",
+    "mypy>=1.0.0",
+    "bandit>=1.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/RuedigerVoigt/exoskeleton"
+Repository = "https://github.com/RuedigerVoigt/exoskeleton"
+"Bug Tracker" = "https://github.com/RuedigerVoigt/exoskeleton/issues"
+Documentation = "https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation"
+Changelog = "https://github.com/RuedigerVoigt/exoskeleton/blob/master/CHANGELOG.md"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
