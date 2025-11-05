@@ -101,16 +101,20 @@ def queue_count() -> int:
 
 def label_count() -> int:
     "Check if the number of labels equals the expected number."
-    exo.cur.execute('SELECT COUNT(*) FROM exoskeleton.labels;')
-    labelcount = exo.cur.fetchone()
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT COUNT(*) FROM exoskeleton.labels;'))
+    labelcount = result.fetchone()
     return int(labelcount[0]) if labelcount else 0
 
 
 def check_error_codes(expectation: set):
-    exo.cur.execute('SELECT causesError FROM queue ' +
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT causesError FROM queue ' +
                     'WHERE causesError IS NOT NULL ' +
-                    'ORDER BY causesError;')
-    error_codes = exo.cur.fetchall()
+                    'ORDER BY causesError;'))
+    error_codes = result.fetchall()
     error_codes = {(c[0]) for c in error_codes}
     if error_codes == expectation:
         logging.info('Error codes match expectation.')
@@ -126,11 +130,13 @@ def filemaster_labels_by_url(url: str) -> set:
         The reason for this: The association with the URL predates
         the filemaster entry / the id."""
     # TO DO: clearer description!
-    exo.cur.execute('SELECT DISTINCT shortName ' +
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT DISTINCT shortName ' +
                     'FROM labels WHERE ID IN (' +
                     'SELECT labelID FROM labelToMaster ' +
-                    'WHERE urlHash = SHA2(%s,256));', (url, ))
-    labels = exo.cur.fetchall()
+                    'WHERE urlHash = SHA2(:url,256));'), {"url": url})
+    labels = result.fetchall()
     return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
 
 
@@ -152,9 +158,11 @@ assert label_count() == 0, "Database / Table labels is not empty at test-start"
     ('https://github.com/RuedigerVoigt/exoskeleton')
 ])
 def test_exo_url_generate_sha256_hash(url: str):
+    from sqlalchemy import text
     hash_python = exo_url.ExoUrl(url).hash
-    exo.cur.execute('SELECT SHA2(%s, 256);', (url, ))
-    hash_db = exo.cur.fetchone()[0]
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT SHA2(:url, 256);'), {"url": url})
+    hash_db = result.fetchone()[0]
     assert hash_python == hash_db
 
 
@@ -300,14 +308,16 @@ def test_add_same_task_with_different_labels():
 
 
 def get_filemaster_id():
+    from sqlalchemy import text
     # Add a task to the queue
     test_url = 'https://www.example.com/get-fm-id.html'
     test_uuid = exo.add_page_to_pdf(test_url)
     # Get the filemaster ID
     fm_id = exo.labels.get_filemaster_id(test_uuid)
     # Get the URL via the id
-    exo.cur.execute("SELECT url FROM fileMaster WHERE id = %s;", (fm_id, ))
-    url_in_db = exo.cur.fetchone()[0]
+    session = exo.db.get_session()
+    result = session.execute(text("SELECT url FROM fileMaster WHERE id = :fm_id;"), {"fm_id": fm_id})
+    url_in_db = result.fetchone()[0]
     # Compare
     assert test_url == url_in_db
     # clean up
@@ -563,8 +573,10 @@ def test_remove_from_blocklist():
     test_counter['num_expected_queue_items'] = 0
     assert queue_count() == test_counter['num_expected_queue_items']
 
-    exo.cur.execute('SELECT COUNT(*) FROM queue WHERE causesError IS NOT NULL;')
-    permanent_errors = int(exo.cur.fetchone()[0])
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT COUNT(*) FROM queue WHERE causesError IS NOT NULL;'))
+    permanent_errors = int(result.fetchone()[0])
 
     assert permanent_errors == 0
 
@@ -590,9 +602,11 @@ def test_exceed_retries():
     test_counter['num_expected_queue_items'] += 6
     # Start processing:
     exo.process_queue()
-    exo.cur.execute('SELECT causesError, numTries FROM queue WHERE id = %s;',
-                    uuid_code_500)
-    error_description = exo.cur.fetchone()
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT causesError, numTries FROM queue WHERE id = :uuid;'),
+                    {"uuid": uuid_code_500})
+    error_description = result.fetchone()
     assert error_description == (3, 6), f"Wrong error for exceeded retries: {error_description}"
 
 
@@ -611,7 +625,10 @@ def test_forget_errors():
     exo.errorhandling.forget_all_errors()
     check_error_codes(set())
     # Truncate the queue
-    exo.cur.execute('TRUNCATE TABLE queue;')
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    session.execute(text('TRUNCATE TABLE queue;'))
+    session.commit()
 
 
 def test_log_temporary_problem():
@@ -641,13 +658,15 @@ def test_handle_redirects():
         "https://www.ruediger-voigt.eu/redirect-302.html")
     exo.process_queue()
 
-    exo.cur.execute('SELECT pageContent FROM fileContent WHERE versionID =%s;',
-                    redirect301)
-    filecontent_301 = (exo.cur.fetchone())[0]
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT pageContent FROM fileContent WHERE versionID = :vid;'),
+                    {"vid": redirect301})
+    filecontent_301 = (result.fetchone())[0]
     assert filecontent_301 == 'testfile1', 'Redirect 301 did not work.'
-    exo.cur.execute('SELECT pageContent FROM fileContent WHERE versionID =%s;',
-                    redirect302)
-    filecontent_302 = (exo.cur.fetchone())[0]
+    result = session.execute(text('SELECT pageContent FROM fileContent WHERE versionID = :vid;'),
+                    {"vid": redirect302})
+    filecontent_302 = (result.fetchone())[0]
     assert filecontent_302 == 'testfile2', 'Redirect 302 did not work.'
 
 
@@ -659,8 +678,10 @@ logging.info('Test 6: Rate Limit')
 
 
 def count_rate_limit() -> int:
-    exo.cur.execute('SELECT COUNT(*) FROM rateLimits;')
-    count = int((exo.cur.fetchone())[0])
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text('SELECT COUNT(*) FROM rateLimits;'))
+    count = int((result.fetchone())[0])
     return count
 
 
@@ -681,7 +702,10 @@ def test_hit_a_rate_limit():
     assert count_rate_limit() == 0, 'Did not forget rate limits'
     # Check that a rate limited FQDN does not show up as next item.
     exo.errorhandling.add_rate_limit('www.ruediger-voigt.eu')
-    exo.cur.execute('TRUNCATE TABLE queue;')
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    session.execute(text('TRUNCATE TABLE queue;'))
+    session.commit()
     exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
     assert exo.queue.get_next_task() is None, 'Rate limited task showed up as next'
     exo.errorhandling.forget_all_rate_limits()
