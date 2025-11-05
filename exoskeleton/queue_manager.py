@@ -17,7 +17,9 @@ import uuid
 
 
 # external dependencies:
-import pymysql
+from sqlalchemy import text, func
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 import userprovided
 
 from exoskeleton import actions
@@ -26,6 +28,7 @@ from exoskeleton import database_connection
 from exoskeleton import err
 from exoskeleton import exo_url
 from exoskeleton import label_manager
+from exoskeleton import models
 from exoskeleton import notification_manager
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
@@ -49,7 +52,7 @@ class QueueManager:
             label_manager_object: label_manager.LabelManager,
             bot_behavior: dict) -> None:
         self.db_connection = db_connection
-        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
+        self.session: Session = self.db_connection.get_session()
         self.blocklist = blocklist_manager_object
         self.time = time_manager_object
         self.stats = stats_manager_object
@@ -104,11 +107,15 @@ class QueueManager:
             if id_in_file_master:
                 # The URL has been processed in _some_ way.
                 # Check if was the _same_ as now requested.
-                self.cur.execute('SELECT id FROM fileVersions ' +
-                                 'WHERE fileMasterID = %s AND ' +
-                                 'actionAppliedID = %s;',
-                                 (id_in_file_master, action))
-                version_id = self.cur.fetchone()
+                query = """
+                    SELECT id FROM fileVersions
+                    WHERE fileMasterID = :master_id AND actionAppliedID = :action
+                """
+                result = self.session.execute(
+                    text(query),
+                    {"master_id": id_in_file_master, "action": action}
+                )
+                version_id = result.fetchone()
                 if version_id:
                     logging.info(
                         'Skipping file already processed in the same way.')
@@ -128,8 +135,8 @@ class QueueManager:
         uuid_value = uuid.uuid4().hex
 
         # add the new task to the queue
-        self.cur.callproc('add_to_queue_SP',
-                          (uuid_value, action, url, url.hostname, prettify_html))
+        self.db_connection.call_procedure('add_to_queue_SP',
+                                        (uuid_value, action, str(url), url.hostname, prettify_html))
 
         # link labels to version item
         if labels_version:
@@ -145,12 +152,16 @@ class QueueManager:
            but as you can force exoskeleton to repeat tasks on the same
            URL it can be multiple. Returns an empty set if such combination
            is not in the queue."""
-        self.cur.execute('SELECT id FROM queue ' +
-                         'WHERE urlHash = SHA2(%s,256) AND ' +
-                         'action = %s ' +
-                         'ORDER BY addedToQueue ASC;',
-                         (url, action))
-        queue_uuids = self.cur.fetchall()
+        query = """
+            SELECT id FROM queue
+            WHERE urlHash = SHA2(:url, 256) AND action = :action
+            ORDER BY addedToQueue ASC
+        """
+        result = self.session.execute(
+            text(query),
+            {"url": str(url), "action": action}
+        )
+        queue_uuids = result.fetchall()
         return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()
 
     def get_filemaster_id_by_url(self,
@@ -159,10 +170,12 @@ class QueueManager:
         "Get the id of the filemaster entry associated with this URL"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        self.cur.execute('SELECT id FROM fileMaster ' +
-                         'WHERE urlHash = SHA2(%s,256);',
-                         (url, ))
-        id_in_file_master = self.cur.fetchone()
+        query = """
+            SELECT id FROM fileMaster
+            WHERE urlHash = SHA2(:url, 256)
+        """
+        result = self.session.execute(text(query), {"url": str(url)})
+        id_in_file_master = result.fetchone()
         return id_in_file_master[0] if id_in_file_master else None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -171,13 +184,13 @@ class QueueManager:
 
     def get_next_task(self) -> Optional[str]:
         "Get the next suitable task"
-        self.cur.execute('CALL next_queue_object_SP();')
-        return self.cur.fetchone()  # type: ignore[return-value]
+        result = self.db_connection.call_procedure('next_queue_object_SP')
+        return result.fetchone()  # type: ignore[return-value]
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
         "Remove all label links from item and delete it from the queue."
-        self.cur.callproc('delete_from_queue_SP', (queue_id,))
+        self.db_connection.call_procedure('delete_from_queue_SP', (queue_id,))
 
     def process_queue(self) -> None:
         "Process the queue"
@@ -186,25 +199,20 @@ class QueueManager:
         while True:
             try:
                 next_in_queue = self.get_next_task()
-            except pymysql.err.OperationalError as op_err:
-                if op_err.args[0] == 2013:  # errno
-                    # this error is unusual. Give the db some time:
-                    logging.error('Lost database connection. ' +
-                                  'Trying to restore it in 10 seconds ...')
-                    time.sleep(10)
-                    try:
-                        self.cur = self.db_connection.get_cursor()
-                        next_in_queue = self.get_next_task()
-                        logging.info('Restored database connection!')
-                    except Exception as exc:
-                        msg = 'Could not reestablish database connection'
-                        logging.exception(msg, exc_info=True)
-                        self.notify.send_msg_abort_lost_db()
-                        raise ConnectionError(msg) from exc
-                else:
-                    logging.error(
-                        'Unexpected Operational Error', exc_info=True)
-                    raise
+            except OperationalError as op_err:
+                # Database connection lost
+                logging.error('Lost database connection. ' +
+                              'Trying to restore it in 10 seconds ...')
+                time.sleep(10)
+                try:
+                    self.session = self.db_connection.get_session()
+                    next_in_queue = self.get_next_task()
+                    logging.info('Restored database connection!')
+                except Exception as exc:
+                    msg = 'Could not reestablish database connection'
+                    logging.exception(msg, exc_info=True)
+                    self.notify.send_msg_abort_lost_db()
+                    raise ConnectionError(msg) from exc
 
             if next_in_queue is None:
                 # no actionable item in the queue

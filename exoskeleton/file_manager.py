@@ -14,7 +14,6 @@ import pathlib
 
 
 # external dependencies:
-import pymysql
 import requests
 import userprovided
 
@@ -31,7 +30,7 @@ class FileManager:
                  target_directory: str,
                  filename_prefix: str
                  ) -> None:
-        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
+        self.db_connection = db_connection
         self.target_dir = self.__check_target_directory(target_directory)
         logging.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)

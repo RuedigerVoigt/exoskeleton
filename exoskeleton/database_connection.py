@@ -5,27 +5,34 @@
 Database connection management for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
-(c) 2019-2021 Rüdiger Voigt:
+(c) 2019-2025 Rüdiger Voigt:
 Released under the Apache License 2.0
 """
 # standard library:
-from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
-from typing import cast
-
+from typing import cast, Optional
 
 # external dependencies:
-import pymysql
+from sqlalchemy import create_engine, text, event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.exc import OperationalError, DatabaseError
 import userprovided
 
 
 class DatabaseConnection:
-    """Database connection management for the exoskeleton framework."""
+    """Database connection management for the exoskeleton framework using SQLAlchemy."""
 
     def __init__(self,
                  database_settings: dict) -> None:
-        "Checks connection settings and set defaults"
+        """
+        Initialize database connection using SQLAlchemy.
 
+        Args:
+            database_settings: Dictionary containing database credentials
+                Required keys: 'database', 'username'
+                Optional keys: 'host', 'port', 'passphrase'
+        """
         if database_settings is None:
             raise ValueError('You must supply database credentials.')
 
@@ -62,53 +69,119 @@ class DatabaseConnection:
             logging.warning(
                 'No database passphrase provided. Trying to connect without.')
 
-        # Establish the database connection
-        self.connection = None
+        # Establish the database connection using SQLAlchemy
+        self.engine: Optional[Engine] = None
+        self.Session: Optional[sessionmaker] = None
+        self._session: Optional[Session] = None
         self.establish_db_connection()
-        # Add ignore for mypy as it cannot be None at this point, because
-        # establish_db_connection would have failed before:
-        self.cur = self.connection.cursor()  # type: ignore
 
     def __del__(self) -> None:
-        # make sure the connection is closed instead of waiting for timeout:
+        """Cleanup: close session and dispose engine."""
         try:
-            self.connection.close()  # type: ignore[attr-defined]
-        except (Exception, pymysql.Error):  # pylint: disable=broad-except
+            if self._session:
+                self._session.close()
+            if self.engine:
+                self.engine.dispose()
+        except Exception:  # pylint: disable=broad-except
             pass
 
     def establish_db_connection(self) -> None:
-        "Establish a connection to MariaDB "
+        """Establish a connection to MariaDB using SQLAlchemy."""
         try:
             logging.debug('Trying to connect to database.')
-            self.connection = pymysql.connect(host=self.db_host,
-                                              port=self.db_port,
-                                              database=self.db_name,
-                                              user=self.db_username,
-                                              password=self.db_passphrase,
-                                              autocommit=True
-                                              )  # type: ignore[assignment]
 
-            logging.info('Succesfully established database connection.')
+            # Build connection URL
+            # Using pymysql as the driver for MariaDB
+            connection_url = (
+                f"mysql+pymysql://{self.db_username}:{self.db_passphrase}@"
+                f"{self.db_host}:{self.db_port}/{self.db_name}"
+                "?charset=utf8mb4"
+            )
 
-        except pymysql.OperationalError:
+            # Create engine with connection pooling
+            self.engine = create_engine(
+                connection_url,
+                pool_pre_ping=True,  # Verify connections before using
+                pool_recycle=3600,   # Recycle connections after 1 hour
+                echo=False,          # Set to True for SQL debugging
+            )
+
+            # Test the connection
+            with self.engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+
+            # Create session factory
+            self.Session = sessionmaker(bind=self.engine, autoflush=True, autocommit=False)
+
+            logging.info('Successfully established database connection.')
+
+        except OperationalError:
             logging.exception(
                 "Cannot connect to DBMS. Did you forget a parameter?",
                 exc_info=True)
             raise
-        except (pymysql.InterfaceError, pymysql.DatabaseError):
+        except DatabaseError:
             logging.exception('Database related exception', exc_info=True)
             raise
-        except (pymysql.Error, Exception):
+        except Exception:
             logging.exception(
                 'Exception while connecting to the DBMS.', exc_info=True)
             raise
 
-    def get_cursor(self) -> pymysql.cursors.Cursor:
-        """Make the database cursor accessible from outside the class.
-           Try to reconnect if the connection is lost."""
-        if self.cur:
-            return self.cur
-        logging.info("Lost database connection. Trying to reconnect...")
-        self.establish_db_connection()
-        self.cur = self.connection.cursor()  # type: ignore[attr-defined]
-        return self.cur
+    def get_session(self) -> Session:
+        """
+        Get a SQLAlchemy session for database operations.
+
+        Returns:
+            Session: A SQLAlchemy session object
+        """
+        if self._session is None or not self._session.is_active:
+            if self.Session is None:
+                logging.info("Lost database connection. Trying to reconnect...")
+                self.establish_db_connection()
+            if self.Session:
+                self._session = self.Session()
+        return self._session  # type: ignore
+
+    def execute_raw(self, query: str, params: Optional[dict] = None):
+        """
+        Execute raw SQL (for stored procedures and complex queries).
+
+        Args:
+            query: SQL query string
+            params: Optional parameters dictionary
+
+        Returns:
+            Result proxy object
+        """
+        session = self.get_session()
+        try:
+            if params:
+                result = session.execute(text(query), params)
+            else:
+                result = session.execute(text(query))
+            session.commit()
+            return result
+        except Exception:
+            session.rollback()
+            raise
+
+    def call_procedure(self, procedure_name: str, params: Optional[tuple] = None):
+        """
+        Call a stored procedure.
+
+        Args:
+            procedure_name: Name of the stored procedure
+            params: Optional tuple of parameters
+
+        Returns:
+            Result from the stored procedure
+        """
+        param_placeholders = ", ".join([":param" + str(i) for i in range(len(params or []))])
+        query = f"CALL {procedure_name}({param_placeholders})"
+
+        param_dict = {}
+        if params:
+            param_dict = {f"param{i}": val for i, val in enumerate(params)}
+
+        return self.execute_raw(query, param_dict)

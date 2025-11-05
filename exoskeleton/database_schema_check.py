@@ -11,7 +11,8 @@ Released under the Apache License 2.0
 
 import logging
 
-import pymysql
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from exoskeleton import _version as version
 from exoskeleton import database_connection
@@ -78,7 +79,8 @@ class DatabaseSchemaCheck:
                  db_connection: database_connection.DatabaseConnection
                  ) -> None:
         "Sets defaults"
-        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
+        self.db_connection = db_connection
+        self.session: Session = db_connection.get_session()
         self.db_name: str = db_connection.db_name
         self.check_db_schema()
 
@@ -88,8 +90,8 @@ class DatabaseSchemaCheck:
         # expected tables is not sufficient. The user might have added
         # custom tables.
         # Therefore check for each expected table if it is in the result.
-        self.cur.execute('SHOW TABLES;')
-        tables = self.cur.fetchall()
+        result = self.session.execute(text('SHOW TABLES'))
+        tables = result.fetchall()
         if not tables:
             msg = 'No tables found in database: Run generator script!'
             logging.exception(msg)
@@ -113,8 +115,8 @@ class DatabaseSchemaCheck:
     def __check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
            is allowed to execute them. """
-        self.cur.callproc('db_check_all_procedures_SP', (self.db_name, ))
-        procedures = self.cur.fetchall()
+        result = self.db_connection.call_procedure('db_check_all_procedures_SP', (self.db_name,))
+        procedures = result.fetchall()
         if not procedures:
             msg = 'No procedures found in database: Run generator script!'
             logging.exception(msg)
@@ -140,8 +142,8 @@ class DatabaseSchemaCheck:
     def __check_functions(self) -> bool:
         """Check if all expected database functions exist and if the user
            is allowed to execute them. """
-        self.cur.callproc('db_check_all_functions_SP', (self.db_name, ))
-        functions = self.cur.fetchall()
+        result = self.db_connection.call_procedure('db_check_all_functions_SP', (self.db_name,))
+        functions = result.fetchall()
         if not functions:
             msg = 'No functions found in database: Run generator script!'
             logging.exception(msg)
@@ -167,8 +169,8 @@ class DatabaseSchemaCheck:
         # Other methods check for the existence of stored procedures, functions
         # and tables. However, those might have changed fields. Therefore this
         # version check.
-        self.cur.execute('SELECT exo_schema_version() AS version;')
-        schema = self.cur.fetchone()
+        result = self.session.execute(text('SELECT exo_schema_version() AS version'))
+        schema = result.fetchone()
         if not schema:
             msg = 'Schema version info not found.'
             logging.exception(msg)

@@ -13,10 +13,10 @@ Released under the Apache License 2.0
 import logging
 from typing import Final, Literal
 
-import pymysql
 import requests
 import urllib3
 import userprovided
+from sqlalchemy.exc import DatabaseError
 
 from exoskeleton import database_connection
 from exoskeleton import error_manager
@@ -53,7 +53,6 @@ class GetObjectBaseClass:
         if not url:
             raise ValueError('Missing parameter url')
         self.db_connection = objects['db_connection']
-        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.stats = objects['stats_manager_object']
         self.file = objects['file_manager_object']
         self.time = objects['time_manager_object']
@@ -150,16 +149,16 @@ class GetFile(GetObjectBaseClass):
         hash_value = self.file.get_file_hash(file_path)
 
         try:
-            self.cur.callproc('insert_file_SP',
-                              (self.url, self.url.hash,
-                               self.queue_id,
-                               self.mime_type,
-                               str(self.file.target_dir),
-                               new_filename,
-                               self.file.get_file_size(file_path),
-                               self.file.HASH_METHOD,
-                               hash_value, 1))
-        except pymysql.DatabaseError:
+            self.db_connection.call_procedure('insert_file_SP',
+                                            (str(self.url), self.url.hash,
+                                             self.queue_id,
+                                             self.mime_type,
+                                             str(self.file.target_dir),
+                                             new_filename,
+                                             self.file.get_file_size(file_path),
+                                             self.file.HASH_METHOD,
+                                             hash_value, 1))
+        except DatabaseError:
             logging.error(
                 'Did not add already downloaded file %s to the database!',
                 new_filename)
@@ -190,10 +189,10 @@ class GetContent(GetObjectBaseClass):
         try:
             # Stored procedure saves the content, transfers the
             # labels from the queue, and removes the queue item:
-            self.cur.callproc('insert_content_SP',
-                              (self.url, self.url.hash, self.queue_id,
-                               self.mime_type, page_content, 2))
-        except pymysql.DatabaseError:
+            self.db_connection.call_procedure('insert_content_SP',
+                                            (str(self.url), self.url.hash, self.queue_id,
+                                             self.mime_type, page_content, 2))
+        except DatabaseError:
             logging.error(
                 'Transaction failed: Can not save page code of queue item %s!',
                 self.queue_id, exc_info=True)
@@ -220,7 +219,6 @@ class GetPDF():
                  queue_id: str,
                  url: exo_url.ExoUrl) -> None:
         self.db_connection = objects['db_connection']
-        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
         self.file = objects['file_manager_object']
         self.controlled_browser = objects['controlled_browser']
         self.url = url
@@ -238,13 +236,13 @@ class GetPDF():
     def store_result(self) -> None:
         "Store the PDF info in the database"
         try:
-            self.cur.callproc(
+            self.db_connection.call_procedure(
                 'insert_file_SP',
-                (self.url, self.url.hash, self.queue_id, 'application/pdf',
+                (str(self.url), self.url.hash, self.queue_id, 'application/pdf',
                  str(self.file.target_dir), self.filename,
                  self.file.get_file_size(self.path),
                  self.file.HASH_METHOD, self.file.get_file_hash(self.path), 3))
-        except pymysql.DatabaseError:
+        except DatabaseError:
             logging.error(
                 'Transaction failed: Could not add file %s to the database!',
                 self.path, exc_info=True)
@@ -268,7 +266,6 @@ class ExoActions:
             connection_timeout: int) -> None:
         "Init class"
         self.db_connection = db_connection
-        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
         self.stats = stats_manager_object
         self.user_agent = user_agent
         self.connection_timeout = connection_timeout

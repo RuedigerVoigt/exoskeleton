@@ -13,7 +13,6 @@ import logging
 
 # external dependencies:
 import userprovided
-import pymysql
 
 from exoskeleton import database_connection
 
@@ -32,7 +31,7 @@ class CrawlingErrorManager:
                  db_connection: database_connection.DatabaseConnection,
                  queue_max_retries: int,
                  rate_limit_wait_seconds: int) -> None:
-        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
+        self.db_connection = db_connection
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = queue_max_retries
         self.queue_max_retries = userprovided.parameters.int_in_range(
@@ -53,8 +52,8 @@ class CrawlingErrorManager:
         wait_time = 0
 
         # Increase the tries counter and get the new count
-        self.cur.callproc('increment_num_tries_SP', (queue_id, ))
-        response = self.cur.fetchone()
+        result = self.db_connection.call_procedure('increment_num_tries_SP', (queue_id,))
+        response = result.fetchone()
         num_tries = int(response[0]) if response else 0
 
         # Does the number of tries exceed the configured maximum?
@@ -77,15 +76,15 @@ class CrawlingErrorManager:
             wait_time = self.DELAY_TRIES[3]  # 3 hours
         elif num_tries > 4:
             wait_time = self.DELAY_TRIES[4]  # 6 hours
-        self.cur.callproc('add_crawl_delay_SP',
-                          (queue_id, wait_time, error_type))
+        self.db_connection.call_procedure('add_crawl_delay_SP',
+                                        (queue_id, wait_time, error_type))
 
     def mark_permanent_error(self,
                              queue_id: str,
                              error: int) -> None:
         """ Mark task in queue that causes a *permanent* error.
             Without this exoskeleton would try to execute it again."""
-        self.cur.callproc('mark_permanent_error_SP', (queue_id, error))
+        self.db_connection.call_procedure('mark_permanent_error_SP', (queue_id, error))
         logging.info('Marked task %s as causing a permanent error.', queue_id)
 
     def forget_specific_error(self,
@@ -94,18 +93,18 @@ class CrawlingErrorManager:
            error, as if they are new tasks by removing that mark and any delay.
            The number of the error has to correspond to the errorType
            database table."""
-        self.cur.callproc('forget_specific_error_type_SP', (specific_error, ))
+        self.db_connection.call_procedure('forget_specific_error_type_SP', (specific_error,))
 
     def forget_temporary_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause a *temporary*
         error, as if they are new tasks by removing that mark and any delay."""
-        self.cur.callproc('forget_error_group_SP', (0, ))
+        self.db_connection.call_procedure('forget_error_group_SP', (0,))
 
     def forget_permanent_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause a *permanent*
            error, as if they are new tasks by removing that mark and
            any delay."""
-        self.cur.callproc('forget_error_group_SP', (1, ))
+        self.db_connection.call_procedure('forget_error_group_SP', (1,))
 
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
@@ -113,7 +112,7 @@ class CrawlingErrorManager:
            task specific delay.
            However, this does not remove delays due to rate limit on a per host
            basis. Use corresponding functions to remove those."""
-        self.cur.callproc("forget_all_errors_SP")
+        self.db_connection.call_procedure("forget_all_errors_SP")
 
     def add_rate_limit(self,
                        fqdn: str) -> None:
@@ -124,13 +123,13 @@ class CrawlingErrorManager:
         msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
                f"contact this host for {self.rate_limit_wait} seconds.")
         logging.error(msg)
-        self.cur.callproc('add_rate_limit_SP', (fqdn, self.rate_limit_wait))
+        self.db_connection.call_procedure('add_rate_limit_SP', (fqdn, self.rate_limit_wait))
 
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:
         "Forget that the bot hit a rate limit for a specific FQDN."
-        self.cur.callproc('forget_specific_rate_limit_SP', (fqdn, ))
+        self.db_connection.call_procedure('forget_specific_rate_limit_SP', (fqdn,))
 
     def forget_all_rate_limits(self) -> None:
         """Forget all rate limits the bot hit."""
-        self.cur.callproc('forget_all_rate_limits_SP')
+        self.db_connection.call_procedure('forget_all_rate_limits_SP')

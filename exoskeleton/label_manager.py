@@ -12,11 +12,14 @@ Released under the Apache License 2.0
 import logging
 from typing import Optional, Union
 
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 import userprovided
-import pymysql
 
 from exoskeleton import database_connection
 from exoskeleton import exo_url
+from exoskeleton import models
 
 
 class LabelManager:
@@ -25,7 +28,7 @@ class LabelManager:
             self,
             db_connection: database_connection.DatabaseConnection) -> None:
         self.db_connection = db_connection
-        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
+        self.session: Session = self.db_connection.get_session()
 
     # #########################################################################
     # CREATING LABELS
@@ -48,11 +51,15 @@ class LabelManager:
         if not self.__shortname_ok(shortname):
             return
         try:
-            self.cur.execute('INSERT INTO labels (shortName, description) ' +
-                             'VALUES (%s, %s);',
-                             (shortname, description))
+            query = """
+                INSERT INTO labels (shortName, description)
+                VALUES (:shortname, :description)
+            """
+            self.session.execute(text(query), {"shortname": shortname, "description": description})
+            self.session.commit()
             logging.debug('Added label to the database.')
-        except pymysql.err.IntegrityError:
+        except IntegrityError:
+            self.session.rollback()
             logging.debug('Label already existed.')
 
     def define_or_update_label(self,
@@ -63,8 +70,8 @@ class LabelManager:
             Use __define_new_label if an update has to be avoided. """
         if not self.__shortname_ok(shortname):
             return
-        self.cur.callproc('label_define_or_update_SP',
-                          (shortname, description))
+        self.db_connection.call_procedure('label_define_or_update_SP',
+                                        (shortname, description))
 
     # #########################################################################
     # ASSIGNING LABELS
@@ -97,10 +104,13 @@ class LabelManager:
 
         # Check whether some labels are already associated
         # with the fileMaster entry.
-        self.cur.execute('SELECT labelID ' +
-                         'FROM labelToMaster ' +
-                         'WHERE urlHash = SHA2(%s,256);', (url, ))
-        ids_found: Optional[tuple] = self.cur.fetchall()
+        query = """
+            SELECT labelID
+            FROM labelToMaster
+            WHERE urlHash = SHA2(:url, 256)
+        """
+        result = self.session.execute(text(query), {"url": str(url)})
+        ids_found: Optional[tuple] = result.fetchall()
         ids_associated = set()
         if ids_found:
             ids_associated = set(ids_found)
@@ -110,13 +120,14 @@ class LabelManager:
 
         if len(remaining_ids) > 0:
             # Case: there are new labels
-            # Convert into a format to INSERT with executemany
-            insert_list = [(id, url) for id in remaining_ids]
-            # Add those associatons
-            self.cur.executemany('INSERT IGNORE INTO labelToMaster ' +
-                                 '(labelID, urlHash) ' +
-                                 'VALUES (%s, SHA2(%s,256));',
-                                 insert_list)
+            # Add those associations
+            for label_id in remaining_ids:
+                insert_query = """
+                    INSERT IGNORE INTO labelToMaster (labelID, urlHash)
+                    VALUES (:label_id, SHA2(:url, 256))
+                """
+                self.session.execute(text(insert_query), {"label_id": label_id, "url": str(url)})
+            self.session.commit()
         return None
 
     def assign_labels_to_uuid(self,
@@ -141,21 +152,26 @@ class LabelManager:
         id_list = self.get_label_ids(label_set)
 
         # Check if there are already labels assigned with the version
-        self.cur.execute('SELECT labelID ' +
-                         'FROM labelToVersion ' +
-                         'WHERE versionUUID = %s;', (uuid_string, ))
-        ids_found = self.cur.fetchall()
+        query = """
+            SELECT labelID
+            FROM labelToVersion
+            WHERE versionUUID = :uuid
+        """
+        result = self.session.execute(text(query), {"uuid": uuid_string})
+        ids_found = result.fetchall()
         ids_associated = set(ids_found) if ids_found else set()
         # ignore all labels already associated:
         remaining_ids = tuple(id_list - ids_associated)
 
         if len(remaining_ids) > 0:
             # Case: there are new labels
-            # Convert into a format to INSERT with executemany
-            insert_list = [(id, uuid_string) for id in remaining_ids]
-            self.cur.executemany('INSERT IGNORE INTO labelToVersion ' +
-                                 '(labelID, versionUUID) ' +
-                                 'VALUES (%s, %s);', insert_list)
+            for label_id in remaining_ids:
+                insert_query = """
+                    INSERT IGNORE INTO labelToVersion (labelID, versionUUID)
+                    VALUES (:label_id, :uuid)
+                """
+                self.session.execute(text(insert_query), {"label_id": label_id, "uuid": uuid_string})
+            self.session.commit()
 
     # #########################################################################
     # QUERY LABELS
@@ -165,8 +181,9 @@ class LabelManager:
                           version_uuid: str) -> str:
         """Get the id of the filemaster entry associated with a specific
            version identified by its UUID."""
-        self.cur.execute('SELECT get_filemaster_id(%s);', (version_uuid, ))
-        filemaster_id = self.cur.fetchone()
+        query = "SELECT get_filemaster_id(:uuid)"
+        result = self.session.execute(text(query), {"uuid": version_uuid})
+        filemaster_id = result.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")
         return filemaster_id[0]
@@ -177,8 +194,8 @@ class LabelManager:
            filemaster entry using the URL associated."""
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        self.cur.callproc('labels_filemaster_by_url_SP', (url, ))
-        labels = self.cur.fetchall()
+        result = self.db_connection.call_procedure('labels_filemaster_by_url_SP', (str(url),))
+        labels = result.fetchall()
         return {(label[0]) for label in labels} if labels else set()
 
     def version_labels_by_uuid(self,
@@ -186,8 +203,8 @@ class LabelManager:
         """Get a list of label names (not id numbers!) attached to a specific
            version of a file. Does not include labels attached to the
            filemaster entry."""
-        self.cur.callproc('labels_version_by_id_SP', (version_uuid, ))
-        labels = self.cur.fetchall()
+        result = self.db_connection.call_procedure('labels_version_by_id_SP', (version_uuid,))
+        labels = result.fetchall()
         return {(label[0]) for label in labels} if labels else set()
 
     def all_labels_by_uuid(self,
@@ -196,9 +213,9 @@ class LabelManager:
            to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
-        self.cur.execute('SELECT url FROM fileMaster WHERE id = %s;',
-                         (filemaster_id, ))
-        filemaster_url = self.cur.fetchone()
+        query = "SELECT url FROM fileMaster WHERE id = :id"
+        result = self.session.execute(text(query), {"id": filemaster_id})
+        filemaster_url = result.fetchone()
         filemaster_labels = set()
         if filemaster_url:
             filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])
@@ -214,15 +231,16 @@ class LabelManager:
             return set()
 
         label_set = userprovided.parameters.convert_to_set(label_set)
-        # The IN-Operator makes it necessary to construct the command
-        # every time, so input gets escaped. See the accepted answer here:
-        # https://stackoverflow.com/questions/14245396/using-a-where-in-statement
-        query = ("SELECT id " +
-                 "FROM labels " +
-                 "WHERE shortName " +
-                 "IN ({0});".format(', '.join(['%s'] * len(label_set))))
-        self.cur.execute(query, tuple(label_set))
-        label_id = self.cur.fetchall()
+        # Use SQLAlchemy's bindparam for safe IN clause handling
+        # Convert the label set to a tuple for proper parameter binding
+        label_tuple = tuple(label_set)
+        query = """
+            SELECT id
+            FROM labels
+            WHERE shortName IN :labels
+        """
+        result = self.session.execute(text(query), {"labels": label_tuple})
+        label_id = result.fetchall()
         return {(id[0]) for id in label_id} if label_id else set()
 
     def version_uuids_by_label(self,
@@ -239,19 +257,23 @@ class LabelManager:
 
         label_id: str = returned_set.pop()
         if processed_only:
-            self.cur.execute("SELECT versionUUID " +
-                             "FROM labelToVersion AS lv " +
-                             "WHERE labelID = %s AND " +
-                             "EXISTS ( " +
-                             "    SELECT fv.id FROM fileVersions AS fv " +
-                             "    WHERE fv.id = lv.versionUUID);",
-                             (label_id, ))
+            query = """
+                SELECT versionUUID
+                FROM labelToVersion AS lv
+                WHERE labelID = :label_id AND
+                EXISTS (
+                    SELECT fv.id FROM fileVersions AS fv
+                    WHERE fv.id = lv.versionUUID
+                )
+            """
         else:
-            self.cur.execute("SELECT versionUUID " +
-                             "FROM labelToVersion " +
-                             "WHERE labelID = %s;",
-                             (label_id, ))
-        version_ids = self.cur.fetchall()
+            query = """
+                SELECT versionUUID
+                FROM labelToVersion
+                WHERE labelID = :label_id
+            """
+        result = self.session.execute(text(query), {"label_id": label_id})
+        version_ids = result.fetchall()
         return {(uuid[0]) for uuid in version_ids} if version_ids else set()
 
     # #########################################################################
@@ -272,4 +294,4 @@ class LabelManager:
         id_list = self.get_label_ids(labels_to_remove)
 
         for label_id in id_list:
-            self.cur.callproc('remove_labels_from_uuid_SP', (label_id, uuid))
+            self.db_connection.call_procedure('remove_labels_from_uuid_SP', (label_id, uuid))

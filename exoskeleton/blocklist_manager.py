@@ -14,8 +14,9 @@ import logging
 from typing import Optional
 
 # external dependencies:
-import pymysql
-
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from exoskeleton import database_connection
 
@@ -27,7 +28,7 @@ class BlocklistManager:
             db_connection: database_connection.DatabaseConnection
             ) -> None:
         self.db_connection = db_connection
-        self.cur: pymysql.cursors.Cursor = self.db_connection.get_cursor()
+        self.session: Session = self.db_connection.get_session()
 
     @staticmethod
     def __check_fqdn(fqdn: str) -> str:
@@ -43,8 +44,9 @@ class BlocklistManager:
                         fqdn: str) -> bool:
         "Check if a specific FQDN is on the blocklist."
         fqdn = self.__check_fqdn(fqdn)
-        self.cur.execute('SELECT fqdn_on_blocklist(%s);', (fqdn, ))
-        response = self.cur.fetchone()
+        query = "SELECT fqdn_on_blocklist(:fqdn)"
+        result = self.session.execute(text(query), {"fqdn": fqdn})
+        response = result.fetchone()
         return bool(response[0]) if response else False
 
     def block_fqdn(self,
@@ -54,18 +56,18 @@ class BlocklistManager:
            - like www.example.com - to the blocklist. Does not handle URLs."""
         fqdn = self.__check_fqdn(fqdn)
         try:
-            self.cur.callproc('block_fqdn_SP', (fqdn, comment))
-        except pymysql.err.IntegrityError:
+            self.db_connection.call_procedure('block_fqdn_SP', (fqdn, comment))
+        except IntegrityError:
             # Just log, do not raise as it does not matter.
-            logging.info("FQDN {fqdn} already on blocklist.")
+            logging.info(f"FQDN {fqdn} already on blocklist.")
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
         "Remove a specific FQDN from the blocklist."
         fqdn = self.__check_fqdn(fqdn)
-        self.cur.callproc('unblock_fqdn_SP', (fqdn, ))
+        self.db_connection.call_procedure('unblock_fqdn_SP', (fqdn,))
 
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
-        self.cur.callproc('truncate_blocklist_SP')
+        self.db_connection.call_procedure('truncate_blocklist_SP')
         logging.info("Truncated the blocklist.")

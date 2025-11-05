@@ -14,7 +14,9 @@ from typing import Union
 
 # external dependencies:
 import userprovided
-import pymysql
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from exoskeleton import database_connection
 from exoskeleton import exo_url
@@ -30,7 +32,8 @@ class JobManager:
                  db_connection: database_connection.DatabaseConnection
                  ) -> None:
         "Sets defaults"
-        self.cur: pymysql.cursors.Cursor = db_connection.get_cursor()
+        self.db_connection = db_connection
+        self.session: Session = db_connection.get_session()
 
     def define_new(self,
                    job_name: str,
@@ -46,16 +49,16 @@ class JobManager:
             start_url = exo_url.ExoUrl(start_url)
         job_name = job_name.strip()
         try:
-            self.cur.callproc('define_new_job_SP', (job_name, start_url))
+            self.db_connection.call_procedure('define_new_job_SP', (job_name, str(start_url)))
             logging.debug('Defined new job.')
-        except pymysql.IntegrityError:
+        except IntegrityError:
             # A job with this name already exists
             # Check if startURL is the same:
-            self.cur.execute('SELECT startURL FROM jobs WHERE jobName = %s;',
-                             (job_name, ))
-            response = self.cur.fetchone()
+            query = "SELECT startURL FROM jobs WHERE jobName = :job_name"
+            result = self.session.execute(text(query), {"job_name": job_name})
+            response = result.fetchone()
             existing_start_url = response[0] if response else None
-            if existing_start_url != start_url:
+            if existing_start_url != str(start_url):
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
             logging.warning(
@@ -71,11 +74,12 @@ class JobManager:
             raise ValueError('Current URL must not be empty.')
         if not isinstance(current_url, exo_url.ExoUrl):
             current_url = exo_url.ExoUrl(current_url)
-        # execute returns affected rows, callproc does not
-        affected_rows = self.cur.execute(
-            'CALL job_update_current_url_SP(%s, %s);',
-            (job_name, current_url))
-        if affected_rows == 0:
+        # Check if affected rows using execute
+        query = "CALL job_update_current_url_SP(:job_name, :current_url)"
+        result = self.session.execute(text(query),
+                                     {"job_name": job_name, "current_url": str(current_url)})
+        self.session.commit()
+        if result.rowcount == 0:
             raise ValueError('A job with this name is not known.')
 
     def get_current_url(self,
@@ -85,8 +89,8 @@ class JobManager:
             Raises ValueError if the job is unknown.
             Raises RuntimeError if the job is already finished."""
 
-        self.cur.callproc('job_get_current_url_SP', (job_name, ))
-        job_state = self.cur.fetchone()
+        result = self.db_connection.call_procedure('job_get_current_url_SP', (job_name,))
+        job_state = result.fetchone()
 
         if job_state is None:
             raise ValueError('Job is unknown!')
@@ -102,9 +106,10 @@ class JobManager:
         if not job_name:
             raise ValueError('Missing job_name')
         job_name = job_name.strip()
-        # Contrary to callproc, execute returns the number of affected rows:
-        affected_rows = self.cur.execute('CALL job_mark_as_finished_SP(%s);',
-                                         (job_name, ))
-        if affected_rows == 0:
+        # Check affected rows
+        query = "CALL job_mark_as_finished_SP(:job_name)"
+        result = self.session.execute(text(query), {"job_name": job_name})
+        self.session.commit()
+        if result.rowcount == 0:
             raise ValueError('A job with this name is not known.')
         logging.debug('Marked job %s as finished.', job_name)
