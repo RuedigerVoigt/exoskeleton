@@ -315,7 +315,7 @@ class ExoActions:
                 raise RuntimeError('Not found: check URL')
             if response.status_code != 200:
                 raise RuntimeError('Cannot return page code')
-            return response.text
+            return str(response.text)
 
         except (TimeoutError, ConnectionError):
             logging.exception(

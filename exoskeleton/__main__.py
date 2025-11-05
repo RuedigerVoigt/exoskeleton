@@ -23,7 +23,8 @@ import compatibility
 import userprovided
 
 # import other modules of this framework
-from exoskeleton import _version as version
+import importlib.metadata
+from datetime import date
 from exoskeleton import actions
 from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
@@ -65,8 +66,8 @@ class Exoskeleton:
 
         compatibility.Check(
             package_name='exoskeleton',
-            package_version=version.__version__,
-            release_date=version.release_date,
+            package_version=importlib.metadata.version('exoskeleton'),
+            release_date=date(2025, 11, 9),
             python_version_support={
                 'min_version': '3.10',
                 'incompatible_versions': [],
@@ -89,7 +90,6 @@ class Exoskeleton:
 
         # Init database Connection
         self.db = database_connection.DatabaseConnection(database_settings)
-        self.cur = self.db.get_cursor()
 
         self.db_check = database_schema_check.DatabaseSchemaCheck(self.db)
 

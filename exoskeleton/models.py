@@ -14,19 +14,22 @@ from typing import Optional
 
 from sqlalchemy import (
     Column, String, Integer, Text, TIMESTAMP, Boolean,
-    ForeignKey, Index, CHAR, SmallInteger, func
+    ForeignKey, Index, SmallInteger, func
 )
-from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.dialects.mysql import TINYINT, MEDIUMTEXT
+from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.dialects.mysql import TINYINT, MEDIUMTEXT, CHAR
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+    pass
 
 
 class Queue(Base):
     """Queue table - manages the download queue."""
     __tablename__ = 'queue'
 
-    id = Column(CHAR(32, charset='ascii'), primary_key=True)
+    id = Column(CHAR(32), primary_key=True)
     action = Column(TINYINT(unsigned=True), ForeignKey('actions.id'), nullable=False)
     prettifyHtml = Column(TINYINT(unsigned=True), default=0)
     url = Column(Text, nullable=False)
@@ -109,7 +112,7 @@ class FileVersion(Base):
     """FileVersions table - stores file version information."""
     __tablename__ = 'fileVersions'
 
-    id = Column(CHAR(32, charset='ascii'), primary_key=True)
+    id = Column(CHAR(32), primary_key=True)
     fileMasterID = Column(Integer, ForeignKey('fileMaster.id'), nullable=False, index=True)
     storageTypeID = Column(Integer, ForeignKey('storageTypes.id'), nullable=False, index=True)
     actionAppliedID = Column(TINYINT(unsigned=True), ForeignKey('actions.id'), nullable=False)
@@ -134,7 +137,7 @@ class FileContent(Base):
     """FileContent table - stores page content in database."""
     __tablename__ = 'fileContent'
 
-    versionID = Column(CHAR(32, charset='ascii'), ForeignKey('fileVersions.id'), primary_key=True)
+    versionID = Column(CHAR(32), ForeignKey('fileVersions.id'), primary_key=True)
     pageContent = Column(MEDIUMTEXT, nullable=False)
 
     # Relationships
@@ -188,7 +191,7 @@ class LabelToVersion(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     labelID = Column(Integer, ForeignKey('labels.id'), nullable=False, index=True)
-    versionUUID = Column(CHAR(32, charset='ascii'), ForeignKey('fileVersions.id'),
+    versionUUID = Column(CHAR(32), ForeignKey('fileVersions.id'),
                         nullable=False, index=True)
 
     # Relationships
@@ -219,5 +222,5 @@ class ExoInfo(Base):
     """ExoInfo table - stores installation metadata."""
     __tablename__ = 'exoInfo'
 
-    exoKey = Column(CHAR(32, charset='ascii'), primary_key=True)
+    exoKey = Column(CHAR(32), primary_key=True)
     exoValue = Column(String(64), nullable=False)

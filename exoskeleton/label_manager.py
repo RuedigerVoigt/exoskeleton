@@ -110,7 +110,7 @@ class LabelManager:
             WHERE urlHash = SHA2(:url, 256)
         """
         result = self.session.execute(text(query), {"url": str(url)})
-        ids_found: Optional[tuple] = result.fetchall()
+        ids_found = result.fetchall()
         ids_associated = set()
         if ids_found:
             ids_associated = set(ids_found)
@@ -186,7 +186,7 @@ class LabelManager:
         filemaster_id = result.fetchone()
         if not filemaster_id:
             raise ValueError("Invalid filemaster ID")
-        return filemaster_id[0]
+        return str(filemaster_id[0])
 
     def filemaster_labels_by_url(self,
                                  url: Union[exo_url.ExoUrl, str]) -> set:

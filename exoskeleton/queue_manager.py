@@ -185,7 +185,7 @@ class QueueManager:
     def get_next_task(self) -> Optional[str]:
         "Get the next suitable task"
         result = self.db_connection.call_procedure('next_queue_object_SP')
-        return result.fetchone()  # type: ignore[return-value]
+        return result.fetchone()  # type: ignore[no-any-return, return-value]
 
     def delete_from_queue(self,
                           queue_id: str) -> None:

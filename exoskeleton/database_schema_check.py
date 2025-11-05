@@ -13,8 +13,8 @@ import logging
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+import importlib.metadata
 
-from exoskeleton import _version as version
 from exoskeleton import database_connection
 from exoskeleton import err
 
@@ -178,14 +178,14 @@ class DatabaseSchemaCheck:
 
         db_schema = schema[0]
 
-        # Not taking the comparison value from _version as multiple versions
+        # Not taking the comparison value from package metadata as multiple versions
         # of exoskeleton might share the same database schema.
         if db_schema == '2.0.0':
             logging.info('Database schema matches version of exoskeleton.')
         else:
             raise err.InvalidDatabaseSchemaError(
                 "Mismatch between version of exoskeleton " +
-                f"({version.__version__}) and version of the database " +
+                f"({importlib.metadata.version('exoskeleton')}) and version of the database " +
                 f"schema ({db_schema}).")
 
     def check_db_schema(self) -> None:

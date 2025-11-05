@@ -79,7 +79,7 @@ class JobManager:
         result = self.session.execute(text(query),
                                      {"job_name": job_name, "current_url": str(current_url)})
         self.session.commit()
-        if result.rowcount == 0:
+        if result.rowcount == 0:  # type: ignore[attr-defined]
             raise ValueError('A job with this name is not known.')
 
     def get_current_url(self,
@@ -98,7 +98,7 @@ class JobManager:
             # Field 0 contains the status: finished (not None) or not (None)
             raise RuntimeError(f"Job {job_name} already finished.")
         # Field 1 contains either the current or the start URL
-        return job_state[1]
+        return str(job_state[1])
 
     def mark_as_finished(self,
                          job_name: str) -> None:
@@ -110,6 +110,6 @@ class JobManager:
         query = "CALL job_mark_as_finished_SP(:job_name)"
         result = self.session.execute(text(query), {"job_name": job_name})
         self.session.commit()
-        if result.rowcount == 0:
+        if result.rowcount == 0:  # type: ignore[attr-defined]
             raise ValueError('A job with this name is not known.')
         logging.debug('Marked job %s as finished.', job_name)
