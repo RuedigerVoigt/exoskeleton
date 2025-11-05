@@ -3,9 +3,10 @@
 
 "Exoskeleton Crawler Framwork for Python"
 
+import importlib.metadata
+
 from exoskeleton.__main__ import Exoskeleton
-from exoskeleton import _version
 
 NAME = "exoskeleton"
-__version__ = _version.__version__
+__version__ = importlib.metadata.version("exoskeleton")
 __author__ = "Rüdiger Voigt"
