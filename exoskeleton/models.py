@@ -2,7 +2,7 @@
 SQLAlchemy models for the exoskeleton framework database schema.
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
-(c) 2019-2025 Rüdiger Voigt:
+(c) 2019-2025 Rüdiger Voigt and contributors:
 Released under the Apache License 2.0
 """
 

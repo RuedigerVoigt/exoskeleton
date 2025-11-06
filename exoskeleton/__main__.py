@@ -7,7 +7,7 @@ Exoskeleton Crawler Framework
 A Python framework to build a basic crawler / scraper with a MariaDB backend.
 
 Source: https://github.com/RuedigerVoigt/exoskeleton
-(c) 2019-2023 Rüdiger Voigt:
+(c) 2019-2025 Rüdiger Voigt and contributors:
 Released under the Apache License 2.0
 """
 

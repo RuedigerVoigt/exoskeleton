@@ -3,7 +3,7 @@ The class ExoUrl keeps and normalizes URLs which can be processed
 by exoskeleton.
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
-(c) 2019-2021 Rüdiger Voigt:
+(c) 2019-2025 Rüdiger Voigt and contributors:
 Released under the Apache License 2.0
 """
 
