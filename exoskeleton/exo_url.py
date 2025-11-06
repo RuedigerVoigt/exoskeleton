@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 
 import userprovided
 
+logger = logging.getLogger(__name__)
+
 
 class ExoUrl:
     "Hold a normalized URL that can be processed by exoskeleton."
@@ -27,12 +29,12 @@ class ExoUrl:
         try:
             url_string = userprovided.url.normalize_url(url_string)
         except ValueError:
-            logging.exception('Could not normalize URL string.')
+            logger.exception('Could not normalize URL string.')
             raise
 
         # Check if the scheme is either http or https (others are not supported)
         if not userprovided.url.is_url(url_string, ('http', 'https')):
-            logging.exception(
+            logger.exception(
                 'Can not add URL %s : invalid or unsupported scheme',
                 url_string)
             raise ValueError('Cannot add URL: invalid or unsupported scheme')

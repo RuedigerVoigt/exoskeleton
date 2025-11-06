@@ -21,6 +21,8 @@ from sqlalchemy.exc import IntegrityError
 from exoskeleton import database_connection
 from exoskeleton import exo_url
 
+logger = logging.getLogger(__name__)
+
 
 class JobManager:
     """Jobs are used to crawl multi-page results like search engine queries.
@@ -50,7 +52,7 @@ class JobManager:
         job_name = job_name.strip()
         try:
             self.db_connection.call_procedure('define_new_job_SP', (job_name, str(start_url)))
-            logging.debug('Defined new job.')
+            logger.debug('Defined new job.')
         except IntegrityError:
             # A job with this name already exists
             # Check if startURL is the same:
@@ -61,7 +63,7 @@ class JobManager:
             if existing_start_url != str(start_url):
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
-            logging.warning(
+            logger.warning(
                 'A job with identical name and startURL is already defined.')
 
     def update_current_url(self,
@@ -112,4 +114,4 @@ class JobManager:
         self.session.commit()
         if result.rowcount == 0:  # type: ignore[attr-defined]
             raise ValueError('A job with this name is not known.')
-        logging.debug('Marked job %s as finished.', job_name)
+        logger.debug('Marked job %s as finished.', job_name)

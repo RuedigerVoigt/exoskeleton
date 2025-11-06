@@ -27,6 +27,8 @@ from exoskeleton import remote_control_chrome
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
 
+logger = logging.getLogger(__name__)
+
 
 class GetObjectBaseClass:
     "Base class to get objects."
@@ -83,33 +85,33 @@ class GetObjectBaseClass:
                 self.stats.log_permanent_error(self.url)
             elif status_code == 429:
                 # The server tells explicity that the bot hit a rate limit!
-                logging.error('The bot hit a rate limit => increase min_wait.')
+                logger.error('The bot hit a rate limit => increase min_wait.')
                 self.errorhandling.add_rate_limit(self.url.hostname)
                 self.stats.log_rate_limit_hit(self.url)
             elif status_code in self.HTTP_TEMP_ERRORS:
-                logging.info('Temporary error. Adding delay to queue item.')
+                logger.info('Temporary error. Adding delay to queue item.')
                 self.errorhandling.add_crawl_delay(self.queue_id, status_code)
             else:
-                logging.error('Unhandled return code %s', status_code)
+                logger.error('Unhandled return code %s', status_code)
                 self.stats.log_permanent_error(self.url)
         except TimeoutError:
-            logging.error('Reached timeout.', exc_info=True)
+            logger.error('Reached timeout.', exc_info=True)
             self.errorhandling.add_crawl_delay(self.queue_id, 4)
             self.stats.log_temporary_problem(self.url)
 
         except ConnectionError:
-            logging.error('Connection Error', exc_info=True)
+            logger.error('Connection Error', exc_info=True)
             self.stats.log_temporary_problem(self.url)
             raise
 
         except urllib3.exceptions.NewConnectionError:
-            logging.error('New Connection Error: might be a rate limit',
+            logger.error('New Connection Error: might be a rate limit',
                           exc_info=True)
             self.stats.log_rate_limit_hit(self.url)
             self.time.increase_wait()
 
         except Exception:
-            logging.error('Unknown exception while trying to download.',
+            logger.error('Unknown exception while trying to download.',
                           exc_info=True)
             self.stats.log_permanent_error(self.url)
             raise
@@ -130,7 +132,7 @@ class GetObjectBaseClass:
 class GetFile(GetObjectBaseClass):
     "Download a file"
     def handle_action(self) -> requests.Response:
-        logging.debug('starting download of queue id %s', self.queue_id)
+        logger.debug('starting download of queue id %s', self.queue_id)
         response = requests.get(
             str(self.url),
             headers={"User-agent": self.user_agent},
@@ -159,7 +161,7 @@ class GetFile(GetObjectBaseClass):
                                              self.file.HASH_METHOD,
                                              hash_value, 1))
         except DatabaseError:
-            logging.error(
+            logger.error(
                 'Did not add already downloaded file %s to the database!',
                 new_filename)
 
@@ -167,7 +169,7 @@ class GetFile(GetObjectBaseClass):
 class GetContent(GetObjectBaseClass):
     "Get a page's content including the HTML code"
     def handle_action(self) -> requests.Response:
-        logging.debug('retrieving content of queue id %s', self.queue_id)
+        logger.debug('retrieving content of queue id %s', self.queue_id)
         response = requests.get(
             str(self.url),
             headers={"User-agent": self.user_agent},
@@ -179,7 +181,7 @@ class GetContent(GetObjectBaseClass):
                      response: requests.Response,
                      strip_code: bool = False) -> None:
         detected_encoding = str(response.encoding)
-        logging.debug('detected encoding: %s', detected_encoding)
+        logger.debug('detected encoding: %s', detected_encoding)
         page_content = response.text
         if self.mime_type == 'text/html' and self.prettify_html:
             page_content = helpers.prettify_html(page_content)
@@ -193,7 +195,7 @@ class GetContent(GetObjectBaseClass):
                                             (str(self.url), self.url.hash, self.queue_id,
                                              self.mime_type, page_content, 2))
         except DatabaseError:
-            logging.error(
+            logger.error(
                 'Transaction failed: Can not save page code of queue item %s!',
                 self.queue_id, exc_info=True)
 
@@ -243,7 +245,7 @@ class GetPDF():
                  self.file.get_file_size(self.path),
                  self.file.HASH_METHOD, self.file.get_file_hash(self.path), 3))
         except DatabaseError:
-            logging.error(
+            logger.error(
                 'Transaction failed: Could not add file %s to the database!',
                 self.path, exc_info=True)
 
@@ -318,11 +320,11 @@ class ExoActions:
             return str(response.text)
 
         except (TimeoutError, ConnectionError):
-            logging.exception(
+            logger.exception(
                 'Exception while getting page-code', exc_info=True)
             self.stats.log_temporary_problem(url)
             raise
         except Exception:
-            logging.exception(
+            logger.exception(
                 'Exception while getting page-code', exc_info=True)
             raise

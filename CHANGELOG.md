@@ -4,18 +4,57 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 
 
-## Upcoming (2025)
+## Version 3.0.0 (UPCOMING November 2025)
+
+**Breaking Changes:**
+
+* **SQLAlchemy Migration**: Complete rewrite of database access layer
+  * Replaced direct `pymysql` usage with SQLAlchemy ORM
+  * New `models.py` module with ORM models for all 16 database tables
+  * `database_connection.py` now uses SQLAlchemy engine, sessions, and connection pooling
+  * Internal database API has changed - code directly accessing database methods will need updates
+  * Stored procedures now called through SQLAlchemy's `execute()` interface
+
+* **Python Version Support Changes**:
+  * **Dropped support for Python 3.8 and 3.9** (End of Life)
+  * **Minimum Python version:** 3.10
+  * **Added support for:** Python 3.13 and 3.14
+
+**Logging Improvements:**
+
+* **Migrated to module-level loggers** following Python logging best practices
+  * All modules now use `logger = logging.getLogger(__name__)` instead of global `logging.*` calls
+  * Creates hierarchical logger naming (e.g., `exoskeleton.database_connection`, `exoskeleton.queue_manager`)
+  * Enables fine-grained logging control - users can now set different log levels for different components
+  * Example: Enable DEBUG for database operations while keeping other components at INFO level
+  * **Non-breaking change:** Existing `logging.basicConfig()` calls continue to work unchanged
+  * New comprehensive documentation: [Logging Configuration Guide](documentation/logging-configuration.md)
+  * Benefits:
+    - Selective logging per module/component
+    - Better diagnostics with module names in log output
+    - Industry-standard logging pattern (20+ year best practice)
+    - Easier debugging and troubleshooting
+
+**Other Changes:**
+
+* **Build System**:
+  * Migrated from `setup.py` to Poetry and `pyproject.toml`
+  * All configuration now centralized in `pyproject.toml`
 
 
-* Supported Python versions:
-  * Drop support for Python 3.8 and 3.9 (EOL).
-  * Support Python 3.13 and 3.14
-* Security:
-  * Add tests with bandit.
-* Dependencies:
-  * Update versions of all.
-  * Add SqlAlchemy as a dependency.
-  * Add python-dotenv as a dependency.
+* **Dependencies**:
+  * Added: `SQLAlchemy>=2.0.41`
+  * Added: `python-dotenv>=1.1.1`
+  * Updated all dependencies to latest versions
+  * Added `[project.optional-dependencies]` for PEP 517/518 compatibility
+
+* **Security**:
+  * Added Bandit security scanning to CI/CD workflows
+
+* **Testing**:
+  * All test configuration migrated to `pyproject.toml`
+  * Updated workflows for Windows, macOS, and Ubuntu
+
 
 
 

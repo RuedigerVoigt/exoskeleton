@@ -17,6 +17,8 @@ from exoskeleton import error_manager
 from exoskeleton import exo_url
 from exoskeleton import statistics_manager
 
+logger = logging.getLogger(__name__)
+
 
 class RemoteControlChrome:
     """Using headless Chrome instead of Selenium for the following reasons:
@@ -42,11 +44,11 @@ class RemoteControlChrome:
         self.browser_name = ''
         self.browser_present = False
         if not browser_name:
-            logging.info('Provide a browser name if you want to save as PDF.')
+            logger.info('Provide a browser name if you want to save as PDF.')
         else:
             self.browser_name = browser_name.strip()
             if not self.check_executable_existence(self.browser_name):
-                logging.exception("Browser not found in the path. Check name.")
+                logger.exception("Browser not found in the path. Check name.")
                 self.suggest_executables()
                 raise ValueError(f"Browser {self.browser_name} not in path!")
             if self.check_browser_support(self.browser_name):
@@ -64,18 +66,18 @@ class RemoteControlChrome:
            system. If so tell the user about it with a log message (info)."""
         for browser in self.SUPPORTED_BROWSERS:
             if self.check_executable_existence(browser):
-                logging.info('Found supported browser in PATH to save pdf: %s',
+                logger.info('Found supported browser in PATH to save pdf: %s',
                              browser)
 
     def check_browser_support(self,
                               browser_name: str) -> bool:
         "Return True if the browser is supported. Else raise an exception."
         if browser_name.lower() in self.SUPPORTED_BROWSERS:
-            logging.info('Browser supported.')
+            logger.info('Browser supported.')
             return True
         msg = (f"{browser_name} is unsupported or unknown. You must use " +
                "Chromium  or Google Chrome for the 'save as PDF' feature.")
-        logging.exception(msg)
+        logger.exception(msg)
         self.suggest_executables()
         raise ValueError(msg)
 
@@ -110,19 +112,19 @@ class RemoteControlChrome:
                            timeout=30,
                            check=True)
 
-            logging.debug('PDF of page saved to disk')
+            logger.debug('PDF of page saved to disk')
 
         except subprocess.TimeoutExpired:
-            logging.exception(
+            logger.exception(
                 'Cannot create PDF due to subprocess timeout.', exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 4)
             self.stats.log_temporary_problem(url)
         except subprocess.CalledProcessError:
-            logging.exception('Process Error: cannot create PDF.',
+            logger.exception('Process Error: cannot create PDF.',
                               exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 5)
             self.stats.log_permanent_error(url)
         except (Exception, subprocess.SubprocessError):  # pylint: disable=broad-except
-            logging.exception('Exception.', exc_info=True)
+            logger.exception('Exception.', exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 0)
             self.stats.log_temporary_problem(url)

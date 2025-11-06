@@ -13,6 +13,8 @@ import logging
 import random
 import time
 
+logger = logging.getLogger(__name__)
+
 
 class TimeManager:
     """ Time management for the exoskeleton crawler framework:
@@ -38,7 +40,7 @@ class TimeManager:
         # Start timers
         self.bot_start = time.monotonic()
         self.process_time_start = time.process_time()
-        logging.debug('started timers')
+        logger.debug('started timers')
 
     def random_wait(self) -> None:
         """Waits for a random time between actions
@@ -46,7 +48,7 @@ class TimeManager:
            This is done to avoid to accidentally overload the queried host.
            Some host actually enforce limits through IP blocking."""
         query_delay = random.randint(self.wait_min, self.wait_max)  # nosec
-        logging.debug("%s seconds delay until next action", query_delay)
+        logger.debug("%s seconds delay until next action", query_delay)
         time.sleep(query_delay)
 
     def increase_wait(self) -> None:
@@ -55,10 +57,10 @@ class TimeManager:
             and a maximum wait time of 50."""
         if self.wait_min < 30:
             self.wait_min = self.wait_min + 1
-            logging.info("increased minimum wait time by 1 second.")
+            logger.info("increased minimum wait time by 1 second.")
         if self.wait_max < 50:
             self.wait_max = self.wait_max + 1
-            logging.info("increased maximum wait time by 1 second.")
+            logger.info("increased maximum wait time by 1 second.")
 
     def absolute_run_time(self) -> float:
         "Return seconds since init. "
@@ -81,5 +83,5 @@ class TimeManager:
             time_each = time_so_far / already_processed
             return round(num_items_in_queue * time_each)
 
-        logging.warning('Cannot estimate remaining time. Not enough data.')
+        logger.warning('Cannot estimate remaining time. Not enough data.')
         return -1

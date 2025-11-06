@@ -29,7 +29,10 @@ import logging
 import exoskeleton
 import credentials
 
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging before creating the bot
+# See documentation/logging-configuration.md for details
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 exo = exoskeleton.Exoskeleton(
@@ -44,4 +47,6 @@ exo = exoskeleton.Exoskeleton(
 )
 ```
 
-> :arrow_right: **[Send progress reports by email](progress-reports-via-email.md)**
+For more information on logging, see the [Logging Configuration Guide](logging-configuration.md).
+
+> :arrow_right: **[Configure logging](logging-configuration.md)** | [Send progress reports by email](progress-reports-via-email.md)**

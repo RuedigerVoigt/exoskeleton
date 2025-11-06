@@ -41,10 +41,11 @@ import logging
 
 import exoskeleton
 
-# Exoskeleton makes heavy use of the built-in
-# logging functionality. Change the level to
-# INFO to see less messages.
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging to see what your bot is doing.
+# Use INFO for normal operation, DEBUG for troubleshooting.
+# See documentation/logging-configuration.md for more options.
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 exo = exoskeleton.Exoskeleton(
@@ -90,7 +91,7 @@ DEBUG:root:Hash method sha256 is available.
 DEBUG:root:started timers
 ```
 
-You can (and probably should) later change the logging level to INFO, but here it gives you a good overview of what is checked.
+The log output shows you exactly what exoskeleton is checking and doing. For detailed information about configuring logging, see the [Logging Configuration Guide](logging-configuration.md).
 
 If possible, parameters have plausible defaults. if you did not explicitly provide the information exoskeleton will try those defaults. An example for this:
 ```

@@ -18,6 +18,8 @@ import userprovided
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
 
+logger = logging.getLogger(__name__)
+
 
 class NotificationManager:
     """Notification management for the exoskeleton crawler framework.
@@ -39,13 +41,13 @@ class NotificationManager:
         self.send_mails: bool = False
 
         if not mail_settings:
-            logging.info("No mail-settings: will not send any notifications.")
+            logger.info("No mail-settings: will not send any notifications.")
         else:
             self.mailer = bote.Mailer(mail_settings)
             # The constructor would have failed with exceptions,
             # if the settings were implausible:
             self.send_mails = True
-            logging.debug('This bot will try to send notifications.')
+            logger.debug('This bot will try to send notifications.')
 
             if mail_behavior.get('send_start_msg', True):
                 self.__send_msg_start()
@@ -64,7 +66,7 @@ class NotificationManager:
         processed = self.stats.get_processed_counter()
         # Check >0 in case the bot starts failing with the first item.
         if (processed > 0 and (processed % self.milestone) == 0):
-            logging.info("Milestone reached: %s processed", str(processed))
+            logger.info("Milestone reached: %s processed", str(processed))
             return True
         return False
 
@@ -92,7 +94,7 @@ class NotificationManager:
         "Send a notification about the start of the bot."
         self.mailer.send_mail(f"Project {self.project_name} just started.",
                               "The bot just started.")
-        logging.debug('Sent a message announcing the start')
+        logger.debug('Sent a message announcing the start')
 
     def send_msg_finish(self) -> None:
         """If configured so, send an email once the queue is empty
@@ -110,7 +112,7 @@ class NotificationManager:
             f"Project {self.project_name} ABORTED",
             ("The bot lost the database connection and could not restore it.")
              )
-        logging.debug('Sent a message about lost database connection.')
+        logger.debug('Sent a message about lost database connection.')
 
     def send_custom_msg(self,
                         subject: str,

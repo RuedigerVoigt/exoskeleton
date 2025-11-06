@@ -21,6 +21,8 @@ from exoskeleton import database_connection
 from exoskeleton import exo_url
 from exoskeleton import models
 
+logger = logging.getLogger(__name__)
+
 
 class LabelManager:
     "Manage labels and their association"
@@ -38,7 +40,7 @@ class LabelManager:
     def __shortname_ok(shortname: str) -> bool:
         "Check if the label's shortname does not exceed 31 characters."
         if len(shortname) > 31:
-            logging.error(
+            logger.error(
                 "Cannot add labelname: exceeding max length of 31 characters.")
             return False
         return True
@@ -57,10 +59,10 @@ class LabelManager:
             """
             self.session.execute(text(query), {"shortname": shortname, "description": description})
             self.session.commit()
-            logging.debug('Added label to the database.')
+            logger.debug('Added label to the database.')
         except IntegrityError:
             self.session.rollback()
-            logging.debug('Label already existed.')
+            logger.debug('Label already existed.')
 
     def define_or_update_label(self,
                                shortname: str,
@@ -227,7 +229,7 @@ class LabelManager:
         """ Given a set of labels, this returns the corresponding ids
             in the labels table. """
         if not label_set:
-            logging.error('No labels provided to get_label_ids().')
+            logger.error('No labels provided to get_label_ids().')
             return set()
 
         label_set = userprovided.parameters.convert_to_set(label_set)

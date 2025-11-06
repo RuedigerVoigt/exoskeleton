@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 from exoskeleton import database_connection
 from exoskeleton import exo_url
 
+logger = logging.getLogger(__name__)
+
 
 class StatisticsManager:
     """Manage the statistics like counting requests and errors,"""
@@ -77,7 +79,7 @@ class StatisticsManager:
                    "of those are stalled as the bot hit a rate limit. " +
                    f"{stats['tasks_with_permanent_errors']} cannot be " +
                    "executed due to permanent errors.")
-        logging.info(message)
+        logger.info(message)
 
     def __update_host_statistics(
                 self,

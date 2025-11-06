@@ -36,6 +36,7 @@ Its main functionalities are:
 * [Avoiding duplicates](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/avoiding-duplicates.md)
 * [The Queue: Downloading files / Saving the page code / Creating PDF](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/handling-pages.md)
 * [Bot Behavior](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/behavior-settings.md)
+* [Logging Configuration](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/logging-configuration.md)
 * [Progress Reports via Email](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/progress-reports-via-email.md)
 * [File Versions and Labels](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/versions-and-labels.md)
 * [Using the Blocklist](https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation/blocklist.md)
@@ -61,7 +62,9 @@ import logging
 
 import exoskeleton
 
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging - see documentation/logging-configuration.md for details
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Create a bot
 # exoskeleton makes reasonable assumptions about

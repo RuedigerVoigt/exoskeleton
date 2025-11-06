@@ -19,6 +19,8 @@ import userprovided
 
 from exoskeleton import database_connection
 
+logger = logging.getLogger(__name__)
+
 
 class FileManager:
     "File handling for the exoskeleton framework"
@@ -32,7 +34,7 @@ class FileManager:
                  ) -> None:
         self.db_connection = db_connection
         self.target_dir = self.__check_target_directory(target_directory)
-        logging.info("Saving files in this directory: %s", self.target_dir)
+        logger.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)
 
     @staticmethod
@@ -42,7 +44,7 @@ class FileManager:
            If a directory is set, but not accessible, fail early."""
 
         if not target_directory or target_directory.strip() == '':
-            logging.warning("Target directory is not set. Using the " +
+            logger.warning("Target directory is not set. Using the " +
                             "current working directory as a fallback!")
             return pathlib.Path.cwd()
 
@@ -53,13 +55,13 @@ class FileManager:
             target_dir = pathlib.Path(target_directory).resolve(strict=True)
         except FileNotFoundError as not_found:
             msg = "Cannot find the target directory! Create it."
-            logging.exception(msg)
+            logger.exception(msg)
             raise FileNotFoundError(msg) from not_found
         # Is it a directory or a file
         if not target_dir.is_dir():
             msg = (f"Parameter 'target_directory' ({target_dir}) " +
                    "not a directory.")
-            logging.exception(msg)
+            logger.exception(msg)
             raise AttributeError(msg)
 
         return target_dir
@@ -69,7 +71,7 @@ class FileManager:
         """Remove whitespace around the filename prefix and
            limit it to 16 characters."""
         if not file_prefix:
-            logging.warning('You defined no filename prefix.')
+            logger.warning('You defined no filename prefix.')
             return ''
 
         file_prefix = file_prefix.strip()
@@ -79,7 +81,7 @@ class FileManager:
         if not userprovided.parameters.string_in_range(file_prefix, 0, 16):
             raise ValueError('File name prefix must be 16 characters or less.')
         if len(file_prefix) == 0:
-            logging.warning('You defined no filename prefix.')
+            logger.warning('You defined no filename prefix.')
 
         return file_prefix
 
@@ -91,7 +93,7 @@ class FileManager:
         with open(target_path, 'wb') as file_handle:
             for block in response.iter_content(1024):
                 file_handle.write(block)
-            logging.debug('file written to disk')
+            logger.debug('file written to disk')
 
         return target_path
 
@@ -108,5 +110,5 @@ class FileManager:
         try:
             return file_path.stat().st_size
         except Exception:
-            logging.error('Cannot get size of %s', file_path, exc_info=True)
+            logger.error('Cannot get size of %s', file_path, exc_info=True)
             raise

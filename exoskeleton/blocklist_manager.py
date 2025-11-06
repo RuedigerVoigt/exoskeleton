@@ -20,6 +20,8 @@ from sqlalchemy.exc import IntegrityError
 
 from exoskeleton import database_connection
 
+logger = logging.getLogger(__name__)
+
 
 class BlocklistManager:
     "Manage the host blocklist for the exoskeleton framework"
@@ -59,7 +61,7 @@ class BlocklistManager:
             self.db_connection.call_procedure('block_fqdn_SP', (fqdn, comment))
         except IntegrityError:
             # Just log, do not raise as it does not matter.
-            logging.info(f"FQDN {fqdn} already on blocklist.")
+            logger.info(f"FQDN {fqdn} already on blocklist.")
 
     def unblock_fqdn(self,
                      fqdn: str) -> None:
@@ -70,4 +72,4 @@ class BlocklistManager:
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
         self.db_connection.call_procedure('truncate_blocklist_SP')
-        logging.info("Truncated the blocklist.")
+        logger.info("Truncated the blocklist.")

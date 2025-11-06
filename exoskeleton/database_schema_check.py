@@ -18,6 +18,8 @@ import importlib.metadata
 from exoskeleton import database_connection
 from exoskeleton import err
 
+logger = logging.getLogger(__name__)
+
 
 class DatabaseSchemaCheck:
     "Check the database schema for exoskeleton."
@@ -94,7 +96,7 @@ class DatabaseSchemaCheck:
         tables = result.fetchall()
         if not tables:
             msg = 'No tables found in database: Run generator script!'
-            logging.exception(msg)
+            logger.exception(msg)
             raise err.InvalidDatabaseSchemaError(msg)
 
         tables_found = [item[0] for item in tables]
@@ -103,13 +105,13 @@ class DatabaseSchemaCheck:
             if table in tables_found:
                 tables_count += 1
             else:
-                logging.error('Table %s not found.', table)
+                logger.error('Table %s not found.', table)
 
         if tables_count != len(self.TABLES):
             raise err.InvalidDatabaseSchemaError(
                 'Database Schema Incomplete: Missing Tables!')
 
-        logging.debug('Database schema: found all expected tables.')
+        logger.debug('Database schema: found all expected tables.')
         return True
 
     def __check_stored_procedures(self) -> bool:
@@ -119,7 +121,7 @@ class DatabaseSchemaCheck:
         procedures = result.fetchall()
         if not procedures:
             msg = 'No procedures found in database: Run generator script!'
-            logging.exception(msg)
+            logger.exception(msg)
             raise RuntimeError(msg)
 
         procedures_found = [item[0] for item in procedures]
@@ -128,7 +130,7 @@ class DatabaseSchemaCheck:
             if procedure not in procedures_found:
                 # Do not raise the exception just now.
                 # Log all missing procedures first
-                logging.error(
+                logger.error(
                     'Stored Procedure %s is missing or user lacks permissions.',
                     procedure)
             else:
@@ -136,7 +138,7 @@ class DatabaseSchemaCheck:
         if count != len(self.PROCEDURES):
             raise err.InvalidDatabaseSchemaError(
                 'Database Schema Incomplete: Missing Stored Procedures!')
-        logging.debug('Database schema: found all expected stored procedures.')
+        logger.debug('Database schema: found all expected stored procedures.')
         return True
 
     def __check_functions(self) -> bool:
@@ -146,14 +148,14 @@ class DatabaseSchemaCheck:
         functions = result.fetchall()
         if not functions:
             msg = 'No functions found in database: Run generator script!'
-            logging.exception(msg)
+            logger.exception(msg)
             raise RuntimeError(msg)
 
         functions_found = [item[0] for item in functions]
         count = 0
         for function in self.FUNCTIONS:
             if function not in functions_found:
-                logging.error(
+                logger.error(
                     'Function %s is missing or user lacks permissions.',
                     function)
             else:
@@ -161,7 +163,7 @@ class DatabaseSchemaCheck:
         if count != len(self.FUNCTIONS):
             raise err.InvalidDatabaseSchemaError(
                 'Database Schema Incomplete: Missing Functions!')
-        logging.debug('Database schema: found all expected functions.')
+        logger.debug('Database schema: found all expected functions.')
         return True
 
     def __check_schema_version(self) -> None:
@@ -173,7 +175,7 @@ class DatabaseSchemaCheck:
         schema = result.fetchone()
         if not schema:
             msg = 'Schema version info not found.'
-            logging.exception(msg)
+            logger.exception(msg)
             raise RuntimeError(msg)
 
         db_schema = schema[0]
@@ -181,7 +183,7 @@ class DatabaseSchemaCheck:
         # Not taking the comparison value from package metadata as multiple versions
         # of exoskeleton might share the same database schema.
         if db_schema == '2.0.0':
-            logging.info('Database schema matches version of exoskeleton.')
+            logger.info('Database schema matches version of exoskeleton.')
         else:
             raise err.InvalidDatabaseSchemaError(
                 "Mismatch between version of exoskeleton " +

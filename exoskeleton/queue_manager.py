@@ -33,6 +33,8 @@ from exoskeleton import notification_manager
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
 
+logger = logging.getLogger(__name__)
+
 
 class QueueManager:
     "Manage the queue and labels for the exoskeleton framework."
@@ -91,7 +93,7 @@ class QueueManager:
         # Check if the FQDN of the URL is on the blocklist
         if url.hostname and self.blocklist.check_blocklist(url.hostname):
             msg = 'Cannot add URL to queue: FQDN is on blocklist.'
-            logging.exception(msg)
+            logger.exception(msg)
             raise err.HostOnBlocklistError(msg)
 
         # Add labels for the master entry.
@@ -117,18 +119,18 @@ class QueueManager:
                 )
                 version_id = result.fetchone()
                 if version_id:
-                    logging.info(
+                    logger.info(
                         'Skipping file already processed in the same way.')
                     return None
 
                 # log and simply go on
-                logging.debug(
+                logger.debug(
                     'File already processed, BUT not this way: Added to queue.')
             else:
                 # File has not been processed yet.
                 # If the exact same task is *not* already in the queue, add it.
                 if self.__get_queue_uuids(url, action):
-                    logging.info('Exact same task already in queue.')
+                    logger.info('Exact same task already in queue.')
                     return None
 
         # generate a random uuid for the file version
@@ -201,16 +203,16 @@ class QueueManager:
                 next_in_queue = self.get_next_task()
             except OperationalError as op_err:
                 # Database connection lost
-                logging.error('Lost database connection. ' +
+                logger.error('Lost database connection. ' +
                               'Trying to restore it in 10 seconds ...')
                 time.sleep(10)
                 try:
                     self.session = self.db_connection.get_session()
                     next_in_queue = self.get_next_task()
-                    logging.info('Restored database connection!')
+                    logger.info('Restored database connection!')
                 except Exception as exc:
                     msg = 'Could not reestablish database connection'
-                    logging.exception(msg, exc_info=True)
+                    logger.exception(msg, exc_info=True)
                     self.notify.send_msg_abort_lost_db()
                     raise ConnectionError(msg) from exc
 
@@ -222,23 +224,23 @@ class QueueManager:
 
                     if self.stats.num_tasks_w_temporary_errors() > 0:
                         # there are still tasks, but they have to wait
-                        logging.debug("Tasks with temporary errors: " +
+                        logger.debug("Tasks with temporary errors: " +
                                       "waiting %s seconds until next try.",
                                       self.queue_revisit)
                         time.sleep(self.queue_revisit)
                         continue
 
                     # Nothing left (i.e. num_temp_errors == 0)
-                    logging.info('Queue empty. Bot stops as configured.')
+                    logger.info('Queue empty. Bot stops as configured.')
 
                     num_permanent_errors = self.stats.num_tasks_w_permanent_errors()
                     if num_permanent_errors > 0:
-                        logging.error("%s permanent errors!",
+                        logger.error("%s permanent errors!",
                                       num_permanent_errors)
                     self.notify.send_msg_finish()
                     break
 
-                logging.debug(
+                logger.debug(
                     "No actionable task: waiting %s seconds until next check",
                     self.queue_revisit)
                 time.sleep(self.queue_revisit)
@@ -253,10 +255,10 @@ class QueueManager:
             # The FQDN might have been added to the blocklist *after*
             # the task entered into the queue!
             if self.blocklist.check_blocklist(str(url.hostname)):
-                logging.error(
+                logger.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)
-                logging.info('Removed item from queue: FQDN on blocklist.')
+                logger.info('Removed item from queue: FQDN on blocklist.')
             else:
                 if action == 1:  # download file to disk
                     self.actions.get_object(queue_id, 'file', url)
@@ -267,7 +269,7 @@ class QueueManager:
                 elif action == 4:  # save page text into database
                     self.actions.get_object(queue_id, 'text', url)
                 else:
-                    logging.error('Unknown action id!')
+                    logger.error('Unknown action id!')
 
                 self.notify.send_msg_milestone()
 

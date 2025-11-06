@@ -42,7 +42,10 @@ So, this is a way to loop through all search result pages:
 from bs4 import BeautifulSoup
 import exoskeleton
 import logging
-logging.basicConfig(level=logging.INFO)
+
+# Configure logging - see documentation/logging-configuration.md for details
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Create a Bot
 exo = exoskeleton.Exoskeleton(

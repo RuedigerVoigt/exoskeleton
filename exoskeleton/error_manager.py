@@ -16,6 +16,8 @@ import userprovided
 
 from exoskeleton import database_connection
 
+logger = logging.getLogger(__name__)
+
 
 class CrawlingErrorManager:
     """Manage errors that occur while crawling."""
@@ -59,11 +61,11 @@ class CrawlingErrorManager:
         # Does the number of tries exceed the configured maximum?
         if num_tries == self.queue_max_retries:
             # This is treated as a *permanent* failure!
-            logging.error('Giving up: too many tries for task %s', queue_id)
+            logger.error('Giving up: too many tries for task %s', queue_id)
             self.mark_permanent_error(queue_id, 3)
             return
 
-        logging.info('Adding crawl delay to task %s', queue_id)
+        logger.info('Adding crawl delay to task %s', queue_id)
         # Using the class constant DELAY_TRIES because it can be easily
         # overwritten for automatic testing!
         if num_tries == 1:
@@ -85,7 +87,7 @@ class CrawlingErrorManager:
         """ Mark task in queue that causes a *permanent* error.
             Without this exoskeleton would try to execute it again."""
         self.db_connection.call_procedure('mark_permanent_error_SP', (queue_id, error))
-        logging.info('Marked task %s as causing a permanent error.', queue_id)
+        logger.info('Marked task %s as causing a permanent error.', queue_id)
 
     def forget_specific_error(self,
                               specific_error: int) -> None:
@@ -122,7 +124,7 @@ class CrawlingErrorManager:
            predefined time."""
         msg = (f"Bot hit a rate limit with {fqdn}. Will not try to " +
                f"contact this host for {self.rate_limit_wait} seconds.")
-        logging.error(msg)
+        logger.error(msg)
         self.db_connection.call_procedure('add_rate_limit_SP', (fqdn, self.rate_limit_wait))
 
     def forget_specific_rate_limit(self,

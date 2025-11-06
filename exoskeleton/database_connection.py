@@ -19,6 +19,8 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError, DatabaseError
 import userprovided
 
+logger = logging.getLogger(__name__)
+
 
 class DatabaseConnection:
     """Database connection management for the exoskeleton framework using SQLAlchemy."""
@@ -54,19 +56,19 @@ class DatabaseConnection:
         # Check settings and fallback to default if necessary:
         self.db_host: str = cast(str, database_settings.get('host', None))
         if not self.db_host:
-            logging.warning('No hostname provided. Will try localhost.')
+            logger.warning('No hostname provided. Will try localhost.')
             self.db_host = 'localhost'
 
         self.db_port: int = cast(int, database_settings.get('port', None))
         if not self.db_port:
-            logging.info('No port number supplied: will try port 3306.')
+            logger.info('No port number supplied: will try port 3306.')
             self.db_port = 3306
         elif not userprovided.parameters.is_port(self.db_port):
             raise ValueError('Database port outside valid range!')
 
         self.db_passphrase: str = database_settings.get('passphrase', '')
         if self.db_passphrase == '':
-            logging.warning(
+            logger.warning(
                 'No database passphrase provided. Trying to connect without.')
 
         # Establish the database connection using SQLAlchemy
@@ -88,7 +90,7 @@ class DatabaseConnection:
     def establish_db_connection(self) -> None:
         """Establish a connection to MariaDB using SQLAlchemy."""
         try:
-            logging.debug('Trying to connect to database.')
+            logger.debug('Trying to connect to database.')
 
             # Build connection URL
             # Using pymysql as the driver for MariaDB
@@ -113,18 +115,18 @@ class DatabaseConnection:
             # Create session factory
             self.Session = sessionmaker(bind=self.engine, autoflush=True, autocommit=False)
 
-            logging.info('Successfully established database connection.')
+            logger.info('Successfully established database connection.')
 
         except OperationalError:
-            logging.exception(
+            logger.exception(
                 "Cannot connect to DBMS. Did you forget a parameter?",
                 exc_info=True)
             raise
         except DatabaseError:
-            logging.exception('Database related exception', exc_info=True)
+            logger.exception('Database related exception', exc_info=True)
             raise
         except Exception:
-            logging.exception(
+            logger.exception(
                 'Exception while connecting to the DBMS.', exc_info=True)
             raise
 
@@ -137,7 +139,7 @@ class DatabaseConnection:
         """
         if self._session is None or not self._session.is_active:
             if self.Session is None:
-                logging.info("Lost database connection. Trying to reconnect...")
+                logger.info("Lost database connection. Trying to reconnect...")
                 self.establish_db_connection()
             if self.Session:
                 self._session = self.Session()

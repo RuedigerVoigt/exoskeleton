@@ -40,6 +40,8 @@ from exoskeleton import remote_control_chrome
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
 
+logger = logging.getLogger(__name__)
+
 
 class Exoskeleton:
     """ Main class of the exoskeleton crawler framework. """
@@ -246,7 +248,7 @@ class Exoskeleton:
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
         if not self.controlled_browser.browser_present:
-            logging.warning(
+            logger.warning(
                 'Will add this task to the queue, but without Chrome or ' +
                 'Chromium it cannot run! Provide the path to the ' +
                 'executable when you initialize exoskeleton.')
