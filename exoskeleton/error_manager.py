@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 The class CrawlingErrorManager manages errors that occur while
 crawling. It marks permanent errors and adds delays.

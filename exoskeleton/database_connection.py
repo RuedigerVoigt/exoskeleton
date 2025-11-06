@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Database connection management for the exoskeleton framework.
 ~~~~~~~~~~~~~~~~~~~~~

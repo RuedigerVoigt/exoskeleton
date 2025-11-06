@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 The class class ExoActions manages actions like downloading
 a file or page content.

@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Notification Management for the Exoskeleton Crawler Framework
 ~~~~~~~~~~~~~~~~~~~~~
