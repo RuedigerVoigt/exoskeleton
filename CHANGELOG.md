@@ -37,10 +37,14 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 **Other Changes:**
 
+* **Database Schema Checking**:
+  * `database_schema_check.py` now uses SQLAlchemy introspection for table validation
+  * Table list automatically synced with `models.py` (single source of truth)
+  * Added automatic validation of stored procedures/functions against SQL schema file
+
 * **Build System**:
   * Migrated from `setup.py` to Poetry and `pyproject.toml`
   * All configuration now centralized in `pyproject.toml`
-
 
 * **Dependencies**:
   * Added: `SQLAlchemy>=2.0.41`

@@ -7,6 +7,8 @@ Released under the Apache License 2.0
 """
 
 import logging
+import pathlib
+import re
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -14,6 +16,7 @@ import importlib.metadata
 
 from exoskeleton import database_connection
 from exoskeleton import err
+from exoskeleton import models
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +25,18 @@ class DatabaseSchemaCheck:
     "Check the database schema for exoskeleton."
     # pylint: disable=too-few-public-methods
 
-    PROCEDURES = ['add_rate_limit_SP',
-                  'add_crawl_delay_SP',
+    # Tables are now dynamically retrieved from SQLAlchemy models
+    # This ensures they stay in sync with models.py
+    TABLES = [table.name for table in models.Base.metadata.sorted_tables]
+
+    # Stored procedures - hardcoded as they're not part of ORM
+    # Note: Includes db_check_* procedures which are used to verify other procedures/functions
+    PROCEDURES = ['add_crawl_delay_SP',
+                  'add_rate_limit_SP',
                   'add_to_queue_SP',
                   'block_fqdn_SP',
+                  'db_check_all_functions_SP',
+                  'db_check_all_procedures_SP',
                   'define_new_job_SP',
                   'delete_all_versions_SP',
                   'delete_from_queue_SP',
@@ -58,21 +69,105 @@ class DatabaseSchemaCheck:
                  'num_tasks_in_queue_without_error',
                  'num_tasks_with_active_rate_limit']
 
-    TABLES = ['actions',
-              'blockList',
-              'errorType',
-              'exoInfo',
-              'fileContent',
-              'fileMaster',
-              'fileVersions',
-              'jobs',
-              'labels',
-              'labelToMaster',
-              'labelToVersion',
-              'queue',
-              'rateLimits',
-              'statisticsHosts',
-              'storageTypes']
+    @staticmethod
+    def _parse_sql_schema_file() -> tuple[set[str], set[str]]:
+        """
+        Parse the SQL schema file to extract procedure and function names.
+
+        This provides validation that hardcoded lists match the actual SQL schema.
+        Returns a tuple of (procedures, functions) as sets.
+
+        Returns:
+            Tuple of (set of procedure names, set of function names)
+        """
+        # Find the SQL schema file
+        current_dir = pathlib.Path(__file__).parent
+        sql_file = current_dir.parent / 'Database-Scripts' / 'Generate-Database-Schema-MariaDB.sql'
+
+        if not sql_file.exists():
+            logger.warning(
+                'SQL schema file not found at %s. Skipping schema validation.',
+                sql_file
+            )
+            return (set(), set())
+
+        procedures = set()
+        functions = set()
+
+        try:
+            content = sql_file.read_text(encoding='utf-8')
+
+            # Extract procedure names: CREATE PROCEDURE name (
+            proc_pattern = re.compile(r'CREATE\s+PROCEDURE\s+(\w+)\s*\(', re.IGNORECASE)
+            procedures = set(proc_pattern.findall(content))
+
+            # Extract function names: CREATE FUNCTION name (
+            func_pattern = re.compile(r'CREATE\s+FUNCTION\s+(\w+)\s*\(', re.IGNORECASE)
+            functions = set(func_pattern.findall(content))
+
+            logger.debug(
+                'Parsed SQL schema: %d procedures, %d functions',
+                len(procedures), len(functions)
+            )
+
+        except Exception as e:
+            logger.warning(
+                'Failed to parse SQL schema file: %s. Skipping validation.',
+                str(e)
+            )
+
+        return (procedures, functions)
+
+    @classmethod
+    def validate_hardcoded_lists(cls) -> None:
+        """
+        Validate that hardcoded PROCEDURES and FUNCTIONS lists match the SQL schema file.
+
+        This is a development/maintenance helper to ensure the hardcoded lists
+        stay in sync with the actual SQL schema definitions.
+        """
+        sql_procedures, sql_functions = cls._parse_sql_schema_file()
+
+        if not sql_procedures and not sql_functions:
+            logger.debug('No SQL schema file found - skipping validation')
+            return
+
+        code_procedures = set(cls.PROCEDURES)
+        code_functions = set(cls.FUNCTIONS)
+
+        # Check for discrepancies
+        missing_procedures = sql_procedures - code_procedures
+        extra_procedures = code_procedures - sql_procedures
+        missing_functions = sql_functions - code_functions
+        extra_functions = code_functions - sql_functions
+
+        if missing_procedures:
+            logger.warning(
+                'Procedures in SQL schema but missing from hardcoded list: %s',
+                ', '.join(sorted(missing_procedures))
+            )
+
+        if extra_procedures:
+            logger.warning(
+                'Procedures in hardcoded list but not in SQL schema: %s',
+                ', '.join(sorted(extra_procedures))
+            )
+
+        if missing_functions:
+            logger.warning(
+                'Functions in SQL schema but missing from hardcoded list: %s',
+                ', '.join(sorted(missing_functions))
+            )
+
+        if extra_functions:
+            logger.warning(
+                'Functions in hardcoded list but not in SQL schema: %s',
+                ', '.join(sorted(extra_functions))
+            )
+
+        if not any([missing_procedures, extra_procedures,
+                    missing_functions, extra_functions]):
+            logger.debug('Hardcoded lists match SQL schema perfectly')
 
     def __init__(self,
                  db_connection: database_connection.DatabaseConnection
@@ -81,14 +176,22 @@ class DatabaseSchemaCheck:
         self.db_connection = db_connection
         self.session: Session = db_connection.get_session()
         self.db_name: str = db_connection.db_name
+
+        # Validate hardcoded lists against SQL schema (development helper)
+        self.validate_hardcoded_lists()
+
         self.check_db_schema()
 
     def __check_table_existence(self) -> bool:
-        "Check if all expected tables exist."
-        # Merely comparing the length of the result set to the number of
-        # expected tables is not sufficient. The user might have added
-        # custom tables.
-        # Therefore check for each expected table if it is in the result.
+        """
+        Check if all expected tables exist.
+
+        Tables are dynamically retrieved from SQLAlchemy models (models.py),
+        ensuring this check stays in sync with the ORM definitions.
+
+        Note: User might have custom tables, so we only verify expected tables exist,
+        not that ONLY expected tables exist.
+        """
         result = self.session.execute(text('SHOW TABLES'))
         tables = result.fetchall()
         if not tables:
