@@ -20,9 +20,9 @@ jobs:
           - 12345:3306
         env:
           MYSQL_ROOT_PASSWORD: 'RootPassphrase' # password for root account
-          MYSQL_DATABASE: 'exoskeleton' # database to be created on image startup
-          MYSQL_USER: 'exoskeleton' # User with all right for exoskeleton database
-          MYSQL_PASSWORD: 'exoskeleton' # Password for the exoskelton user
+          MYSQL_DATABASE: 'exoskeleton_test' # database to be created on image startup
+          MYSQL_USER: 'exoskeleton_test' # User with all rights for exoskeleton_test database
+          MYSQL_PASSWORD: 'exoskeleton_test' # Password for the exoskeleton_test user
 
     steps:
 
@@ -51,11 +51,11 @@ jobs:
           sleep 1
         done
 
-    - name: Fill exoskeleton database
+    - name: Fill exoskeleton test database
       env:
         PORT: ${{ job.services.mariadb.ports[3306] }}
       run: |
-        mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'
+        mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton_test < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'
 
     - name: Make a directory to store downloads
       run: mkdir ./fileDownloads
@@ -64,6 +64,14 @@ jobs:
       run: pytest tests/tests_without_side_effects.py
 
     - name: Run system-test with pytest
+      env:
+        # Explicit test database configuration
+        TEST_DB_HOST: '127.0.0.1'
+        TEST_DB_PORT: '12345'
+        TEST_DB_NAME: 'exoskeleton_test'
+        TEST_DB_USER: 'exoskeleton_test'
+        TEST_DB_PASSWORD: 'exoskeleton_test'
+        TEST_BROWSER: 'chromium-browser'
       run: pytest tests/tests_with_side_effects.py
 
     - name: List downloaded files

@@ -58,8 +58,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 * **Testing**:
   * All test configuration migrated to `pyproject.toml`
   * Updated workflows for Windows, macOS, and Ubuntu
-
-
+  * Test Database Safety System to prevent accidental production database damage: see [Test Database Safety Guide](documentation/test-database-safety.md)
 
 
 ## Version 2.1.1 (2022-04-27)

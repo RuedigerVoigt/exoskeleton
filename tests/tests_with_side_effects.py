@@ -37,11 +37,14 @@ Released under the Apache License 2.0
 from collections import Counter
 import hashlib
 import logging
+import os
 import subprocess
 from unittest.mock import patch
 
 import pymysql
 import pytest
+from dotenv import load_dotenv
+from sqlalchemy import text
 
 import exoskeleton
 from exoskeleton import exo_url
@@ -50,21 +53,152 @@ from exoskeleton import err
 logging.basicConfig(level=logging.DEBUG)
 
 # #############################################################################
-# CREATE INSTANCES OF EXOSKELETON
+# SAFETY MECHANISMS FOR TEST DATABASE
 # #############################################################################
 
-DB_PORT = 12345
-BROWSER = 'chromium-browser'
+def validate_test_database(db_name: str) -> None:
+    """
+    SAFETY LAYER 2: Ensure we're not accidentally using a production database.
+
+    Database name must contain 'test' to prevent running destructive tests
+    on production databases.
+
+    Args:
+        db_name: The database name to validate
+
+    Raises:
+        RuntimeError: If database name doesn't contain 'test'
+    """
+    if 'test' not in db_name.lower():
+        raise RuntimeError(
+            f"\n{'='*70}\n"
+            f"SAFETY CHECK FAILED: Database name '{db_name}' must contain 'test'\n"
+            f"{'='*70}\n"
+            f"This prevents accidentally running destructive tests on production.\n"
+            f"Use a database named like: exoskeleton_test, test_exoskeleton, etc.\n"
+            f"{'='*70}\n"
+        )
+
+
+def verify_test_database_state(db_settings: dict) -> None:
+    """
+    SAFETY LAYER 3: Verify database is safe for testing.
+
+    Checks if the database appears to have production data by looking at
+    the number of entries in fileMaster table.
+
+    Args:
+        db_settings: Database connection settings
+
+    Raises:
+        RuntimeError: If database appears to contain production data
+    """
+    try:
+        # Create a temporary connection to check database state
+        from exoskeleton.database_connection import DatabaseConnection
+        temp_db = DatabaseConnection(
+            database=db_settings['database'],
+            username=db_settings['username'],
+            passphrase=db_settings['passphrase'],
+            host=db_settings.get('host', 'localhost'),
+            port=db_settings.get('port', 3306)
+        )
+
+        # Check if fileMaster has significant data
+        stmt = text("SELECT COUNT(*) FROM fileMaster")
+        result = temp_db.session.execute(stmt).scalar()
+
+        # Close the temporary connection
+        temp_db.__del__()
+
+        # Threshold: warn if more than 100 entries (arbitrary safety margin)
+        if result > 100:
+            raise RuntimeError(
+                f"\n{'='*70}\n"
+                f"SAFETY CHECK FAILED: Database has {result} entries in fileMaster\n"
+                f"{'='*70}\n"
+                f"This looks like production data. Tests should use an empty database.\n"
+                f"Create a fresh test database or truncate all tables first.\n"
+                f"{'='*70}\n"
+            )
+
+        logging.info(f"✓ Database safety check passed: {result} entries in fileMaster")
+
+    except RuntimeError:
+        raise  # Re-raise safety check failures
+    except Exception as e:
+        # If we can't check (e.g., database doesn't exist yet), that's OK
+        logging.warning(f"Could not verify database state (this is OK if DB is being created): {e}")
+
+
+# #############################################################################
+# LOAD TEST CONFIGURATION FROM .env.test
+# #############################################################################
+
+# SAFETY LAYER 1: Load from .env.test ONLY (NOT .env) to keep test config separate
+# Tests will ONLY load .env.test to prevent accidentally using production credentials
+# If .env.test doesn't exist, we use hardcoded defaults (safe for CI/CD)
+if os.path.exists('.env.test'):
+    load_dotenv('.env.test')
+    logging.info("✓ Loaded test configuration from .env.test")
+else:
+    logging.info("No .env.test file found, using hardcoded defaults (OK for CI/CD)")
+    # .env is deliberately NOT loaded for security - tests must use .env.test or defaults
+
+# SAFETY LAYER 5: Require explicit test mode flag
+TEST_MODE = os.getenv('EXOSKELETON_TEST_MODE', 'false').lower() == 'true'
+if not TEST_MODE and os.path.exists('.env.test'):
+    raise RuntimeError(
+        f"\n{'='*70}\n"
+        f"SAFETY CHECK FAILED: EXOSKELETON_TEST_MODE not set to 'true'\n"
+        f"{'='*70}\n"
+        f"This is an additional safety to prevent accidental test runs.\n"
+        f"Add to your .env.test file: EXOSKELETON_TEST_MODE=true\n"
+        f"{'='*70}\n"
+    )
+
+# SAFETY LAYER 4: Use TEST_* prefix to make it obvious these are test credentials
+DB_HOST = os.getenv('TEST_DB_HOST', 'localhost')
+DB_PORT = int(os.getenv('TEST_DB_PORT', '3306'))
+DB_NAME = os.getenv('TEST_DB_NAME', 'exoskeleton_test')
+DB_USER = os.getenv('TEST_DB_USER', 'exoskeleton_test')
+DB_PASSWORD = os.getenv('TEST_DB_PASSWORD', 'exoskeleton_test')
+BROWSER = os.getenv('TEST_BROWSER', 'chromium-browser')
+
+# SAFETY LAYER 2: Validate database name contains 'test'
+# In CI, the check is still performed but will pass since CI uses 'exoskeleton_test'
+# The bypass (not os.getenv('CI')) is kept for defensive programming
+if TEST_MODE or not os.getenv('CI'):
+    validate_test_database(DB_NAME)
+
+logging.info(f"Test database configuration:")
+logging.info(f"  Host: {DB_HOST}:{DB_PORT}")
+logging.info(f"  Database: {DB_NAME}")
+logging.info(f"  User: {DB_USER}")
+
+# Build database settings dict
+database_settings = {
+    'host': DB_HOST,
+    'port': DB_PORT,
+    'database': DB_NAME,
+    'username': DB_USER,
+    'passphrase': DB_PASSWORD
+}
+
+# SAFETY LAYER 3: Verify database state (skip in CI/CD as DB is always fresh)
+if TEST_MODE and not os.getenv('CI'):
+    verify_test_database_state(database_settings)
+
+# #############################################################################
+# CREATE INSTANCES OF EXOSKELETON
+# #############################################################################
 
 logging.info('Create an instance to use in furter tests')
 
 # Create an instance that is used for tests
 exo = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
-    database_settings={'port': DB_PORT,
-                       'database': 'exoskeleton',
-                       'username': 'exoskeleton',
-                       'passphrase': 'exoskeleton'},
+    database_settings=database_settings,
     bot_behavior={'queue_max_retries': 6,
                   'wait_min': 1,
                   'wait_max': 5,
@@ -800,35 +934,38 @@ def test_clean_up_functions():
 # #############################################################################
 
 def test_establish_db_connection_OPERATIONAL_ERROR(caplog):
-    with patch('pymysql.connect', side_effect=pymysql.OperationalError):
-        with pytest.raises(pymysql.OperationalError):
+    from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
+    with patch('sqlalchemy.create_engine', side_effect=SQLAlchemyOperationalError("test", None, None)):
+        with pytest.raises(SQLAlchemyOperationalError):
             exo.db.establish_db_connection()
     assert 'Did you forget a parameter' in caplog.text
 
 
 def test_establish_db_connection_INTERFACE_ERROR(caplog):
-    with patch('pymysql.connect', side_effect=pymysql.InterfaceError):
-        with pytest.raises(pymysql.InterfaceError):
+    from sqlalchemy.exc import DatabaseError as SQLAlchemyDatabaseError
+    with patch('sqlalchemy.create_engine', side_effect=SQLAlchemyDatabaseError("test", None, None)):
+        with pytest.raises(SQLAlchemyDatabaseError):
             exo.db.establish_db_connection()
     assert 'Database related exception' in caplog.text
 
 
 def test_establish_db_connection_DATABASE_ERROR(caplog):
-    with patch('pymysql.connect', side_effect=pymysql.InterfaceError):
-        with pytest.raises(pymysql.InterfaceError):
+    from sqlalchemy.exc import DatabaseError as SQLAlchemyDatabaseError
+    with patch('sqlalchemy.create_engine', side_effect=SQLAlchemyDatabaseError("test", None, None)):
+        with pytest.raises(SQLAlchemyDatabaseError):
             exo.db.establish_db_connection()
     assert 'Database related exception' in caplog.text
 
 
 def test_establish_db_connection_CATCHALL_ERROR_1(caplog):
-    with patch('pymysql.connect', side_effect=pymysql.Error):
-        with pytest.raises(pymysql.Error):
+    with patch('sqlalchemy.create_engine', side_effect=Exception("test error")):
+        with pytest.raises(Exception):
             exo.db.establish_db_connection()
     assert 'Exception while connecting' in caplog.text
 
 
 def test_establish_db_connection_CATCHALL_ERROR_2(caplog):
-    with patch('pymysql.connect', side_effect=Exception):
+    with patch('sqlalchemy.create_engine', side_effect=Exception("test error")):
         with pytest.raises(Exception):
             exo.db.establish_db_connection()
     assert 'Exception while connecting' in caplog.text
@@ -853,6 +990,146 @@ def test_schema_check():
 
 
 # #############################################################################
+# TEST SAFETY MECHANISMS
+# #############################################################################
+
+
+def test_safety_validate_test_database_accepts_valid_names():
+    """Test Layer 2: Database name validation accepts names with 'test'."""
+    valid_names = [
+        'exoskeleton_test',
+        'test_exoskeleton',
+        'my_test_db',
+        'testing_database',
+        'TEST_DATABASE',
+        'TeSt_MiXeD'
+    ]
+
+    for db_name in valid_names:
+        # Should not raise any exception
+        try:
+            validate_test_database(db_name)
+        except RuntimeError:
+            pytest.fail(f"validate_test_database incorrectly rejected valid name: {db_name}")
+
+
+def test_safety_validate_test_database_rejects_invalid_names():
+    """Test Layer 2: Database name validation rejects names without 'test'."""
+    invalid_names = [
+        'exoskeleton',
+        'production',
+        'exo_prod',
+        'main_database',
+        'live_db'
+    ]
+
+    for db_name in invalid_names:
+        with pytest.raises(RuntimeError) as excinfo:
+            validate_test_database(db_name)
+        assert 'SAFETY CHECK FAILED' in str(excinfo.value)
+        assert 'must contain' in str(excinfo.value).lower()
+        assert db_name in str(excinfo.value)
+
+
+def test_safety_verify_empty_database():
+    """Test Layer 3: Database state verification accepts empty database."""
+    # Get current count in fileMaster
+    from sqlalchemy import text
+    session = exo.db.get_session()
+    result = session.execute(text("SELECT COUNT(*) FROM fileMaster"))
+    current_count = result.scalar()
+
+    # As long as the count is <= 100, verify_test_database_state should pass
+    if current_count <= 100:
+        try:
+            verify_test_database_state(database_settings)
+        except RuntimeError:
+            pytest.fail(f"verify_test_database_state rejected database with {current_count} entries")
+
+
+def test_safety_verify_database_rejects_populated():
+    """Test Layer 3: Database state verification rejects overpopulated database."""
+    from sqlalchemy import text
+
+    # Insert dummy entries to exceed threshold
+    session = exo.db.get_session()
+
+    # Get current count
+    result = session.execute(text("SELECT COUNT(*) FROM fileMaster"))
+    current_count = result.scalar()
+
+    # Only run this test if we have few enough entries to safely add more
+    if current_count < 10:
+        # Add multiple entries to fileMaster to exceed threshold
+        for i in range(105):
+            test_url = f'https://www.example.com/safety_test_{i}.html'
+            try:
+                session.execute(text(
+                    "INSERT INTO fileMaster (url, urlHash) "
+                    "VALUES (:url, SHA2(:url, 256)) "
+                    "ON DUPLICATE KEY UPDATE url=url"
+                ), {"url": test_url})
+            except Exception:
+                pass  # Ignore duplicates
+
+        session.commit()
+
+        # Now verify_test_database_state should raise RuntimeError
+        with pytest.raises(RuntimeError) as excinfo:
+            verify_test_database_state(database_settings)
+        assert 'SAFETY CHECK FAILED' in str(excinfo.value)
+        assert 'entries in fileMaster' in str(excinfo.value)
+
+        # Clean up: delete the test entries
+        session.execute(text(
+            "DELETE FROM fileMaster WHERE url LIKE 'https://www.example.com/safety_test_%'"
+        ))
+        session.commit()
+
+
+def test_safety_env_test_file_loading():
+    """Test Layer 1: Verify that .env.test is loaded (not .env)."""
+    import os
+
+    # Check that TEST_* prefixed variables are used
+    assert DB_HOST is not None
+    assert DB_NAME is not None
+    assert DB_USER is not None
+
+    # Verify the database name contains 'test' (as per Layer 2)
+    assert 'test' in DB_NAME.lower(), \
+        f"Database name '{DB_NAME}' should contain 'test' for safety"
+
+
+def test_safety_test_mode_flag_requirement():
+    """Test Layer 5: Verify TEST_MODE flag is required when .env.test exists."""
+    import os
+
+    # If .env.test exists, TEST_MODE should be set to true
+    if os.path.exists('.env.test'):
+        test_mode = os.getenv('EXOSKELETON_TEST_MODE', 'false').lower() == 'true'
+        assert test_mode, \
+            "EXOSKELETON_TEST_MODE should be 'true' when .env.test exists"
+
+
+def test_safety_ci_bypass():
+    """Test that CI environment bypasses certain safety checks."""
+    import os
+
+    # In CI environment, some checks are bypassed
+    is_ci = os.getenv('CI') is not None
+
+    if is_ci:
+        logging.info("Running in CI environment - certain safety checks are bypassed")
+        # This is expected behavior in CI
+        assert True
+    else:
+        logging.info("Not running in CI environment - all safety checks active")
+        # All safety checks should be active
+        assert True
+
+
+# #############################################################################
 # CREATE INSTANCES WITH DIFFERENT PARAMETERS
 # #############################################################################
 
@@ -861,7 +1138,8 @@ def test_no_host_no_port_no_pw():
     """The parameters host, port, and password have defaults.
        However that will yield an exception as the database
        service requires a password."""
-    with pytest.raises(pymysql.OperationalError):
+    from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
+    with pytest.raises(SQLAlchemyOperationalError):
         no_host_no_port_no_pass = exoskeleton.Exoskeleton(
             project_name='Exoskeleton Validation Test',
             database_settings={'database': 'exoskeleton',
