@@ -130,6 +130,7 @@ class QueueManager:
         uuid_value = uuid.uuid4().hex
 
         # add the new task to the queue
+        assert url.hostname is not None, "URL hostname cannot be None"
         fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
 
         new_queue_item = models.Queue(

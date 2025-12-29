@@ -179,6 +179,7 @@ class DatabaseSchemaCheck:
         if not tables:
             # No tables at all - create all tables from ORM models
             logger.warning('No tables found in database. Creating all tables from ORM models...')
+            assert self.db_connection.engine is not None, "Database engine not initialized"
             models.Base.metadata.create_all(self.db_connection.engine)
             logger.info('Successfully created all tables from ORM models.')
             return True
@@ -201,6 +202,7 @@ class DatabaseSchemaCheck:
                 len(missing_tables),
                 ', '.join(missing_tables)
             )
+            assert self.db_connection.engine is not None, "Database engine not initialized"
             models.Base.metadata.create_all(self.db_connection.engine)
             logger.info('Successfully created missing tables.')
 

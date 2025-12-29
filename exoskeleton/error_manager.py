@@ -92,7 +92,7 @@ class CrawlingErrorManager:
             wait_time = self.DELAY_TRIES[4]  # 6 hours
 
         # Get the URL hash for this queue item
-        queue_item = self.session.query(models.Queue.urlHash).filter(
+        queue_item = self.session.query(models.Queue.urlHash).filter(  # type: ignore[assignment]
             models.Queue.id == queue_id
         ).first()
 
@@ -155,7 +155,7 @@ class CrawlingErrorManager:
         error, as if they are new tasks by removing that mark and any delay."""
         # Get IDs of temporary errors
         temp_error_ids = self.session.query(models.ErrorType.id).filter(
-            models.ErrorType.permanent == False
+            models.ErrorType.permanent.is_(False)
         ).all()
         temp_error_ids = [id[0] for id in temp_error_ids]
 
@@ -176,7 +176,7 @@ class CrawlingErrorManager:
            any delay."""
         # Get IDs of permanent errors
         perm_error_ids = self.session.query(models.ErrorType.id).filter(
-            models.ErrorType.permanent == True
+            models.ErrorType.permanent.is_(True)
         ).all()
         perm_error_ids = [id[0] for id in perm_error_ids]
 
@@ -222,7 +222,7 @@ class CrawlingErrorManager:
         ).first()
 
         if rate_limit:
-            rate_limit.noContactUntil = no_contact_until
+            rate_limit.noContactUntil = no_contact_until  # type: ignore[assignment]
         else:
             rate_limit = models.RateLimit(
                 fqdnHash=fqdn_hash,

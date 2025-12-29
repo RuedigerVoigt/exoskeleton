@@ -53,7 +53,7 @@ class StatisticsManager:
             models.ErrorType,
             models.Queue.causesError == models.ErrorType.id
         ).filter(
-            models.ErrorType.permanent == False
+            models.ErrorType.permanent.is_(False)
         ).count()
 
     def num_tasks_w_rate_limit(self) -> int:
@@ -101,6 +101,7 @@ class StatisticsManager:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
         # pylint: disable=too-many-arguments
+        assert url.hostname is not None, "URL hostname cannot be None"
         fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
 
         host_stats = self.session.query(models.StatisticsHost).filter(
@@ -108,10 +109,10 @@ class StatisticsManager:
         ).first()
 
         if host_stats:
-            host_stats.successfulRequests += successful_requests_increment
-            host_stats.temporaryProblems += temporary_problems_increment
-            host_stats.permamentErrors += permanent_errors_increment
-            host_stats.hitRateLimit += hit_rate_limit_increment
+            host_stats.successfulRequests += successful_requests_increment  # type: ignore[assignment]
+            host_stats.temporaryProblems += temporary_problems_increment  # type: ignore[assignment]
+            host_stats.permamentErrors += permanent_errors_increment  # type: ignore[assignment]
+            host_stats.hitRateLimit += hit_rate_limit_increment  # type: ignore[assignment]
         else:
             host_stats = models.StatisticsHost(
                 fqdnHash=fqdn_hash,
