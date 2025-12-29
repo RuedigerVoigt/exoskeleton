@@ -7,10 +7,11 @@ Released under the Apache License 2.0
 """
 # standard library:
 from collections import Counter
+from hashlib import sha256
 import logging
-from typing import Literal, Optional
+from typing import Literal
 
-from sqlalchemy import text, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from exoskeleton import database_connection
@@ -43,7 +44,7 @@ class StatisticsManager:
             models.ErrorType,
             models.Queue.causesError == models.ErrorType.id
         ).filter(
-            models.ErrorType.permanent == True
+            models.ErrorType.permanent.is_(True)
         ).count()
 
     def num_tasks_w_temporary_errors(self) -> int:
@@ -100,8 +101,6 @@ class StatisticsManager:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
         # pylint: disable=too-many-arguments
-        from hashlib import sha256
-
         fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
 
         host_stats = self.session.query(models.StatisticsHost).filter(

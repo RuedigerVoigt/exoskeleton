@@ -6,12 +6,9 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 
-from datetime import datetime
-from typing import Optional
-
 from sqlalchemy import (
     Column, String, Integer, Text, TIMESTAMP, Boolean,
-    ForeignKey, Index, SmallInteger, func
+    ForeignKey, func
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.dialects.mysql import TINYINT, MEDIUMTEXT, CHAR

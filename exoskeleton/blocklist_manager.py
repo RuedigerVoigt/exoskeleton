@@ -12,7 +12,6 @@ from hashlib import sha256
 from typing import Optional
 
 # external dependencies:
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 

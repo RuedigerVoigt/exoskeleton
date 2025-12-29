@@ -6,12 +6,13 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 # standard library:
+from hashlib import sha256
 import logging
 from typing import Union
 
 # external dependencies:
 import userprovided
-from sqlalchemy import text, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -49,7 +50,6 @@ class JobManager:
             start_url = exo_url.ExoUrl(start_url)
         job_name = job_name.strip()
         try:
-            from hashlib import sha256
             new_job = models.Job(
                 jobName=job_name,
                 startUrl=str(start_url),

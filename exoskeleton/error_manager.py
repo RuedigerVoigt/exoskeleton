@@ -8,6 +8,7 @@ Released under the Apache License 2.0
 """
 # standard library:
 from datetime import datetime, timedelta
+from hashlib import sha256
 import logging
 
 # external dependencies:
@@ -213,7 +214,6 @@ class CrawlingErrorManager:
                f"contact this host for {self.rate_limit_wait} seconds.")
         logger.error(msg)
 
-        from hashlib import sha256
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
         no_contact_until = datetime.now() + timedelta(seconds=self.rate_limit_wait)
 
@@ -236,7 +236,6 @@ class CrawlingErrorManager:
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:
         "Forget that the bot hit a rate limit for a specific FQDN."
-        from hashlib import sha256
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
         self.session.query(models.RateLimit).filter(
             models.RateLimit.fqdnHash == fqdn_hash

@@ -15,7 +15,6 @@ import uuid
 
 
 # external dependencies:
-from sqlalchemy import text, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import userprovided

@@ -4,6 +4,8 @@ import importlib.metadata
 
 from exoskeleton.__main__ import Exoskeleton
 
+__all__ = ['Exoskeleton']
+
 NAME = "exoskeleton"
 __version__ = importlib.metadata.version("exoskeleton")
 __author__ = "Rüdiger Voigt"
