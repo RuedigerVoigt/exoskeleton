@@ -33,41 +33,37 @@ class StatisticsManager:
     def num_tasks_wo_errors(self) -> int:
         """Number of tasks in the queue, which are *not* marked as causing
            any kind of error."""
-        count = self.session.query(models.Queue).filter(
+        return self.session.query(models.Queue).filter(
             models.Queue.causesError.is_(None)
         ).count()
-        return count if count is not None else 0
 
     def num_tasks_w_permanent_errors(self) -> int:
         "Number of tasks in the queue marked as causing a *permanent* error."
-        count = self.session.query(models.Queue).join(
+        return self.session.query(models.Queue).join(
             models.ErrorType,
             models.Queue.causesError == models.ErrorType.id
         ).filter(
             models.ErrorType.permanent == True
         ).count()
-        return count if count is not None else 0
 
     def num_tasks_w_temporary_errors(self) -> int:
         "Number of tasks in the queue marked as causing a *temporary* error."
-        count = self.session.query(models.Queue).join(
+        return self.session.query(models.Queue).join(
             models.ErrorType,
             models.Queue.causesError == models.ErrorType.id
         ).filter(
             models.ErrorType.permanent == False
         ).count()
-        return count if count is not None else 0
 
     def num_tasks_w_rate_limit(self) -> int:
         """Number of tasks in the queue that do not yield a permanent error,
            but are currently affected by a rate limit."""
-        count = self.session.query(models.Queue).join(
+        return self.session.query(models.Queue).join(
             models.RateLimit,
             models.Queue.fqdnHash == models.RateLimit.fqdnHash
         ).filter(
             models.RateLimit.noContactUntil > func.now()
         ).count()
-        return count if count is not None else 0
 
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""
