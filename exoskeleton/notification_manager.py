@@ -72,6 +72,8 @@ class NotificationManager:
            an estimate how long it will take for the bot to finish."""
         if not self.__check_is_milestone():
             return
+        if not self.send_mails:
+            return
         stats = self.stats.queue_stats()
         processed = self.stats.get_processed_counter()
         remaining = (stats['tasks_without_error'] +
