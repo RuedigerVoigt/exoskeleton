@@ -240,7 +240,7 @@ class LabelManager:
             return set()
 
         label_set = userprovided.parameters.convert_to_set(label_set)
-       labels = self.session.query(models.Label).filter(
+        labels = self.session.query(models.Label).filter(
             models.Label.shortName.in_(label_set)
         ).all()
 
