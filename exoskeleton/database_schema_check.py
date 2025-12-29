@@ -29,45 +29,23 @@ class DatabaseSchemaCheck:
     # This ensures they stay in sync with models.py
     TABLES = [table.name for table in models.Base.metadata.sorted_tables]
 
-    # Stored procedures - hardcoded as they're not part of ORM
-    # Note: Includes db_check_* procedures which are used to verify other procedures/functions
-    PROCEDURES = ['add_crawl_delay_SP',
-                  'add_rate_limit_SP',
-                  'add_to_queue_SP',
-                  'block_fqdn_SP',
+    PROCEDURES = ['block_fqdn_SP',
                   'db_check_all_functions_SP',
                   'db_check_all_procedures_SP',
-                  'define_new_job_SP',
                   'delete_all_versions_SP',
                   'delete_from_queue_SP',
-                  'forget_all_errors_SP',
-                  'forget_all_rate_limits_SP',
-                  'forget_error_group_SP',
-                  'forget_specific_error_type_SP',
-                  'forget_specific_rate_limit_SP',
-                  'increment_num_tries_SP',
                   'insert_content_SP',
                   'insert_file_SP',
-                  'job_get_current_url_SP',
-                  'job_mark_as_finished_SP',
-                  'job_update_current_url_SP',
                   'label_define_or_update_SP',
                   'labels_filemaster_by_url_SP',
                   'labels_version_by_id_SP',
-                  'mark_permanent_error_SP',
                   'next_queue_object_SP',
                   'remove_labels_from_uuid_SP',
                   'truncate_blocklist_SP',
-                  'unblock_fqdn_SP',
-                  'update_host_stats_SP']
+                  'unblock_fqdn_SP']
 
-    FUNCTIONS = ['exo_schema_version',
-                 'fqdn_on_blocklist',
-                 'get_filemaster_id',
-                 'num_items_with_permanent_error',
-                 'num_items_with_temporary_errors',
-                 'num_tasks_in_queue_without_error',
-                 'num_tasks_with_active_rate_limit']
+    # Database functions - hardcoded as they're not part of ORM
+    FUNCTIONS = ['exo_schema_version']
 
     @staticmethod
     def _parse_sql_schema_file() -> tuple[set[str], set[str]]:
@@ -184,32 +162,47 @@ class DatabaseSchemaCheck:
 
     def __check_table_existence(self) -> bool:
         """
-        Check if all expected tables exist.
+        Check if all expected tables exist, and create missing ones using ORM.
 
         Tables are dynamically retrieved from SQLAlchemy models (models.py),
         ensuring this check stays in sync with the ORM definitions.
+
+        If tables are missing, they are automatically created using SQLAlchemy's
+        create_all() method, which is idempotent (only creates missing tables).
 
         Note: User might have custom tables, so we only verify expected tables exist,
         not that ONLY expected tables exist.
         """
         result = self.session.execute(text('SHOW TABLES'))
         tables = result.fetchall()
+
         if not tables:
-            msg = 'No tables found in database: Run generator script!'
-            logger.exception(msg)
-            raise err.InvalidDatabaseSchemaError(msg)
+            # No tables at all - create all tables from ORM models
+            logger.warning('No tables found in database. Creating all tables from ORM models...')
+            models.Base.metadata.create_all(self.db_connection.engine)
+            logger.info('Successfully created all tables from ORM models.')
+            return True
 
         tables_found = [item[0] for item in tables]
-        tables_count = 0
-        for table in self.TABLES:
-            if table in tables_found:
-                tables_count += 1
-            else:
-                logger.error('Table %s not found.', table)
+        # Make lowercase version for case-insensitive comparison
+        # (MariaDB/MySQL may return tables in lowercase)
+        tables_found_lower = [t.lower() for t in tables_found]
+        missing_tables = []
 
-        if tables_count != len(self.TABLES):
-            raise err.InvalidDatabaseSchemaError(
-                'Database Schema Incomplete: Missing Tables!')
+        for table in self.TABLES:
+            if table.lower() not in tables_found_lower:
+                missing_tables.append(table)
+                logger.warning('Table %s not found.', table)
+
+        if missing_tables:
+            # Some tables are missing - create them
+            logger.warning(
+                'Missing %d tables: %s. Creating them from ORM models...',
+                len(missing_tables),
+                ', '.join(missing_tables)
+            )
+            models.Base.metadata.create_all(self.db_connection.engine)
+            logger.info('Successfully created missing tables.')
 
         logger.debug('Database schema: found all expected tables.')
         return True

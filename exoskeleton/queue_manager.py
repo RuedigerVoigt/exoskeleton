@@ -7,6 +7,7 @@ Released under the Apache License 2.0
 """
 # standard library:
 from collections import defaultdict  # noqa # pylint: disable=unused-import
+from hashlib import sha256
 import logging
 import time
 from typing import Literal, Optional, Union
@@ -106,16 +107,12 @@ class QueueManager:
             if id_in_file_master:
                 # The URL has been processed in _some_ way.
                 # Check if was the _same_ as now requested.
-                query = """
-                    SELECT id FROM fileVersions
-                    WHERE fileMasterID = :master_id AND actionAppliedID = :action
-                """
-                result = self.session.execute(
-                    text(query),
-                    {"master_id": id_in_file_master, "action": action}
-                )
-                version_id = result.fetchone()
-                if version_id:
+                file_version = self.session.query(models.FileVersion.id).filter(
+                    models.FileVersion.fileMasterID == id_in_file_master,
+                    models.FileVersion.actionAppliedID == action
+                ).first()
+
+                if file_version:
                     logger.info(
                         'Skipping file already processed in the same way.')
                     return None
@@ -134,8 +131,18 @@ class QueueManager:
         uuid_value = uuid.uuid4().hex
 
         # add the new task to the queue
-        self.db_connection.call_procedure('add_to_queue_SP',
-                                        (uuid_value, action, str(url), url.hostname, prettify_html))
+        fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
+
+        new_queue_item = models.Queue(
+            id=uuid_value,
+            action=action,
+            url=str(url),
+            urlHash=url.hash,
+            fqdnHash=fqdn_hash,
+            prettifyHtml=prettify_html
+        )
+        self.session.add(new_queue_item)
+        self.session.commit()
 
         # link labels to version item
         if labels_version:
@@ -151,16 +158,11 @@ class QueueManager:
            but as you can force exoskeleton to repeat tasks on the same
            URL it can be multiple. Returns an empty set if such combination
            is not in the queue."""
-        query = """
-            SELECT id FROM queue
-            WHERE urlHash = SHA2(:url, 256) AND action = :action
-            ORDER BY addedToQueue ASC
-        """
-        result = self.session.execute(
-            text(query),
-            {"url": str(url), "action": action}
-        )
-        queue_uuids = result.fetchall()
+        queue_uuids = self.session.query(models.Queue.id).filter(
+            models.Queue.urlHash == url.hash,
+            models.Queue.action == action
+        ).order_by(models.Queue.addedToQueue.asc()).all()
+
         return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()
 
     def get_filemaster_id_by_url(self,
@@ -169,13 +171,11 @@ class QueueManager:
         "Get the id of the filemaster entry associated with this URL"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        query = """
-            SELECT id FROM fileMaster
-            WHERE urlHash = SHA2(:url, 256)
-        """
-        result = self.session.execute(text(query), {"url": str(url)})
-        id_in_file_master = result.fetchone()
-        return id_in_file_master[0] if id_in_file_master else None
+        file_master = self.session.query(models.FileMaster.id).filter(
+            models.FileMaster.urlHash == url.hash
+        ).first()
+
+        return file_master[0] if file_master else None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # PROCESSING THE QUEUE

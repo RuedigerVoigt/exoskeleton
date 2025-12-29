@@ -11,12 +11,13 @@ from typing import Union
 
 # external dependencies:
 import userprovided
-from sqlalchemy import text
+from sqlalchemy import text, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from exoskeleton import database_connection
 from exoskeleton import exo_url
+from exoskeleton import models
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +49,23 @@ class JobManager:
             start_url = exo_url.ExoUrl(start_url)
         job_name = job_name.strip()
         try:
-            self.db_connection.call_procedure('define_new_job_SP', (job_name, str(start_url)))
+            from hashlib import sha256
+            new_job = models.Job(
+                jobName=job_name,
+                startUrl=str(start_url),
+                startUrlHash=sha256(str(start_url).encode('utf-8')).hexdigest()
+            )
+            self.session.add(new_job)
+            self.session.commit()
             logger.debug('Defined new job.')
         except IntegrityError:
+            self.session.rollback()
             # A job with this name already exists
             # Check if startURL is the same:
-            query = "SELECT startURL FROM jobs WHERE jobName = :job_name"
-            result = self.session.execute(text(query), {"job_name": job_name})
-            response = result.fetchone()
-            existing_start_url = response[0] if response else None
-            if existing_start_url != str(start_url):
+            existing_job = self.session.query(models.Job).filter(
+                models.Job.jobName == job_name
+            ).first()
+            if existing_job and existing_job.startUrl != str(start_url):
                 raise ValueError('A job with the identical name but ' +
                                  '*different* startURL is already defined!')
             logger.warning(
@@ -73,12 +81,15 @@ class JobManager:
             raise ValueError('Current URL must not be empty.')
         if not isinstance(current_url, exo_url.ExoUrl):
             current_url = exo_url.ExoUrl(current_url)
-        # Check if affected rows using execute
-        query = "CALL job_update_current_url_SP(:job_name, :current_url)"
-        result = self.session.execute(text(query),
-                                     {"job_name": job_name, "current_url": str(current_url)})
+
+        result = self.session.query(models.Job).filter(
+            models.Job.jobName == job_name
+        ).update({
+            models.Job.currentUrl: str(current_url)
+        }, synchronize_session=False)
         self.session.commit()
-        if result.rowcount == 0:  # type: ignore[attr-defined]
+
+        if result == 0:
             raise ValueError('A job with this name is not known.')
 
     def get_current_url(self,
@@ -88,16 +99,20 @@ class JobManager:
             Raises ValueError if the job is unknown.
             Raises RuntimeError if the job is already finished."""
 
-        result = self.db_connection.call_procedure('job_get_current_url_SP', (job_name,))
-        job_state = result.fetchone()
+        job = self.session.query(
+            models.Job.finished,
+            func.coalesce(models.Job.currentUrl, models.Job.startUrl).label('url')
+        ).filter(
+            models.Job.jobName == job_name
+        ).first()
 
-        if job_state is None:
+        if job is None:
             raise ValueError('Job is unknown!')
-        if job_state[0] is not None:
+        if job[0] is not None:
             # Field 0 contains the status: finished (not None) or not (None)
             raise RuntimeError(f"Job {job_name} already finished.")
         # Field 1 contains either the current or the start URL
-        return str(job_state[1])
+        return str(job[1])
 
     def mark_as_finished(self,
                          job_name: str) -> None:
@@ -105,10 +120,14 @@ class JobManager:
         if not job_name:
             raise ValueError('Missing job_name')
         job_name = job_name.strip()
-        # Check affected rows
-        query = "CALL job_mark_as_finished_SP(:job_name)"
-        result = self.session.execute(text(query), {"job_name": job_name})
+
+        result = self.session.query(models.Job).filter(
+            models.Job.jobName == job_name
+        ).update({
+            models.Job.finished: func.current_timestamp()
+        }, synchronize_session=False)
         self.session.commit()
-        if result.rowcount == 0:  # type: ignore[attr-defined]
+
+        if result == 0:
             raise ValueError('A job with this name is not known.')
         logger.debug('Marked job %s as finished.', job_name)

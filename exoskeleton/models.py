@@ -102,7 +102,10 @@ class FileMaster(Base):
 
     # Relationships
     versions = relationship("FileVersion", back_populates="file_master", cascade="all, delete-orphan")
-    labels = relationship("LabelToMaster", back_populates="file_master")
+    labels = relationship("LabelToMaster",
+                         back_populates="file_master",
+                         foreign_keys="[LabelToMaster.urlHash]",
+                         primaryjoin="FileMaster.urlHash==LabelToMaster.urlHash")
 
 
 class FileVersion(Base):
@@ -179,7 +182,10 @@ class LabelToMaster(Base):
 
     # Relationships
     label = relationship("Label", back_populates="master_associations")
-    file_master = relationship("FileMaster", back_populates="labels")
+    file_master = relationship("FileMaster",
+                              back_populates="labels",
+                              foreign_keys="[LabelToMaster.urlHash]",
+                              primaryjoin="FileMaster.urlHash==LabelToMaster.urlHash")
 
 
 class LabelToVersion(Base):

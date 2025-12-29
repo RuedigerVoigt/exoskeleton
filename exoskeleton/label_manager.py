@@ -50,11 +50,12 @@ class LabelManager:
         if not self.__shortname_ok(shortname):
             return
         try:
-            query = """
-                INSERT INTO labels (shortName, description)
-                VALUES (:shortname, :description)
-            """
-            self.session.execute(text(query), {"shortname": shortname, "description": description})
+            # Create new Label using ORM
+            new_label = models.Label(
+                shortName=shortname,
+                description=description
+            )
+            self.session.add(new_label)
             self.session.commit()
             logger.debug('Added label to the database.')
         except IntegrityError:
@@ -101,32 +102,33 @@ class LabelManager:
         # Get all label-ids
         id_list = self.get_label_ids(label_set)
 
-        # Check whether some labels are already associated
-        # with the fileMaster entry.
-        query = """
-            SELECT labelID
-            FROM labelToMaster
-            WHERE urlHash = SHA2(:url, 256)
-        """
-        result = self.session.execute(text(query), {"url": str(url)})
-        ids_found = result.fetchall()
-        ids_associated = set()
-        if ids_found:
-            ids_associated = set(ids_found)
+        # Check whether some labels are already associated with the fileMaster entry
+        existing_associations = self.session.query(models.LabelToMaster.labelID).filter(
+            models.LabelToMaster.urlHash == url.hash
+        ).all()
+
+        # Extract the IDs from the result (each row is a tuple with one element)
+        ids_associated = {assoc[0] for assoc in existing_associations} if existing_associations else set()
 
         # ignore all labels already associated:
         remaining_ids = tuple(id_list - ids_associated)
 
         if len(remaining_ids) > 0:
-            # Case: there are new labels
-            # Add those associations
+            # Case: there are new labels - add those associations using ORM
             for label_id in remaining_ids:
-                insert_query = """
-                    INSERT IGNORE INTO labelToMaster (labelID, urlHash)
-                    VALUES (:label_id, SHA2(:url, 256))
-                """
-                self.session.execute(text(insert_query), {"label_id": label_id, "url": str(url)})
-            self.session.commit()
+                new_association = models.LabelToMaster(
+                    labelID=label_id,
+                    urlHash=url.hash
+                )
+                self.session.add(new_association)
+
+            try:
+                self.session.commit()
+            except IntegrityError:
+                # This shouldn't happen since we filter existing associations,
+                # but handle gracefully in case of race conditions
+                self.session.rollback()
+                logger.debug('Some label associations already existed.')
         return None
 
     def assign_labels_to_uuid(self,
@@ -150,27 +152,32 @@ class LabelManager:
         # Get all label-ids
         id_list = self.get_label_ids(label_set)
 
-        # Check if there are already labels assigned with the version
-        query = """
-            SELECT labelID
-            FROM labelToVersion
-            WHERE versionUUID = :uuid
-        """
-        result = self.session.execute(text(query), {"uuid": uuid_string})
-        ids_found = result.fetchall()
-        ids_associated = set(ids_found) if ids_found else set()
+        # Check if there are already labels assigned with the version using ORM
+        existing_associations = self.session.query(models.LabelToVersion.labelID).filter(
+            models.LabelToVersion.versionUUID == uuid_string
+        ).all()
+
+        # Extract the IDs from the result (each row is a tuple with one element)
+        ids_associated = {assoc[0] for assoc in existing_associations} if existing_associations else set()
+
         # ignore all labels already associated:
         remaining_ids = tuple(id_list - ids_associated)
 
         if len(remaining_ids) > 0:
-            # Case: there are new labels
+            # Case: there are new labels - add those associations using ORM
             for label_id in remaining_ids:
-                insert_query = """
-                    INSERT IGNORE INTO labelToVersion (labelID, versionUUID)
-                    VALUES (:label_id, :uuid)
-                """
-                self.session.execute(text(insert_query), {"label_id": label_id, "uuid": uuid_string})
-            self.session.commit()
+                new_association = models.LabelToVersion(
+                    labelID=label_id,
+                    versionUUID=uuid_string
+                )
+                self.session.add(new_association)
+
+            try:
+                self.session.commit()
+            except IntegrityError:
+                # Handle gracefully in case of race conditions
+                self.session.rollback()
+                logger.debug('Some label-to-version associations already existed.')
 
     # #########################################################################
     # QUERY LABELS
@@ -180,12 +187,13 @@ class LabelManager:
                           version_uuid: str) -> str:
         """Get the id of the filemaster entry associated with a specific
            version identified by its UUID."""
-        query = "SELECT get_filemaster_id(:uuid)"
-        result = self.session.execute(text(query), {"uuid": version_uuid})
-        filemaster_id = result.fetchone()
-        if not filemaster_id:
+        file_version = self.session.query(models.FileVersion.fileMasterID).filter(
+            models.FileVersion.id == version_uuid
+        ).first()
+
+        if not file_version or file_version[0] is None:
             raise ValueError("Invalid filemaster ID")
-        return str(filemaster_id[0])
+        return str(file_version[0])
 
     def filemaster_labels_by_url(self,
                                  url: Union[exo_url.ExoUrl, str]) -> set:
@@ -212,12 +220,14 @@ class LabelManager:
            to a specific version of a file AND its filemaster entry."""
         version_labels = self.version_labels_by_uuid(version_uuid)
         filemaster_id = self.get_filemaster_id(version_uuid)
-        query = "SELECT url FROM fileMaster WHERE id = :id"
-        result = self.session.execute(text(query), {"id": filemaster_id})
-        filemaster_url = result.fetchone()
+
+        file_master = self.session.query(models.FileMaster.url).filter(
+            models.FileMaster.id == filemaster_id
+        ).first()
+
         filemaster_labels = set()
-        if filemaster_url:
-            filemaster_labels = self.filemaster_labels_by_url(filemaster_url[0])
+        if file_master:
+            filemaster_labels = self.filemaster_labels_by_url(file_master[0])
         joined_set = version_labels | filemaster_labels
         return joined_set
 
@@ -230,17 +240,11 @@ class LabelManager:
             return set()
 
         label_set = userprovided.parameters.convert_to_set(label_set)
-        # Use SQLAlchemy's bindparam for safe IN clause handling
-        # Convert the label set to a tuple for proper parameter binding
-        label_tuple = tuple(label_set)
-        query = """
-            SELECT id
-            FROM labels
-            WHERE shortName IN :labels
-        """
-        result = self.session.execute(text(query), {"labels": label_tuple})
-        label_id = result.fetchall()
-        return {(id[0]) for id in label_id} if label_id else set()
+       labels = self.session.query(models.Label).filter(
+            models.Label.shortName.in_(label_set)
+        ).all()
+
+        return {label.id for label in labels} if labels else set()
 
     def version_uuids_by_label(self,
                                single_label: str,

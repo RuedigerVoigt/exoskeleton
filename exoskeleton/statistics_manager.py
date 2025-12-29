@@ -10,11 +10,12 @@ from collections import Counter
 import logging
 from typing import Literal, Optional
 
-from sqlalchemy import text
+from sqlalchemy import text, func
 from sqlalchemy.orm import Session
 
 from exoskeleton import database_connection
 from exoskeleton import exo_url
+from exoskeleton import models
 
 logger = logging.getLogger(__name__)
 
@@ -29,31 +30,44 @@ class StatisticsManager:
         self.session: Session = db_connection.get_session()
         self.cnt: Counter = Counter()
 
-    def num_tasks_wo_errors(self) -> Optional[int]:
+    def num_tasks_wo_errors(self) -> int:
         """Number of tasks in the queue, which are *not* marked as causing
            any kind of error."""
-        result = self.session.execute(text("SELECT num_tasks_in_queue_without_error()"))
-        without_error = result.fetchone()
-        return int(without_error[0]) if without_error else None
+        count = self.session.query(models.Queue).filter(
+            models.Queue.causesError.is_(None)
+        ).count()
+        return count if count is not None else 0
 
     def num_tasks_w_permanent_errors(self) -> int:
         "Number of tasks in the queue marked as causing a *permanent* error."
-        result = self.session.execute(text('SELECT num_items_with_permanent_error()'))
-        num_permanent_errors = result.fetchone()
-        return int(num_permanent_errors[0]) if num_permanent_errors else 0
+        count = self.session.query(models.Queue).join(
+            models.ErrorType,
+            models.Queue.causesError == models.ErrorType.id
+        ).filter(
+            models.ErrorType.permanent == True
+        ).count()
+        return count if count is not None else 0
 
     def num_tasks_w_temporary_errors(self) -> int:
         "Number of tasks in the queue marked as causing a *temporary* error."
-        result = self.session.execute(text('SELECT num_items_with_temporary_errors()'))
-        num_temp_errors = result.fetchone()
-        return int(num_temp_errors[0]) if num_temp_errors else 0
+        count = self.session.query(models.Queue).join(
+            models.ErrorType,
+            models.Queue.causesError == models.ErrorType.id
+        ).filter(
+            models.ErrorType.permanent == False
+        ).count()
+        return count if count is not None else 0
 
     def num_tasks_w_rate_limit(self) -> int:
         """Number of tasks in the queue that do not yield a permanent error,
            but are currently affected by a rate limit."""
-        result = self.session.execute(text("SELECT num_tasks_with_active_rate_limit()"))
-        num_rate_limited = result.fetchone()
-        return int(num_rate_limited[0]) if num_rate_limited else 0
+        count = self.session.query(models.Queue).join(
+            models.RateLimit,
+            models.Queue.fqdnHash == models.RateLimit.fqdnHash
+        ).filter(
+            models.RateLimit.noContactUntil > func.now()
+        ).count()
+        return count if count is not None else 0
 
     def queue_stats(self) -> dict:
         """Return a number of statistics about the queue as a dictionary."""
@@ -90,12 +104,31 @@ class StatisticsManager:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
         # pylint: disable=too-many-arguments
-        self.db_connection.call_procedure('update_host_stats_SP',
-                                        (url.hostname,
-                                         successful_requests_increment,
-                                         temporary_problems_increment,
-                                         permanent_errors_increment,
-                                         hit_rate_limit_increment))
+        from hashlib import sha256
+
+        fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
+
+        host_stats = self.session.query(models.StatisticsHost).filter(
+            models.StatisticsHost.fqdnHash == fqdn_hash
+        ).first()
+
+        if host_stats:
+            host_stats.successfulRequests += successful_requests_increment
+            host_stats.temporaryProblems += temporary_problems_increment
+            host_stats.permamentErrors += permanent_errors_increment
+            host_stats.hitRateLimit += hit_rate_limit_increment
+        else:
+            host_stats = models.StatisticsHost(
+                fqdnHash=fqdn_hash,
+                fqdn=url.hostname,
+                successfulRequests=successful_requests_increment,
+                temporaryProblems=temporary_problems_increment,
+                permamentErrors=permanent_errors_increment,
+                hitRateLimit=hit_rate_limit_increment
+            )
+            self.session.add(host_stats)
+
+        self.session.commit()
 
     def log_successful_request(self,
                                url: exo_url.ExoUrl) -> None:
