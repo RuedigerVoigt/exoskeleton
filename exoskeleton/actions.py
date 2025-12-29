@@ -91,12 +91,12 @@ class GetObjectBaseClass:
             else:
                 logger.error('Unhandled return code %s', status_code)
                 self.stats.log_permanent_error(self.url)
-        except TimeoutError:
+        except requests.exceptions.Timeout:
             logger.error('Reached timeout.', exc_info=True)
             self.errorhandling.add_crawl_delay(self.queue_id, 4)
             self.stats.log_temporary_problem(self.url)
 
-        except ConnectionError:
+        except requests.exceptions.ConnectionError:
             logger.error('Connection Error', exc_info=True)
             self.stats.log_temporary_problem(self.url)
             raise
