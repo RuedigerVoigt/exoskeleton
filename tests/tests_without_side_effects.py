@@ -378,27 +378,21 @@ def test_DatabaseSchemaCheck_procedures_list():
     procedures = database_schema_check.DatabaseSchemaCheck.PROCEDURES
     # Should be a list
     assert isinstance(procedures, list)
-    # Should contain all 29 procedures
-    assert len(procedures) == 29
-    # Check for some key procedures
-    assert 'add_to_queue_SP' in procedures
+    # Should contain all 8 procedures (after ORM migration)
+    assert len(procedures) == 8
+    # Check for some key procedures that remain
     assert 'next_queue_object_SP' in procedures
-    # Check that the previously missing procedures are now included
-    assert 'db_check_all_functions_SP' in procedures
-    assert 'db_check_all_procedures_SP' in procedures
+    assert 'insert_file_SP' in procedures
+    assert 'insert_content_SP' in procedures
 
 
 def test_DatabaseSchemaCheck_functions_list():
-    """Test that FUNCTIONS list contains expected database functions."""
+    """Test that FUNCTIONS list is empty after ORM migration."""
     functions = database_schema_check.DatabaseSchemaCheck.FUNCTIONS
     # Should be a list
     assert isinstance(functions, list)
-    # Should contain all 7 functions
-    assert len(functions) == 7
-    # Check for key functions
-    assert 'exo_schema_version' in functions
-    assert 'fqdn_on_blocklist' in functions
-    assert 'get_filemaster_id' in functions
+    # Should be empty - all functions migrated to ORM/Inspector
+    assert len(functions) == 0
 
 
 def test_DatabaseSchemaCheck_parse_sql_schema_file(fs):
@@ -437,7 +431,7 @@ def test_DatabaseSchemaCheck_parse_sql_schema_file(fs):
         contents=''
     )
     fs.create_file(
-        '/fake/Database-Scripts/Generate-Database-Schema-MariaDB.sql',
+        '/fake/Database-Scripts/Create-Stored-Procedures-MariaDB.sql',
         contents=sql_content
     )
 
@@ -485,7 +479,7 @@ def test_DatabaseSchemaCheck_validate_hardcoded_lists_match(fs):
         contents=''
     )
     fs.create_file(
-        '/fake/Database-Scripts/Generate-Database-Schema-MariaDB.sql',
+        '/fake/Database-Scripts/Create-Stored-Procedures-MariaDB.sql',
         contents=sql_content
     )
 
@@ -510,7 +504,7 @@ def test_DatabaseSchemaCheck_validate_hardcoded_lists_mismatch(fs, caplog):
         contents=''
     )
     fs.create_file(
-        '/fake/Database-Scripts/Generate-Database-Schema-MariaDB.sql',
+        '/fake/Database-Scripts/Create-Stored-Procedures-MariaDB.sql',
         contents=sql_content
     )
 
