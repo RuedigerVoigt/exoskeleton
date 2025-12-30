@@ -56,6 +56,7 @@ jobs:
         PORT: ${{ job.services.mariadb.ports[3306] }}
       run: |
         # Tables will be auto-created by SQLAlchemy from models.py
+        # Schema version will be auto-initialized by database_schema_check.py
         mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton_test < 'Database-Scripts/Create-Stored-Procedures-MariaDB.sql'
 
     - name: Make a directory to store downloads

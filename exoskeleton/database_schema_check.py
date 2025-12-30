@@ -154,6 +154,25 @@ class DatabaseSchemaCheck:
 
         self.check_db_schema()
 
+    def __initialize_schema_version(self) -> None:
+        """
+        Initialize the schema version in exoInfo table.
+
+        This is called after creating tables to ensure the schema version
+        is set properly. Uses INSERT ... ON DUPLICATE KEY UPDATE to be idempotent.
+        """
+        try:
+            self.session.execute(text(
+                "INSERT INTO exoInfo (exoKey, exoValue) "
+                "VALUES ('schema', '2.0.0') "
+                "ON DUPLICATE KEY UPDATE exoValue = '2.0.0'"
+            ))
+            self.session.commit()
+            logger.info('Schema version initialized to 2.0.0')
+        except Exception as e:
+            logger.warning('Could not initialize schema version: %s', str(e))
+            self.session.rollback()
+
     def __check_table_existence(self) -> bool:
         """
         Check if all expected tables exist, and create missing ones using ORM.
@@ -176,6 +195,8 @@ class DatabaseSchemaCheck:
             assert self.db_connection.engine is not None, "Database engine not initialized"
             models.Base.metadata.create_all(self.db_connection.engine)
             logger.info('Successfully created all tables from ORM models.')
+            # Initialize schema version after creating tables
+            self.__initialize_schema_version()
             return True
 
         tables_found = [item[0] for item in tables]
@@ -199,6 +220,9 @@ class DatabaseSchemaCheck:
             assert self.db_connection.engine is not None, "Database engine not initialized"
             models.Base.metadata.create_all(self.db_connection.engine)
             logger.info('Successfully created missing tables.')
+            # Initialize schema version if it's missing (exoInfo might be one of the missing tables)
+            if 'exoInfo' in [t.lower() for t in missing_tables]:
+                self.__initialize_schema_version()
 
         logger.debug('Database schema: found all expected tables.')
         return True
