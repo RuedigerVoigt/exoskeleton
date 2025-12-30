@@ -51,11 +51,12 @@ jobs:
           sleep 1
         done
 
-    - name: Fill exoskeleton test database
+    - name: Load stored procedures into test database
       env:
         PORT: ${{ job.services.mariadb.ports[3306] }}
       run: |
-        mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton_test < 'Database-Scripts/Generate-Database-Schema-MariaDB.sql'
+        # Tables will be auto-created by SQLAlchemy from models.py
+        mysql --host='127.0.0.1' -P"$PORT" --user='root' --password='RootPassphrase' exoskeleton_test < 'Database-Scripts/Create-Stored-Procedures-MariaDB.sql'
 
     - name: Make a directory to store downloads
       run: mkdir ./fileDownloads

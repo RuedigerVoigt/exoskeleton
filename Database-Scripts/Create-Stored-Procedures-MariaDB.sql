@@ -1,0 +1,229 @@
+-- ----------------------------------------------------------
+-- EXOSKELETON STORED PROCEDURES FOR MARIADB
+-- for version 3.0.0+ of exoskeleton (Post ORM Migration)
+-- © 2019-2025 Rüdiger Voigt and contributors
+-- APACHE-2 LICENSE
+--
+-- Summary:
+-- This script creates 8 stored procedures
+-- Tables are auto-created by SQLAlchemy from models.py.
+-- Schema validation uses SQLAlchemy Inspector
+--
+--
+-- NOTE: Database name is specified by caller (e.g., mysql dbname < file.sql)
+-- No USE statement needed in that case - procedures are created in the active database
+
+-- ----------------------------------------------------------
+-- QUEUE MANAGEMENT PROCEDURES (1)
+-- ----------------------------------------------------------
+
+-- next_queue_object_SP:
+-- Complex query to select the next queue item to process.
+-- Filters out: permanent errors, rate-limited hosts, delayed items.
+-- Kept as SP for performance - complex joins and subqueries.
+DELIMITER $$
+CREATE PROCEDURE next_queue_object_SP ()
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+
+    SELECT
+    id
+    ,action
+    ,url
+    ,urlHash
+    ,prettifyHtml
+    FROM queue
+    WHERE (
+        causesError IS NULL OR causesError IN (
+            SELECT id FROM errorType WHERE permanent = 0)
+            ) AND (
+        fqdnHash NOT IN (SELECT fqdnHash FROM rateLimits WHERE noContactUntil > NOW())
+        ) AND
+    (delayUntil IS NULL OR delayUntil < NOW()) AND
+    action IN (1, 2, 3, 4)
+    ORDER BY addedToQueue ASC
+    LIMIT 1;
+
+END$$
+DELIMITER ;
+
+-- ----------------------------------------------------------
+-- FILE MANAGEMENT PROCEDURES (3)
+-- ----------------------------------------------------------
+
+-- delete_all_versions_SP:
+-- Delete all versions of a file including labels and the fileMaster entry.
+-- Uses transaction to ensure consistency across multiple tables.
+DELIMITER $$
+CREATE PROCEDURE delete_all_versions_SP (IN fileMasterID_p INT)
+MODIFIES SQL DATA
+BEGIN
+
+DECLARE EXIT HANDLER FOR sqlexception
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+    -- remove all labels attached to versions:
+    DELETE FROM labelToVersion WHERE versionUUID IN (
+        SELECT id FROM fileVersions WHERE fileMasterID = fileMasterID_p
+        );
+    -- now as the CONSTRAINT does not interfere, remove all versions:
+    DELETE FROM fileVersions WHERE fileMasterID = fileMasterID_p;
+
+    -- remove all labels attached to the fileMaster:
+    DELETE FROM labelToMaster WHERE urlHash = (
+        SELECT urlHash FROM fileMaster WHERE id = fileMasterID_p
+    );
+    -- now as there are no versions and the label CONSTRAINT
+    -- does not interfere, remove the entry in FileMaster:
+    DELETE FROM fileMaster WHERE id = fileMasterID_p;
+    COMMIT;
+
+END $$
+DELIMITER ;
+
+-- insert_file_SP:
+-- Save file metadata, create version entry, remove from queue.
+-- Complex transaction with error handling - better in database.
+DELIMITER $$
+CREATE PROCEDURE insert_file_SP (IN url_p TEXT,
+                                 IN url_hash_p CHAR(64),
+                                 IN queueID_p CHAR(32) CHARACTER SET ASCII,
+                                 IN mimeType_p VARCHAR(127),
+                                 IN path_or_bucket_p VARCHAR(2048),
+                                 IN file_name_p VARCHAR(255),
+                                 IN size_p INT UNSIGNED,
+                                 IN hash_method_p VARCHAR(6),
+                                 IN hash_value_p VARCHAR(512),
+                                 IN actionAppliedID_p TINYINT UNSIGNED
+                                 )
+MODIFIES SQL DATA
+BEGIN
+
+DECLARE EXIT HANDLER FOR sqlexception
+    BEGIN
+        ROLLBACK;
+        UPDATE queue SET causesError = 2 WHERE id = queueID_p;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    INSERT IGNORE INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
+
+    SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
+
+    INSERT INTO fileVersions (id, fileMasterID, storageTypeID, mimeType,
+                              pathOrBucket, fileName, size, hashMethod,
+                              hashValue, actionAppliedID) VALUES (queueID_p, @fileMasterID, 2, mimeType_p,
+                              path_or_bucket_p, file_name_p, size_p,
+                              hash_method_p, hash_value_p, actionAppliedID_p);
+
+    DELETE FROM queue WHERE id = queueID_p;
+
+    COMMIT;
+
+END $$
+DELIMITER ;
+
+-- insert_content_SP:
+-- Save page content to database, create version entry, remove from queue.
+-- Complex transaction with error handling - better in database.
+DELIMITER $$
+CREATE PROCEDURE insert_content_SP (IN url_p TEXT,
+                                    IN url_hash_p CHAR(64),
+                                    IN queueID_p CHAR(32) CHARACTER SET ASCII,
+                                    IN mimeType_p VARCHAR(127),
+                                    IN text_p MEDIUMTEXT,
+                                    IN actionAppliedID_p TINYINT UNSIGNED)
+MODIFIES SQL DATA
+BEGIN
+
+DECLARE EXIT HANDLER FOR sqlexception
+    BEGIN
+        ROLLBACK;
+        UPDATE queue SET causesError = 2 WHERE id = queueID_p;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    INSERT IGNORE INTO fileMaster (url, urlHash) VALUES (url_p, url_hash_p);
+    SELECT id FROM fileMaster WHERE urlHash = url_hash_p INTO @fileMasterID;
+
+    INSERT INTO fileVersions (id, fileMasterID, storageTypeID, mimeType, actionAppliedID)
+    VALUES (queueID_p, @fileMasterID, 1, mimeType_p, actionAppliedID_p);
+
+    INSERT INTO fileContent (versionID, pageContent)
+    VALUES (queueID_p, text_p);
+
+    DELETE FROM queue WHERE id = queueID_p;
+
+    COMMIT;
+END $$
+DELIMITER ;
+
+-- ----------------------------------------------------------
+-- LABEL MANAGEMENT PROCEDURES (4)
+-- ----------------------------------------------------------
+
+-- label_define_or_update_SP:
+-- Define a new label or update its description if it exists.
+-- Uses MariaDB-specific UPSERT syntax.
+DELIMITER $$
+CREATE PROCEDURE label_define_or_update_SP (
+    IN short_name_p VARCHAR(63),
+    IN description_p TEXT)
+MODIFIES SQL DATA
+BEGIN
+INSERT INTO labels (shortName, description)
+VALUES (short_name_p, description_p)
+ON DUPLICATE KEY UPDATE description = description_p;
+END $$
+DELIMITER ;
+
+-- remove_labels_from_uuid_SP:
+-- Remove the association between a label and a specific file version.
+DELIMITER $$
+CREATE PROCEDURE remove_labels_from_uuid_SP (
+    IN label_id_p INT UNSIGNED,
+    IN uuid_p CHAR(32) CHARACTER SET ASCII)
+MODIFIES SQL DATA
+BEGIN
+DELETE FROM labelToVersion WHERE labelID = label_id_p and versionUUID = uuid_p;
+END $$
+DELIMITER ;
+
+-- labels_filemaster_by_url_SP:
+-- Get label names attached to a fileMaster entry by URL.
+DELIMITER $$
+CREATE PROCEDURE labels_filemaster_by_url_SP (IN url_p TEXT)
+READS SQL DATA
+BEGIN
+SELECT DISTINCT shortName
+FROM labels
+WHERE ID IN (
+    SELECT labelID FROM labelToMaster WHERE urlHash = SHA2(url_p,256));
+END $$
+DELIMITER ;
+
+-- labels_version_by_id_SP:
+-- Get label names attached to a specific file version.
+-- Does not include labels attached to the filemaster entry.
+DELIMITER $$
+CREATE PROCEDURE labels_version_by_id_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII)
+READS SQL DATA
+BEGIN
+SELECT DISTINCT shortName
+FROM labels WHERE ID IN (
+    SELECT labelID FROM labelToVersion WHERE versionUUID = uuid_p);
+END $$
+DELIMITER ;
+
+-- ----------------------------------------------------------
+-- END OF SCRIPT
+-- ----------------------------------------------------------

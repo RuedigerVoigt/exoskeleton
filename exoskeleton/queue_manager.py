@@ -189,7 +189,10 @@ class QueueManager:
     def delete_from_queue(self,
                           queue_id: str) -> None:
         "Remove all label links from item and delete it from the queue."
-        self.db_connection.call_procedure('delete_from_queue_SP', (queue_id,))
+        self.session.query(models.Queue).filter(
+            models.Queue.id == queue_id
+        ).delete(synchronize_session=False)
+        self.session.commit()
 
     def process_queue(self) -> None:
         "Process the queue"

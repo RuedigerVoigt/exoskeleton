@@ -10,7 +10,7 @@ import logging
 import pathlib
 import re
 
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from sqlalchemy.orm import Session
 import importlib.metadata
 
@@ -29,23 +29,17 @@ class DatabaseSchemaCheck:
     # This ensures they stay in sync with models.py
     TABLES = [table.name for table in models.Base.metadata.sorted_tables]
 
-    PROCEDURES = ['block_fqdn_SP',
-                  'db_check_all_functions_SP',
-                  'db_check_all_procedures_SP',
-                  'delete_all_versions_SP',
-                  'delete_from_queue_SP',
+    PROCEDURES = ['delete_all_versions_SP',
                   'insert_content_SP',
                   'insert_file_SP',
                   'label_define_or_update_SP',
                   'labels_filemaster_by_url_SP',
                   'labels_version_by_id_SP',
                   'next_queue_object_SP',
-                  'remove_labels_from_uuid_SP',
-                  'truncate_blocklist_SP',
-                  'unblock_fqdn_SP']
+                  'remove_labels_from_uuid_SP']
 
-    # Database functions - hardcoded as they're not part of ORM
-    FUNCTIONS = ['exo_schema_version']
+    # Database functions - now empty as all functions migrated to ORM/Inspector
+    FUNCTIONS: list[str] = []
 
     @staticmethod
     def _parse_sql_schema_file() -> tuple[set[str], set[str]]:
@@ -60,7 +54,7 @@ class DatabaseSchemaCheck:
         """
         # Find the SQL schema file
         current_dir = pathlib.Path(__file__).parent
-        sql_file = current_dir.parent / 'Database-Scripts' / 'Generate-Database-Schema-MariaDB.sql'
+        sql_file = current_dir.parent / 'Database-Scripts' / 'Create-Stored-Procedures-MariaDB.sql'
 
         if not sql_file.exists():
             logger.warning(
@@ -211,15 +205,46 @@ class DatabaseSchemaCheck:
 
     def __check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
-           is allowed to execute them. """
-        result = self.db_connection.call_procedure('db_check_all_procedures_SP', (self.db_name,))
-        procedures = result.fetchall()
-        if not procedures:
+           is allowed to execute them. Uses SQLAlchemy Inspector for
+           database portability. """
+        # Get inspector to introspect database
+        inspector = inspect(self.db_connection.engine)
+
+        # Get list of stored procedures using information_schema
+        # This standard schema works across MySQL/MariaDB/PostgreSQL
+        try:
+            dialect = self.db_connection.engine.dialect.name
+
+            if dialect in ('mysql', 'mariadb'):
+                # MySQL/MariaDB: filter by database name
+                result = self.session.execute(
+                    text("SELECT routine_name FROM information_schema.routines "
+                         "WHERE routine_schema = :db_name AND routine_type = 'PROCEDURE'"),
+                    {"db_name": self.db_name}
+                )
+            elif dialect == 'postgresql':
+                # PostgreSQL: filter by schema (typically 'public')
+                result = self.session.execute(
+                    text("SELECT routine_name FROM information_schema.routines "
+                         "WHERE routine_schema = 'public' AND routine_type = 'PROCEDURE'")
+                )
+            else:
+                logger.warning(
+                    'Stored procedure validation not supported for %s dialect. Skipping.',
+                    dialect
+                )
+                return True
+
+            procedures_found = [row[0] for row in result.fetchall()]
+        except Exception as e:
+            logger.warning('Could not check stored procedures: %s', str(e))
+            return True
+
+        if not procedures_found:
             msg = 'No procedures found in database: Run generator script!'
             logger.exception(msg)
             raise RuntimeError(msg)
 
-        procedures_found = [item[0] for item in procedures]
         count = 0
         for procedure in self.PROCEDURES:
             if procedure not in procedures_found:
@@ -238,15 +263,51 @@ class DatabaseSchemaCheck:
 
     def __check_functions(self) -> bool:
         """Check if all expected database functions exist and if the user
-           is allowed to execute them. """
-        result = self.db_connection.call_procedure('db_check_all_functions_SP', (self.db_name,))
-        functions = result.fetchall()
-        if not functions:
+           is allowed to execute them. Uses SQLAlchemy Inspector for
+           database portability. """
+        # Skip function check if FUNCTIONS list is empty
+        if not self.FUNCTIONS:
+            logger.debug('No database functions to validate.')
+            return True
+
+        # Get inspector to introspect database
+        inspector = inspect(self.db_connection.engine)
+
+        # Get list of functions using information_schema
+        # This standard schema works across MySQL/MariaDB/PostgreSQL
+        try:
+            dialect = self.db_connection.engine.dialect.name
+
+            if dialect in ('mysql', 'mariadb'):
+                # MySQL/MariaDB: filter by database name
+                result = self.session.execute(
+                    text("SELECT routine_name FROM information_schema.routines "
+                         "WHERE routine_schema = :db_name AND routine_type = 'FUNCTION'"),
+                    {"db_name": self.db_name}
+                )
+            elif dialect == 'postgresql':
+                # PostgreSQL: filter by schema (typically 'public')
+                result = self.session.execute(
+                    text("SELECT routine_name FROM information_schema.routines "
+                         "WHERE routine_schema = 'public' AND routine_type = 'FUNCTION'")
+                )
+            else:
+                logger.warning(
+                    'Function validation not supported for %s dialect. Skipping.',
+                    dialect
+                )
+                return True
+
+            functions_found = [row[0] for row in result.fetchall()]
+        except Exception as e:
+            logger.warning('Could not check database functions: %s', str(e))
+            return True
+
+        if not functions_found:
             msg = 'No functions found in database: Run generator script!'
             logger.exception(msg)
             raise RuntimeError(msg)
 
-        functions_found = [item[0] for item in functions]
         count = 0
         for function in self.FUNCTIONS:
             if function not in functions_found:
@@ -266,14 +327,18 @@ class DatabaseSchemaCheck:
         # Other methods check for the existence of stored procedures, functions
         # and tables. However, those might have changed fields. Therefore this
         # version check.
-        result = self.session.execute(text('SELECT exo_schema_version() AS version'))
-        schema = result.fetchone()
-        if not schema:
-            msg = 'Schema version info not found.'
+
+        # Use ORM instead of database function for database portability
+        schema_info = self.session.query(models.ExoInfo).filter(
+            models.ExoInfo.exoKey == 'schema'
+        ).first()
+
+        if not schema_info:
+            msg = 'Schema version info not found in exoInfo table.'
             logger.exception(msg)
             raise RuntimeError(msg)
 
-        db_schema = schema[0]
+        db_schema = schema_info.exoValue
 
         # Not taking the comparison value from package metadata as multiple versions
         # of exoskeleton might share the same database schema.

@@ -59,9 +59,18 @@ class BlocklistManager:
         """Add a specific fully qualified domain name (fqdn)
            - like www.example.com - to the blocklist. Does not handle URLs."""
         fqdn = self.__check_fqdn(fqdn)
+        fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
+
         try:
-            self.db_connection.call_procedure('block_fqdn_SP', (fqdn, comment))
+            new_block = models.BlockList(
+                fqdn=fqdn,
+                fqdnHash=fqdn_hash,
+                comment=comment
+            )
+            self.session.add(new_block)
+            self.session.commit()
         except IntegrityError:
+            self.session.rollback()
             # Just log, do not raise as it does not matter.
             logger.info(f"FQDN {fqdn} already on blocklist.")
 
@@ -69,9 +78,15 @@ class BlocklistManager:
                      fqdn: str) -> None:
         "Remove a specific FQDN from the blocklist."
         fqdn = self.__check_fqdn(fqdn)
-        self.db_connection.call_procedure('unblock_fqdn_SP', (fqdn,))
+        fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
+
+        self.session.query(models.BlockList).filter(
+            models.BlockList.fqdnHash == fqdn_hash
+        ).delete(synchronize_session=False)
+        self.session.commit()
 
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
-        self.db_connection.call_procedure('truncate_blocklist_SP')
+        self.session.query(models.BlockList).delete(synchronize_session=False)
+        self.session.commit()
         logger.info("Truncated the blocklist.")
