@@ -213,6 +213,7 @@ class DatabaseSchemaCheck:
         # Get list of stored procedures using information_schema
         # This standard schema works across MySQL/MariaDB/PostgreSQL
         try:
+            assert self.db_connection.engine is not None, "Database engine not initialized"
             dialect = self.db_connection.engine.dialect.name
 
             if dialect in ('mysql', 'mariadb'):
@@ -276,6 +277,7 @@ class DatabaseSchemaCheck:
         # Get list of functions using information_schema
         # This standard schema works across MySQL/MariaDB/PostgreSQL
         try:
+            assert self.db_connection.engine is not None, "Database engine not initialized"
             dialect = self.db_connection.engine.dialect.name
 
             if dialect in ('mysql', 'mariadb'):

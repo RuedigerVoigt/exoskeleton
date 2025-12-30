@@ -41,7 +41,7 @@ import os
 import subprocess
 from unittest.mock import patch
 
-import pymysql
+import pymysql  # type: ignore[import-untyped]
 import pytest
 from dotenv import load_dotenv
 from sqlalchemy import text
@@ -97,22 +97,18 @@ def verify_test_database_state(db_settings: dict) -> None:
         # Create a temporary connection to check database state
         from exoskeleton.database_connection import DatabaseConnection
         temp_db = DatabaseConnection(
-            database=db_settings['database'],
-            username=db_settings['username'],
-            passphrase=db_settings['passphrase'],
-            host=db_settings.get('host', 'localhost'),
-            port=db_settings.get('port', 3306)
+            database_settings=db_settings
         )
 
         # Check if fileMaster has significant data
         stmt = text("SELECT COUNT(*) FROM fileMaster")
-        result = temp_db.session.execute(stmt).scalar()
+        result = temp_db.get_session().execute(stmt).scalar()
 
         # Close the temporary connection
         temp_db.__del__()
 
         # Threshold: warn if more than 100 entries (arbitrary safety margin)
-        if result > 100:
+        if result is not None and result > 100:
             raise RuntimeError(
                 f"\n{'='*70}\n"
                 f"SAFETY CHECK FAILED: Database has {result} entries in fileMaster\n"
@@ -230,7 +226,7 @@ logging.info('Define helper functions')
 def queue_count() -> int:
     "Return the number of items in the queue that are not blocked as errors"
     stats = exo.stats.queue_stats()
-    return stats['tasks_without_error']
+    return int(stats['tasks_without_error'])
 
 
 def label_count() -> int:
@@ -239,7 +235,9 @@ def label_count() -> int:
     session = exo.db.get_session()
     result = session.execute(text('SELECT COUNT(*) FROM exoskeleton.labels;'))
     labelcount = result.fetchone()
-    return int(labelcount[0]) if labelcount else 0
+    if labelcount:
+        return int(labelcount[0])
+    return 0
 
 
 def check_error_codes(expectation: set):
@@ -248,8 +246,8 @@ def check_error_codes(expectation: set):
     result = session.execute(text('SELECT causesError FROM queue ' +
                     'WHERE causesError IS NOT NULL ' +
                     'ORDER BY causesError;'))
-    error_codes = result.fetchall()
-    error_codes = {(c[0]) for c in error_codes}
+    error_code_rows = result.fetchall()
+    error_codes = {(c[0]) for c in error_code_rows}
     if error_codes == expectation:
         logging.info('Error codes match expectation.')
     else:
@@ -277,7 +275,7 @@ def filemaster_labels_by_url(url: str) -> set:
 logging.info('Define counters etc')
 
 # to track changes, track expectations:
-test_counter = Counter()
+test_counter: Counter[str] = Counter()
 
 # Check database state before running tests:
 assert queue_count() == 0, "Database / Queue is not empty at test-start"
@@ -296,7 +294,9 @@ def test_exo_url_generate_sha256_hash(url: str):
     hash_python = exo_url.ExoUrl(url).hash
     session = exo.db.get_session()
     result = session.execute(text('SELECT SHA2(:url, 256);'), {"url": url})
-    hash_db = result.fetchone()[0]
+    row = result.fetchone()
+    assert row is not None
+    hash_db = row[0]
     assert hash_python == hash_db
 
 
@@ -815,7 +815,9 @@ def count_rate_limit() -> int:
     from sqlalchemy import text
     session = exo.db.get_session()
     result = session.execute(text('SELECT COUNT(*) FROM rateLimits;'))
-    count = int((result.fetchone())[0])
+    row = result.fetchone()
+    assert row is not None
+    count = int(row[0])
     return count
 
 
