@@ -7,8 +7,6 @@ Released under the Apache License 2.0
 """
 
 import logging
-import pathlib
-import re
 
 from sqlalchemy import inspect, select, table, column
 from sqlalchemy.orm import Session
@@ -29,110 +27,9 @@ class DatabaseSchemaCheck:
     # This ensures they stay in sync with models.py
     TABLES = [table.name for table in models.Base.metadata.sorted_tables]
 
-    PROCEDURES = ['delete_all_versions_SP']
-
-    # Database functions - now empty as all functions migrated to ORM/Inspector
+    # All stored procedures and functions have been migrated to Python/ORM
+    PROCEDURES: list[str] = []
     FUNCTIONS: list[str] = []
-
-    @staticmethod
-    def _parse_sql_schema_file() -> tuple[set[str], set[str]]:
-        """
-        Parse the SQL schema file to extract procedure and function names.
-
-        This provides validation that hardcoded lists match the actual SQL schema.
-        Returns a tuple of (procedures, functions) as sets.
-
-        Returns:
-            Tuple of (set of procedure names, set of function names)
-        """
-        # Find the SQL schema file
-        current_dir = pathlib.Path(__file__).parent
-        sql_file = current_dir.parent / 'Database-Scripts' / 'Create-Stored-Procedures-MariaDB.sql'
-
-        if not sql_file.exists():
-            logger.warning(
-                'SQL schema file not found at %s. Skipping schema validation.',
-                sql_file
-            )
-            return (set(), set())
-
-        procedures = set()
-        functions = set()
-
-        try:
-            content = sql_file.read_text(encoding='utf-8')
-
-            # Extract procedure names: CREATE PROCEDURE name (
-            proc_pattern = re.compile(r'CREATE\s+PROCEDURE\s+(\w+)\s*\(', re.IGNORECASE)
-            procedures = set(proc_pattern.findall(content))
-
-            # Extract function names: CREATE FUNCTION name (
-            func_pattern = re.compile(r'CREATE\s+FUNCTION\s+(\w+)\s*\(', re.IGNORECASE)
-            functions = set(func_pattern.findall(content))
-
-            logger.debug(
-                'Parsed SQL schema: %d procedures, %d functions',
-                len(procedures), len(functions)
-            )
-
-        except Exception as e:
-            logger.warning(
-                'Failed to parse SQL schema file: %s. Skipping validation.',
-                str(e)
-            )
-
-        return (procedures, functions)
-
-    @classmethod
-    def validate_hardcoded_lists(cls) -> None:
-        """
-        Validate that hardcoded PROCEDURES and FUNCTIONS lists match the SQL schema file.
-
-        This is a development/maintenance helper to ensure the hardcoded lists
-        stay in sync with the actual SQL schema definitions.
-        """
-        sql_procedures, sql_functions = cls._parse_sql_schema_file()
-
-        if not sql_procedures and not sql_functions:
-            logger.debug('No SQL schema file found - skipping validation')
-            return
-
-        code_procedures = set(cls.PROCEDURES)
-        code_functions = set(cls.FUNCTIONS)
-
-        # Check for discrepancies
-        missing_procedures = sql_procedures - code_procedures
-        extra_procedures = code_procedures - sql_procedures
-        missing_functions = sql_functions - code_functions
-        extra_functions = code_functions - sql_functions
-
-        if missing_procedures:
-            logger.warning(
-                'Procedures in SQL schema but missing from hardcoded list: %s',
-                ', '.join(sorted(missing_procedures))
-            )
-
-        if extra_procedures:
-            logger.warning(
-                'Procedures in hardcoded list but not in SQL schema: %s',
-                ', '.join(sorted(extra_procedures))
-            )
-
-        if missing_functions:
-            logger.warning(
-                'Functions in SQL schema but missing from hardcoded list: %s',
-                ', '.join(sorted(missing_functions))
-            )
-
-        if extra_functions:
-            logger.warning(
-                'Functions in hardcoded list but not in SQL schema: %s',
-                ', '.join(sorted(extra_functions))
-            )
-
-        if not any([missing_procedures, extra_procedures,
-                    missing_functions, extra_functions]):
-            logger.debug('Hardcoded lists match SQL schema perfectly')
 
     def __init__(self,
                  db_connection: database_connection.DatabaseConnection
@@ -141,9 +38,6 @@ class DatabaseSchemaCheck:
         self.db_connection = db_connection
         self.session: Session = db_connection.get_session()
         self.db_name: str = db_connection.db_name
-
-        # Validate hardcoded lists against SQL schema (development helper)
-        self.validate_hardcoded_lists()
 
         self.check_db_schema()
 
@@ -222,6 +116,11 @@ class DatabaseSchemaCheck:
         """Check if all expected stored procedures exist and if the user
            is allowed to execute them. Uses SQLAlchemy constructs for
            database portability. """
+        # Skip procedure check if PROCEDURES list is empty
+        if not self.PROCEDURES:
+            logger.debug('No stored procedures to validate - all migrated to Python/ORM.')
+            return True
+
         # Get list of stored procedures using information_schema
         # This standard schema works across MySQL/MariaDB/PostgreSQL
         try:

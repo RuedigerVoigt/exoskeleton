@@ -160,6 +160,66 @@ def insert_content_to_db(db_connection: database_connection.DatabaseConnection,
         raise
 
 
+def delete_all_versions(db_connection: database_connection.DatabaseConnection,
+                       file_master_id: int) -> None:
+    """Delete all versions of a file including labels and the fileMaster entry.
+    Converted from delete_all_versions_SP stored procedure.
+
+    This function handles cascading deletes across multiple tables in the correct order
+    to satisfy foreign key constraints.
+
+    Args:
+        db_connection: Database connection object
+        file_master_id: The ID of the fileMaster entry to delete
+    """
+    session = db_connection.get_session()
+
+    try:
+        # Get the urlHash before we start deleting
+        file_master = session.query(models.FileMaster).filter(
+            models.FileMaster.id == file_master_id
+        ).first()
+
+        if not file_master:
+            # Nothing to delete
+            return
+
+        url_hash = file_master.urlHash
+
+        # Step 1: Get all version UUIDs for this file master
+        version_ids = session.query(models.FileVersion.id).filter(
+            models.FileVersion.fileMasterID == file_master_id
+        ).all()
+        version_uuid_list = [v[0] for v in version_ids]
+
+        # Step 2: Remove all labels attached to versions
+        if version_uuid_list:
+            session.query(models.LabelToVersion).filter(
+                models.LabelToVersion.versionUUID.in_(version_uuid_list)
+            ).delete(synchronize_session=False)
+
+        # Step 3: Remove all file versions
+        session.query(models.FileVersion).filter(
+            models.FileVersion.fileMasterID == file_master_id
+        ).delete(synchronize_session=False)
+
+        # Step 4: Remove all labels attached to the fileMaster
+        session.query(models.LabelToMaster).filter(
+            models.LabelToMaster.urlHash == url_hash
+        ).delete(synchronize_session=False)
+
+        # Step 5: Remove the fileMaster entry
+        session.query(models.FileMaster).filter(
+            models.FileMaster.id == file_master_id
+        ).delete(synchronize_session=False)
+
+        session.commit()
+
+    except SQLAlchemyError:
+        session.rollback()
+        raise
+
+
 class GetObjectBaseClass:
     "Base class to get objects."
     # pylint: disable=too-many-instance-attributes
