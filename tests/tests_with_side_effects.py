@@ -1144,8 +1144,8 @@ def test_no_host_no_port_no_pw():
     with pytest.raises(SQLAlchemyOperationalError):
         no_host_no_port_no_pass = exoskeleton.Exoskeleton(
             project_name='Exoskeleton Validation Test',
-            database_settings={'database': 'exoskeleton',
-                               'username': 'exoskeleton'},
+            database_settings={'database': DB_NAME,
+                               'username': DB_USER},
             filename_prefix='EXO_',
             target_directory='./fileDownloads'
         )
@@ -1154,10 +1154,7 @@ def test_no_host_no_port_no_pw():
 with pytest.raises(ValueError) as excinfo:
     non_existent_browser = exoskeleton.Exoskeleton(
         project_name='Exoskeleton Validation Test',
-        database_settings={'port': DB_PORT,
-                           'database': 'exoskeleton',
-                           'username': 'exoskeleton',
-                           'passphrase': 'exoskeleton'},
+        database_settings=database_settings,
         filename_prefix='EXO_',
         chrome_name='unknown',
         target_directory='./fileDownloads'
@@ -1168,10 +1165,7 @@ assert 'not in path' in str(excinfo.value)
 with pytest.raises(ValueError) as excinfo:
     milestone_non_numeric = exoskeleton.Exoskeleton(
         project_name='Exoskeleton Validation Test',
-        database_settings={'port': DB_PORT,
-                           'database': 'exoskeleton',
-                           'username': 'exoskeleton',
-                           'passphrase': 'exoskeleton'},
+        database_settings=database_settings,
         filename_prefix='EXO_',
         target_directory='./fileDownloads',
         mail_behavior={
@@ -1187,10 +1181,7 @@ assert 'milestone_num must be integer' in str(excinfo.value)
 
 valid_mail = exoskeleton.Exoskeleton(
     project_name='Exoskeleton Validation Test',
-    database_settings={'port': DB_PORT,
-                       'database': 'exoskeleton',
-                       'username': 'exoskeleton',
-                       'passphrase': 'exoskeleton'},
+    database_settings=database_settings,
     filename_prefix='EXO_',
     target_directory='./fileDownloads',
     mail_settings={
@@ -1209,19 +1200,23 @@ valid_mail = exoskeleton.Exoskeleton(
 
 # #############################################################################
 
-logging.info('Test: no browser set, but add task that require one')
+def test_no_browser_pdf_warning():
+    """Test that adding PDF task without browser just adds to queue with warning."""
+    logging.info('Test: no browser set, but add task that require one')
 
-no_browser = exoskeleton.Exoskeleton(
-    project_name='Exoskeleton Validation Test',
-    database_settings={'port': DB_PORT,
-                       'database': 'exoskeleton',
-                       'username': 'exoskeleton',
-                       'passphrase': 'exoskeleton'},
-    filename_prefix='EXO_',
-    target_directory='./fileDownloads'
-)
+    no_browser = exoskeleton.Exoskeleton(
+        project_name='Exoskeleton Validation Test',
+        database_settings=database_settings,
+        filename_prefix='EXO_',
+        target_directory='./fileDownloads'
+    )
 
-no_browser.add_page_to_pdf('https://www.example.com/foo123.html')
+    # This should add the task to queue with a warning (no browser available)
+    uuid = no_browser.add_page_to_pdf('https://www.example.com/foo123.html')
+    assert uuid is not None
+
+    # Clean up the queue entry
+    no_browser.queue.delete_from_queue(uuid)
 
 
 # ############################################
