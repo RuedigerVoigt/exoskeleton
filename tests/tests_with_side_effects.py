@@ -49,6 +49,7 @@ from sqlalchemy import text
 import exoskeleton
 from exoskeleton import exo_url
 from exoskeleton import err
+from exoskeleton import models
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -101,8 +102,7 @@ def verify_test_database_state(db_settings: dict) -> None:
         )
 
         # Check if fileMaster has significant data
-        stmt = text("SELECT COUNT(*) FROM fileMaster")
-        result = temp_db.get_session().execute(stmt).scalar()
+        result = temp_db.get_session().query(models.FileMaster).count()
 
         # Close the temporary connection
         temp_db.__del__()
@@ -231,23 +231,16 @@ def queue_count() -> int:
 
 def label_count() -> int:
     "Check if the number of labels equals the expected number."
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT COUNT(*) FROM labels;'))
-    labelcount = result.fetchone()
-    if labelcount:
-        return int(labelcount[0])
-    return 0
+    return session.query(models.Label).count()
 
 
 def check_error_codes(expectation: set):
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT causesError FROM queue ' +
-                    'WHERE causesError IS NOT NULL ' +
-                    'ORDER BY causesError;'))
-    error_code_rows = result.fetchall()
-    error_codes = {(c[0]) for c in error_code_rows}
+    error_code_rows = session.query(models.Queue.causesError).filter(
+        models.Queue.causesError.isnot(None)
+    ).order_by(models.Queue.causesError).all()
+    error_codes = {c[0] for c in error_code_rows}
     if error_codes == expectation:
         logging.info('Error codes match expectation.')
     else:
@@ -261,15 +254,8 @@ def filemaster_labels_by_url(url: str) -> set:
         filemaster entry via its URL instead of the id.
         The reason for this: The association with the URL predates
         the filemaster entry / the id."""
-    # TO DO: clearer description!
-    from sqlalchemy import text
-    session = exo.db.get_session()
-    result = session.execute(text('SELECT DISTINCT shortName ' +
-                    'FROM labels WHERE ID IN (' +
-                    'SELECT labelID FROM labelToMaster ' +
-                    'WHERE urlHash = SHA2(:url,256));'), {"url": url})
-    labels = result.fetchall()
-    return {(label[0]) for label in labels} if labels else set()  # type: ignore[index]
+    # Use existing method from label_manager
+    return exo.labels.filemaster_labels_by_url(url)
 
 
 logging.info('Define counters etc')
@@ -290,7 +276,6 @@ assert label_count() == 0, "Database / Table labels is not empty at test-start"
     ('https://github.com/RuedigerVoigt/exoskeleton')
 ])
 def test_exo_url_generate_sha256_hash(url: str):
-    from sqlalchemy import text
     hash_python = exo_url.ExoUrl(url).hash
     session = exo.db.get_session()
     result = session.execute(text('SELECT SHA2(:url, 256);'), {"url": url})
@@ -442,7 +427,6 @@ def test_add_same_task_with_different_labels():
 
 
 def get_filemaster_id():
-    from sqlalchemy import text
     # Add a task to the queue
     test_url = 'https://www.example.com/get-fm-id.html'
     test_uuid = exo.add_page_to_pdf(test_url)
@@ -450,8 +434,11 @@ def get_filemaster_id():
     fm_id = exo.labels.get_filemaster_id(test_uuid)
     # Get the URL via the id
     session = exo.db.get_session()
-    result = session.execute(text("SELECT url FROM fileMaster WHERE id = :fm_id;"), {"fm_id": fm_id})
-    url_in_db = result.fetchone()[0]
+    file_master = session.query(models.FileMaster).filter(
+        models.FileMaster.id == fm_id
+    ).first()
+    assert file_master is not None
+    url_in_db = file_master.url
     # Compare
     assert test_url == url_in_db
     # clean up
@@ -707,10 +694,10 @@ def test_remove_from_blocklist():
     test_counter['num_expected_queue_items'] = 0
     assert queue_count() == test_counter['num_expected_queue_items']
 
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT COUNT(*) FROM queue WHERE causesError IS NOT NULL;'))
-    permanent_errors = int(result.fetchone()[0])
+    permanent_errors = session.query(models.Queue).filter(
+        models.Queue.causesError.isnot(None)
+    ).count()
 
     assert permanent_errors == 0
 
@@ -736,12 +723,11 @@ def test_exceed_retries():
     test_counter['num_expected_queue_items'] += 6
     # Start processing:
     exo.process_queue()
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT causesError, numTries FROM queue WHERE id = :uuid;'),
-                    {"uuid": uuid_code_500})
-    error_description = result.fetchone()
-    assert error_description == (3, 6), f"Wrong error for exceeded retries: {error_description}"
+    queue_item = session.query(models.Queue.causesError, models.Queue.numTries).filter(
+        models.Queue.id == uuid_code_500
+    ).first()
+    assert queue_item == (3, 6), f"Wrong error for exceeded retries: {queue_item}"
 
 
 def test_forget_errors():
@@ -759,7 +745,6 @@ def test_forget_errors():
     exo.errorhandling.forget_all_errors()
     check_error_codes(set())
     # Truncate the queue
-    from sqlalchemy import text
     session = exo.db.get_session()
     session.execute(text('TRUNCATE TABLE queue;'))
     session.commit()
@@ -792,16 +777,18 @@ def test_handle_redirects():
         "https://www.ruediger-voigt.eu/redirect-302.html")
     exo.process_queue()
 
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT pageContent FROM fileContent WHERE versionID = :vid;'),
-                    {"vid": redirect301})
-    filecontent_301 = (result.fetchone())[0]
-    assert filecontent_301 == 'testfile1', 'Redirect 301 did not work.'
-    result = session.execute(text('SELECT pageContent FROM fileContent WHERE versionID = :vid;'),
-                    {"vid": redirect302})
-    filecontent_302 = (result.fetchone())[0]
-    assert filecontent_302 == 'testfile2', 'Redirect 302 did not work.'
+    file_content_301 = session.query(models.FileContent).filter(
+        models.FileContent.versionID == redirect301
+    ).first()
+    assert file_content_301 is not None
+    assert file_content_301.pageContent == 'testfile1', 'Redirect 301 did not work.'
+
+    file_content_302 = session.query(models.FileContent).filter(
+        models.FileContent.versionID == redirect302
+    ).first()
+    assert file_content_302 is not None
+    assert file_content_302.pageContent == 'testfile2', 'Redirect 302 did not work.'
 
 
 # #############################################################################
@@ -812,13 +799,8 @@ logging.info('Test 6: Rate Limit')
 
 
 def count_rate_limit() -> int:
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT COUNT(*) FROM rateLimits;'))
-    row = result.fetchone()
-    assert row is not None
-    count = int(row[0])
-    return count
+    return session.query(models.RateLimit).count()
 
 
 def test_hit_a_rate_limit():
@@ -838,7 +820,6 @@ def test_hit_a_rate_limit():
     assert count_rate_limit() == 0, 'Did not forget rate limits'
     # Check that a rate limited FQDN does not show up as next item.
     exo.errorhandling.add_rate_limit('www.ruediger-voigt.eu')
-    from sqlalchemy import text
     session = exo.db.get_session()
     session.execute(text('TRUNCATE TABLE queue;'))
     session.commit()
@@ -1036,10 +1017,8 @@ def test_safety_validate_test_database_rejects_invalid_names():
 def test_safety_verify_empty_database():
     """Test Layer 3: Database state verification accepts empty database."""
     # Get current count in fileMaster
-    from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text("SELECT COUNT(*) FROM fileMaster"))
-    current_count = result.scalar()
+    current_count = session.query(models.FileMaster).count()
 
     # As long as the count is <= 100, verify_test_database_state should pass
     if current_count <= 100:
@@ -1051,14 +1030,11 @@ def test_safety_verify_empty_database():
 
 def test_safety_verify_database_rejects_populated():
     """Test Layer 3: Database state verification rejects overpopulated database."""
-    from sqlalchemy import text
-
     # Insert dummy entries to exceed threshold
     session = exo.db.get_session()
 
     # Get current count
-    result = session.execute(text("SELECT COUNT(*) FROM fileMaster"))
-    current_count = result.scalar()
+    current_count = session.query(models.FileMaster).count()
 
     # Only run this test if we have few enough entries to safely add more
     if current_count < 10:
@@ -1066,11 +1042,13 @@ def test_safety_verify_database_rejects_populated():
         for i in range(105):
             test_url = f'https://www.example.com/safety_test_{i}.html'
             try:
-                session.execute(text(
-                    "INSERT INTO fileMaster (url, urlHash) "
-                    "VALUES (:url, SHA2(:url, 256)) "
-                    "ON DUPLICATE KEY UPDATE url=url"
-                ), {"url": test_url})
+                url_obj = exo_url.ExoUrl(test_url)
+                # Use merge for upsert behavior (insert or ignore if exists)
+                file_master = models.FileMaster(
+                    url=test_url,
+                    urlHash=url_obj.hash
+                )
+                session.merge(file_master)
             except Exception:
                 pass  # Ignore duplicates
 
@@ -1083,9 +1061,9 @@ def test_safety_verify_database_rejects_populated():
         assert 'entries in fileMaster' in str(excinfo.value)
 
         # Clean up: delete the test entries
-        session.execute(text(
-            "DELETE FROM fileMaster WHERE url LIKE 'https://www.example.com/safety_test_%'"
-        ))
+        session.query(models.FileMaster).filter(
+            models.FileMaster.url.like('https://www.example.com/safety_test_%')
+        ).delete(synchronize_session=False)
         session.commit()
 
 
