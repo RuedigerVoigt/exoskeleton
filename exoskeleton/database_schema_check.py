@@ -32,11 +32,7 @@ class DatabaseSchemaCheck:
     PROCEDURES = ['delete_all_versions_SP',
                   'insert_content_SP',
                   'insert_file_SP',
-                  'label_define_or_update_SP',
-                  'labels_filemaster_by_url_SP',
-                  'labels_version_by_id_SP',
-                  'next_queue_object_SP',
-                  'remove_labels_from_uuid_SP']
+                  'next_queue_object_SP']
 
     # Database functions - now empty as all functions migrated to ORM/Inspector
     FUNCTIONS: list[str] = []

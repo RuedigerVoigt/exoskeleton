@@ -69,8 +69,24 @@ class LabelManager:
             Use __define_new_label if an update has to be avoided. """
         if not self.__shortname_ok(shortname):
             return
-        self.db_connection.call_procedure('label_define_or_update_SP',
-                                        (shortname, description))
+
+        # Query for existing label by shortName
+        existing_label = self.session.query(models.Label).filter(
+            models.Label.shortName == shortname
+        ).first()
+
+        if existing_label:
+            # Update existing label's description
+            existing_label.description = description
+        else:
+            # Create new label
+            new_label = models.Label(
+                shortName=shortname,
+                description=description
+            )
+            self.session.add(new_label)
+
+        self.session.commit()
 
     # #########################################################################
     # ASSIGNING LABELS
@@ -200,18 +216,30 @@ class LabelManager:
            filemaster entry using the URL associated."""
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        result = self.db_connection.call_procedure('labels_filemaster_by_url_SP', (str(url),))
-        labels = result.fetchall()
-        return {(label[0]) for label in labels} if labels else set()
+
+        labels = self.session.query(models.Label.shortName).join(
+            models.LabelToMaster,
+            models.Label.id == models.LabelToMaster.labelID
+        ).filter(
+            models.LabelToMaster.urlHash == url.hash
+        ).distinct().all()
+
+        return {label[0] for label in labels} if labels else set()
 
     def version_labels_by_uuid(self,
                                version_uuid: str) -> set:
         """Get a list of label names (not id numbers!) attached to a specific
            version of a file. Does not include labels attached to the
            filemaster entry."""
-        result = self.db_connection.call_procedure('labels_version_by_id_SP', (version_uuid,))
-        labels = result.fetchall()
-        return {(label[0]) for label in labels} if labels else set()
+
+        labels = self.session.query(models.Label.shortName).join(
+            models.LabelToVersion,
+            models.Label.id == models.LabelToVersion.labelID
+        ).filter(
+            models.LabelToVersion.versionUUID == version_uuid
+        ).distinct().all()
+
+        return {label[0] for label in labels} if labels else set()
 
     def all_labels_by_uuid(self,
                            version_uuid: str) -> set:
@@ -295,4 +323,9 @@ class LabelManager:
         id_list = self.get_label_ids(labels_to_remove)
 
         for label_id in id_list:
-            self.db_connection.call_procedure('remove_labels_from_uuid_SP', (label_id, uuid))
+            self.session.query(models.LabelToVersion).filter(
+                models.LabelToVersion.labelID == label_id,
+                models.LabelToVersion.versionUUID == uuid
+            ).delete()
+
+        self.session.commit()

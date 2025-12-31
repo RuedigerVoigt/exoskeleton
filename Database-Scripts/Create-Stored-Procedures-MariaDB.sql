@@ -5,7 +5,7 @@
 -- APACHE-2 LICENSE
 --
 -- Summary:
--- This script creates 8 stored procedures
+-- This script creates 4 stored procedures
 -- Tables are auto-created by SQLAlchemy from models.py.
 -- Schema validation uses SQLAlchemy Inspector
 --
@@ -164,63 +164,6 @@ DECLARE EXIT HANDLER FOR sqlexception
     DELETE FROM queue WHERE id = queueID_p;
 
     COMMIT;
-END $$
-DELIMITER ;
-
--- ----------------------------------------------------------
--- LABEL MANAGEMENT PROCEDURES (4)
--- ----------------------------------------------------------
-
--- label_define_or_update_SP:
--- Define a new label or update its description if it exists.
--- Uses MariaDB-specific UPSERT syntax.
-DELIMITER $$
-CREATE PROCEDURE label_define_or_update_SP (
-    IN short_name_p VARCHAR(63),
-    IN description_p TEXT)
-MODIFIES SQL DATA
-BEGIN
-INSERT INTO labels (shortName, description)
-VALUES (short_name_p, description_p)
-ON DUPLICATE KEY UPDATE description = description_p;
-END $$
-DELIMITER ;
-
--- remove_labels_from_uuid_SP:
--- Remove the association between a label and a specific file version.
-DELIMITER $$
-CREATE PROCEDURE remove_labels_from_uuid_SP (
-    IN label_id_p INT UNSIGNED,
-    IN uuid_p CHAR(32) CHARACTER SET ASCII)
-MODIFIES SQL DATA
-BEGIN
-DELETE FROM labelToVersion WHERE labelID = label_id_p and versionUUID = uuid_p;
-END $$
-DELIMITER ;
-
--- labels_filemaster_by_url_SP:
--- Get label names attached to a fileMaster entry by URL.
-DELIMITER $$
-CREATE PROCEDURE labels_filemaster_by_url_SP (IN url_p TEXT)
-READS SQL DATA
-BEGIN
-SELECT DISTINCT shortName
-FROM labels
-WHERE ID IN (
-    SELECT labelID FROM labelToMaster WHERE urlHash = SHA2(url_p,256));
-END $$
-DELIMITER ;
-
--- labels_version_by_id_SP:
--- Get label names attached to a specific file version.
--- Does not include labels attached to the filemaster entry.
-DELIMITER $$
-CREATE PROCEDURE labels_version_by_id_SP (IN uuid_p CHAR(32) CHARACTER SET ASCII)
-READS SQL DATA
-BEGIN
-SELECT DISTINCT shortName
-FROM labels WHERE ID IN (
-    SELECT labelID FROM labelToVersion WHERE versionUUID = uuid_p);
 END $$
 DELIMITER ;
 
