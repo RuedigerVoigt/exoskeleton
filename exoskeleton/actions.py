@@ -95,6 +95,71 @@ def insert_file_to_db(db_connection: database_connection.DatabaseConnection,
         raise
 
 
+def insert_content_to_db(db_connection: database_connection.DatabaseConnection,
+                         url: str,
+                         url_hash: str,
+                         queue_id: str,
+                         mime_type: str,
+                         page_content: str,
+                         action_applied_id: int) -> None:
+    """Insert page content into database using ORM.
+    Converted from insert_content_SP stored procedure.
+
+    This function handles the transaction and error handling that was
+    previously in the stored procedure."""
+    session = db_connection.get_session()
+
+    try:
+        # INSERT IGNORE into fileMaster - use merge or check existence
+        existing_master = session.query(models.FileMaster).filter(
+            models.FileMaster.urlHash == url_hash
+        ).first()
+
+        if not existing_master:
+            new_master = models.FileMaster(url=url, urlHash=url_hash)
+            session.add(new_master)
+            session.flush()  # Get the ID
+            file_master_id = new_master.id
+        else:
+            file_master_id = existing_master.id
+
+        # INSERT into fileVersions with storageTypeID = 1 (database storage)
+        new_version = models.FileVersion(
+            id=queue_id,
+            fileMasterID=file_master_id,
+            storageTypeID=1,
+            mimeType=mime_type,
+            actionAppliedID=action_applied_id
+        )
+        session.add(new_version)
+
+        # INSERT into fileContent
+        new_content = models.FileContent(
+            versionID=queue_id,
+            pageContent=page_content
+        )
+        session.add(new_content)
+
+        # DELETE from queue
+        session.query(models.Queue).filter(
+            models.Queue.id == queue_id
+        ).delete(synchronize_session=False)
+
+        session.commit()
+
+    except SQLAlchemyError:
+        session.rollback()
+        # Update queue to mark error (causesError = 2)
+        try:
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).update({models.Queue.causesError: 2}, synchronize_session=False)
+            session.commit()
+        except SQLAlchemyError:
+            session.rollback()
+        raise
+
+
 class GetObjectBaseClass:
     "Base class to get objects."
     # pylint: disable=too-many-instance-attributes
@@ -323,11 +388,14 @@ class GetContent(GetObjectBaseClass):
             page_content = helpers.strip_code(page_content)
 
         try:
-            # Stored procedure saves the content, transfers the
-            # labels from the queue, and removes the queue item:
-            self.db_connection.call_procedure('insert_content_SP',
-                                            (str(self.url), self.url.hash, self.queue_id,
-                                             self.mime_type, page_content, 2))
+            insert_content_to_db(
+                self.db_connection,
+                str(self.url),
+                self.url.hash,
+                self.queue_id,
+                self.mime_type,
+                page_content,
+                2)
         except DatabaseError:
             logger.error(
                 'Transaction failed: Can not save page code of queue item %s!',

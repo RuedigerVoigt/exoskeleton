@@ -29,8 +29,7 @@ class DatabaseSchemaCheck:
     # This ensures they stay in sync with models.py
     TABLES = [table.name for table in models.Base.metadata.sorted_tables]
 
-    PROCEDURES = ['delete_all_versions_SP',
-                  'insert_content_SP']
+    PROCEDURES = ['delete_all_versions_SP']
 
     # Database functions - now empty as all functions migrated to ORM/Inspector
     FUNCTIONS: list[str] = []
