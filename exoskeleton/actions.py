@@ -13,18 +13,86 @@ from typing import Final, Literal
 import requests
 import urllib3
 import userprovided
-from sqlalchemy.exc import DatabaseError
+from sqlalchemy.exc import DatabaseError, SQLAlchemyError
 
 from exoskeleton import database_connection
 from exoskeleton import error_manager
 from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
+from exoskeleton import models
 from exoskeleton import remote_control_chrome
 from exoskeleton import statistics_manager
 from exoskeleton import time_manager
 
 logger = logging.getLogger(__name__)
+
+
+def insert_file_to_db(db_connection: database_connection.DatabaseConnection,
+                     url: str,
+                     url_hash: str,
+                     queue_id: str,
+                     mime_type: str,
+                     path_or_bucket: str,
+                     file_name: str,
+                     size: int,
+                     hash_method: str,
+                     hash_value: str,
+                     action_applied_id: int) -> None:
+    """Insert file metadata into database using ORM.
+    Converted from insert_file_SP stored procedure.
+
+    This function handles the transaction and error handling that was
+    previously in the stored procedure."""
+    session = db_connection.get_session()
+
+    try:
+        # INSERT IGNORE into fileMaster - use merge or check existence
+        existing_master = session.query(models.FileMaster).filter(
+            models.FileMaster.urlHash == url_hash
+        ).first()
+
+        if not existing_master:
+            new_master = models.FileMaster(url=url, urlHash=url_hash)
+            session.add(new_master)
+            session.flush()  # Get the ID
+            file_master_id = new_master.id
+        else:
+            file_master_id = existing_master.id
+
+        # INSERT into fileVersions with storageTypeID = 2 (disk storage)
+        new_version = models.FileVersion(
+            id=queue_id,
+            fileMasterID=file_master_id,
+            storageTypeID=2,
+            mimeType=mime_type,
+            pathOrBucket=path_or_bucket,
+            fileName=file_name,
+            size=size,
+            hashMethod=hash_method,
+            hashValue=hash_value,
+            actionAppliedID=action_applied_id
+        )
+        session.add(new_version)
+
+        # DELETE from queue
+        session.query(models.Queue).filter(
+            models.Queue.id == queue_id
+        ).delete(synchronize_session=False)
+
+        session.commit()
+
+    except SQLAlchemyError:
+        session.rollback()
+        # Update queue to mark error (causesError = 2)
+        try:
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).update({models.Queue.causesError: 2}, synchronize_session=False)
+            session.commit()
+        except SQLAlchemyError:
+            session.rollback()
+        raise
 
 
 class GetObjectBaseClass:
@@ -125,6 +193,72 @@ class GetObjectBaseClass:
         "Write the result to the database"
         raise NotImplementedError('Thou shalt use a derived class')
 
+    def _insert_file_to_db(self,
+                          url: str,
+                          url_hash: str,
+                          queue_id: str,
+                          mime_type: str,
+                          path_or_bucket: str,
+                          file_name: str,
+                          size: int,
+                          hash_method: str,
+                          hash_value: str,
+                          action_applied_id: int) -> None:
+        """Insert file metadata into database using ORM.
+        Converted from insert_file_SP stored procedure.
+
+        This method handles the transaction and error handling that was
+        previously in the stored procedure."""
+        session = self.db_connection.get_session()
+
+        try:
+            # INSERT IGNORE into fileMaster - use merge or check existence
+            existing_master = session.query(models.FileMaster).filter(
+                models.FileMaster.urlHash == url_hash
+            ).first()
+
+            if not existing_master:
+                new_master = models.FileMaster(url=url, urlHash=url_hash)
+                session.add(new_master)
+                session.flush()  # Get the ID
+                file_master_id = new_master.id
+            else:
+                file_master_id = existing_master.id
+
+            # INSERT into fileVersions with storageTypeID = 2 (disk storage)
+            new_version = models.FileVersion(
+                id=queue_id,
+                fileMasterID=file_master_id,
+                storageTypeID=2,
+                mimeType=mime_type,
+                pathOrBucket=path_or_bucket,
+                fileName=file_name,
+                size=size,
+                hashMethod=hash_method,
+                hashValue=hash_value,
+                actionAppliedID=action_applied_id
+            )
+            session.add(new_version)
+
+            # DELETE from queue
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).delete(synchronize_session=False)
+
+            session.commit()
+
+        except SQLAlchemyError:
+            session.rollback()
+            # Update queue to mark error (causesError = 2)
+            try:
+                session.query(models.Queue).filter(
+                    models.Queue.id == queue_id
+                ).update({models.Queue.causesError: 2}, synchronize_session=False)
+                session.commit()
+            except SQLAlchemyError:
+                session.rollback()
+            raise
+
 
 class GetFile(GetObjectBaseClass):
     "Download a file"
@@ -148,15 +282,18 @@ class GetFile(GetObjectBaseClass):
         hash_value = self.file.get_file_hash(file_path)
 
         try:
-            self.db_connection.call_procedure('insert_file_SP',
-                                            (str(self.url), self.url.hash,
-                                             self.queue_id,
-                                             self.mime_type,
-                                             str(self.file.target_dir),
-                                             new_filename,
-                                             self.file.get_file_size(file_path),
-                                             self.file.HASH_METHOD,
-                                             hash_value, 1))
+            insert_file_to_db(
+                self.db_connection,
+                str(self.url),
+                self.url.hash,
+                self.queue_id,
+                self.mime_type,
+                str(self.file.target_dir),
+                new_filename,
+                self.file.get_file_size(file_path),
+                self.file.HASH_METHOD,
+                hash_value,
+                1)
         except DatabaseError:
             logger.error(
                 'Did not add already downloaded file %s to the database!',
@@ -235,12 +372,18 @@ class GetPDF():
     def store_result(self) -> None:
         "Store the PDF info in the database"
         try:
-            self.db_connection.call_procedure(
-                'insert_file_SP',
-                (str(self.url), self.url.hash, self.queue_id, 'application/pdf',
-                 str(self.file.target_dir), self.filename,
-                 self.file.get_file_size(self.path),
-                 self.file.HASH_METHOD, self.file.get_file_hash(self.path), 3))
+            insert_file_to_db(
+                self.db_connection,
+                str(self.url),
+                self.url.hash,
+                self.queue_id,
+                'application/pdf',
+                str(self.file.target_dir),
+                self.filename,
+                self.file.get_file_size(self.path),
+                self.file.HASH_METHOD,
+                self.file.get_file_hash(self.path),
+                3)
         except DatabaseError:
             logger.error(
                 'Transaction failed: Could not add file %s to the database!',

@@ -30,8 +30,7 @@ class DatabaseSchemaCheck:
     TABLES = [table.name for table in models.Base.metadata.sorted_tables]
 
     PROCEDURES = ['delete_all_versions_SP',
-                  'insert_content_SP',
-                  'insert_file_SP']
+                  'insert_content_SP']
 
     # Database functions - now empty as all functions migrated to ORM/Inspector
     FUNCTIONS: list[str] = []
