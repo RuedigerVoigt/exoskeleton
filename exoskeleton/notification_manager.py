@@ -5,7 +5,6 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 (c) 2019-2025 Rüdiger Voigt and contributors:
 Released under the Apache License 2.0
 """
-from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 from typing import Optional
 

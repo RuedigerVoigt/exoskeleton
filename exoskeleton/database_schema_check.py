@@ -72,6 +72,7 @@ class DatabaseSchemaCheck:
         not that ONLY expected tables exist.
         """
         # Use SQLAlchemy Inspector to get table names (database-agnostic)
+        assert self.db_connection.engine is not None, "Database engine not initialized"
         inspector = inspect(self.db_connection.engine)
         tables_found = inspector.get_table_names()
 

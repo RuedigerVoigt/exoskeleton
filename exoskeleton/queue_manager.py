@@ -6,7 +6,6 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 # standard library:
-from collections import defaultdict  # noqa # pylint: disable=unused-import
 from hashlib import sha256
 import logging
 import time
@@ -207,9 +206,9 @@ class QueueManager:
             and_(
                 or_(
                     models.Queue.causesError.is_(None),
-                    models.Queue.causesError.in_(temp_error_ids)
+                    models.Queue.causesError.in_(temp_error_ids)  # type: ignore[arg-type]
                 ),
-                ~models.Queue.fqdnHash.in_(rate_limited_hosts),
+                ~models.Queue.fqdnHash.in_(rate_limited_hosts),  # type: ignore[arg-type]
                 or_(
                     models.Queue.delayUntil.is_(None),
                     models.Queue.delayUntil < func.now()

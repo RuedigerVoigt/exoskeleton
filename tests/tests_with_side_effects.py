@@ -41,7 +41,6 @@ import os
 import subprocess
 from unittest.mock import patch
 
-import pymysql  # type: ignore[import-untyped]
 import pytest
 from dotenv import load_dotenv
 from sqlalchemy import text

@@ -13,8 +13,6 @@ Released under the Apache License 2.0
 
 # python standard library:
 from collections import Counter
-# noinspection PyUnresolvedReferences
-from collections import defaultdict  # noqa # pylint: disable=unused-import
 import logging
 from typing import Union, Optional
 

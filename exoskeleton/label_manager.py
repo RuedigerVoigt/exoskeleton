@@ -77,7 +77,7 @@ class LabelManager:
 
         if existing_label:
             # Update existing label's description
-            existing_label.description = description
+            existing_label.description = description  # type: ignore[assignment]
         else:
             # Create new label
             new_label = models.Label(
