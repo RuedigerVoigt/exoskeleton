@@ -53,7 +53,7 @@ jobs:
 
     # All stored procedures migrated to Python/ORM - no SQL file to load
     # Tables will be auto-created by SQLAlchemy from models.py
-    # Schema version will be auto-initialized by database_schema_check.py
+    # Schema version and reference data will be auto-initialized by database_schema_check.py
 
     - name: Make a directory to store downloads
       run: mkdir ./fileDownloads
