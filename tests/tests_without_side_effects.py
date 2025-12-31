@@ -378,10 +378,10 @@ def test_DatabaseSchemaCheck_procedures_list():
     procedures = database_schema_check.DatabaseSchemaCheck.PROCEDURES
     # Should be a list
     assert isinstance(procedures, list)
-    # Should contain all 8 procedures (after ORM migration)
-    assert len(procedures) == 8
-    # Check for some key procedures that remain
-    assert 'next_queue_object_SP' in procedures
+    # Should contain 3 procedures (after ORM migration - most migrated to Python/ORM)
+    assert len(procedures) == 3
+    # Check for the remaining procedures
+    assert 'delete_all_versions_SP' in procedures
     assert 'insert_file_SP' in procedures
     assert 'insert_content_SP' in procedures
 

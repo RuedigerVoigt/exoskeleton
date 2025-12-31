@@ -31,8 +31,7 @@ class DatabaseSchemaCheck:
 
     PROCEDURES = ['delete_all_versions_SP',
                   'insert_content_SP',
-                  'insert_file_SP',
-                  'next_queue_object_SP']
+                  'insert_file_SP']
 
     # Database functions - now empty as all functions migrated to ORM/Inspector
     FUNCTIONS: list[str] = []

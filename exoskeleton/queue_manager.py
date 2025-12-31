@@ -15,6 +15,7 @@ import uuid
 
 
 # external dependencies:
+from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import userprovided
@@ -183,8 +184,41 @@ class QueueManager:
 
     def get_next_task(self) -> Optional[str]:
         "Get the next suitable task"
-        result = self.db_connection.call_procedure('next_queue_object_SP')
-        return result.fetchone()  # type: ignore[no-any-return, return-value]
+        # Converted from next_queue_object_SP stored procedure
+
+        # Subquery for temporary errors (permanent = 0)
+        temp_error_ids = self.session.query(models.ErrorType.id).filter(
+            models.ErrorType.permanent == 0
+        ).subquery()
+
+        # Subquery for rate-limited hosts
+        rate_limited_hosts = self.session.query(models.RateLimit.fqdnHash).filter(
+            models.RateLimit.noContactUntil > func.now()
+        ).subquery()
+
+        # Main query
+        result = self.session.query(
+            models.Queue.id,
+            models.Queue.action,
+            models.Queue.url,
+            models.Queue.urlHash,
+            models.Queue.prettifyHtml
+        ).filter(
+            and_(
+                or_(
+                    models.Queue.causesError.is_(None),
+                    models.Queue.causesError.in_(temp_error_ids)
+                ),
+                ~models.Queue.fqdnHash.in_(rate_limited_hosts),
+                or_(
+                    models.Queue.delayUntil.is_(None),
+                    models.Queue.delayUntil < func.now()
+                ),
+                models.Queue.action.in_([1, 2, 3, 4])
+            )
+        ).order_by(models.Queue.addedToQueue.asc()).first()
+
+        return result  # type: ignore[no-any-return, return-value]
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
