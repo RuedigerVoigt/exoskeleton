@@ -233,7 +233,7 @@ def label_count() -> int:
     "Check if the number of labels equals the expected number."
     from sqlalchemy import text
     session = exo.db.get_session()
-    result = session.execute(text('SELECT COUNT(*) FROM exoskeleton.labels;'))
+    result = session.execute(text('SELECT COUNT(*) FROM labels;'))
     labelcount = result.fetchone()
     if labelcount:
         return int(labelcount[0])

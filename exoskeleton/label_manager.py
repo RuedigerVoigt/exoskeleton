@@ -9,7 +9,6 @@ Released under the Apache License 2.0
 import logging
 from typing import Optional, Union
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import userprovided
@@ -259,25 +258,24 @@ class LabelManager:
             raise ValueError('Unknown label. Check for typo.')
 
         label_id: str = returned_set.pop()
+
         if processed_only:
-            query = """
-                SELECT versionUUID
-                FROM labelToVersion AS lv
-                WHERE labelID = :label_id AND
-                EXISTS (
-                    SELECT fv.id FROM fileVersions AS fv
-                    WHERE fv.id = lv.versionUUID
-                )
-            """
+            # Query with EXISTS check - only return UUIDs that exist in fileVersions
+            # Use join to ensure the version exists
+            query = self.session.query(models.LabelToVersion.versionUUID).join(
+                models.FileVersion,
+                models.FileVersion.id == models.LabelToVersion.versionUUID
+            ).filter(
+                models.LabelToVersion.labelID == label_id
+            )
         else:
-            query = """
-                SELECT versionUUID
-                FROM labelToVersion
-                WHERE labelID = :label_id
-            """
-        result = self.session.execute(text(query), {"label_id": label_id})
-        version_ids = result.fetchall()
-        return {(uuid[0]) for uuid in version_ids} if version_ids else set()
+            # Simple query - return all UUIDs with this label
+            query = self.session.query(models.LabelToVersion.versionUUID).filter(
+                models.LabelToVersion.labelID == label_id
+            )
+
+        version_ids = query.all()
+        return {uuid[0] for uuid in version_ids} if version_ids else set()
 
     # #########################################################################
     # REMOVING LABELS

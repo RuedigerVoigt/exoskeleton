@@ -10,7 +10,7 @@ import logging
 import pathlib
 import re
 
-from sqlalchemy import text, inspect
+from sqlalchemy import inspect, select, table, column
 from sqlalchemy.orm import Session
 import importlib.metadata
 
@@ -159,14 +159,12 @@ class DatabaseSchemaCheck:
         Initialize the schema version in exoInfo table.
 
         This is called after creating tables to ensure the schema version
-        is set properly. Uses INSERT ... ON DUPLICATE KEY UPDATE to be idempotent.
+        is set properly. Uses ORM merge for idempotent upsert.
         """
         try:
-            self.session.execute(text(
-                "INSERT INTO exoInfo (exoKey, exoValue) "
-                "VALUES ('schema', '2.0.0') "
-                "ON DUPLICATE KEY UPDATE exoValue = '2.0.0'"
-            ))
+            # Use merge for upsert behavior (insert or update)
+            schema_info = models.ExoInfo(exoKey='schema', exoValue='2.0.0')
+            self.session.merge(schema_info)
             self.session.commit()
             logger.info('Schema version initialized to 2.0.0')
         except Exception as e:
@@ -186,10 +184,11 @@ class DatabaseSchemaCheck:
         Note: User might have custom tables, so we only verify expected tables exist,
         not that ONLY expected tables exist.
         """
-        result = self.session.execute(text('SHOW TABLES'))
-        tables = result.fetchall()
+        # Use SQLAlchemy Inspector to get table names (database-agnostic)
+        inspector = inspect(self.db_connection.engine)
+        tables_found = inspector.get_table_names()
 
-        if not tables:
+        if not tables_found:
             # No tables at all - create all tables from ORM models
             logger.warning('No tables found in database. Creating all tables from ORM models...')
             assert self.db_connection.engine is not None, "Database engine not initialized"
@@ -199,7 +198,6 @@ class DatabaseSchemaCheck:
             self.__initialize_schema_version()
             return True
 
-        tables_found = [item[0] for item in tables]
         # Make lowercase version for case-insensitive comparison
         # (MariaDB/MySQL may return tables in lowercase)
         tables_found_lower = [t.lower() for t in tables_found]
@@ -229,29 +227,32 @@ class DatabaseSchemaCheck:
 
     def __check_stored_procedures(self) -> bool:
         """Check if all expected stored procedures exist and if the user
-           is allowed to execute them. Uses SQLAlchemy Inspector for
+           is allowed to execute them. Uses SQLAlchemy constructs for
            database portability. """
-        # Get inspector to introspect database
-        inspector = inspect(self.db_connection.engine)
-
         # Get list of stored procedures using information_schema
         # This standard schema works across MySQL/MariaDB/PostgreSQL
         try:
             assert self.db_connection.engine is not None, "Database engine not initialized"
             dialect = self.db_connection.engine.dialect.name
 
+            # Define information_schema.routines table structure using SQLAlchemy Table
+            routines = table('routines',
+                           column('routine_name'),
+                           column('routine_schema'),
+                           column('routine_type'),
+                           schema='information_schema')
+
             if dialect in ('mysql', 'mariadb'):
                 # MySQL/MariaDB: filter by database name
-                result = self.session.execute(
-                    text("SELECT routine_name FROM information_schema.routines "
-                         "WHERE routine_schema = :db_name AND routine_type = 'PROCEDURE'"),
-                    {"db_name": self.db_name}
+                stmt = select(routines.c.routine_name).where(
+                    (routines.c.routine_schema == self.db_name) &
+                    (routines.c.routine_type == 'PROCEDURE')
                 )
             elif dialect == 'postgresql':
                 # PostgreSQL: filter by schema (typically 'public')
-                result = self.session.execute(
-                    text("SELECT routine_name FROM information_schema.routines "
-                         "WHERE routine_schema = 'public' AND routine_type = 'PROCEDURE'")
+                stmt = select(routines.c.routine_name).where(
+                    (routines.c.routine_schema == 'public') &
+                    (routines.c.routine_type == 'PROCEDURE')
                 )
             else:
                 logger.warning(
@@ -260,6 +261,7 @@ class DatabaseSchemaCheck:
                 )
                 return True
 
+            result = self.session.execute(stmt)
             procedures_found = [row[0] for row in result.fetchall()]
         except Exception as e:
             logger.warning('Could not check stored procedures: %s', str(e))
@@ -288,15 +290,12 @@ class DatabaseSchemaCheck:
 
     def __check_functions(self) -> bool:
         """Check if all expected database functions exist and if the user
-           is allowed to execute them. Uses SQLAlchemy Inspector for
+           is allowed to execute them. Uses SQLAlchemy constructs for
            database portability. """
         # Skip function check if FUNCTIONS list is empty
         if not self.FUNCTIONS:
             logger.debug('No database functions to validate.')
             return True
-
-        # Get inspector to introspect database
-        inspector = inspect(self.db_connection.engine)
 
         # Get list of functions using information_schema
         # This standard schema works across MySQL/MariaDB/PostgreSQL
@@ -304,18 +303,24 @@ class DatabaseSchemaCheck:
             assert self.db_connection.engine is not None, "Database engine not initialized"
             dialect = self.db_connection.engine.dialect.name
 
+            # Define information_schema.routines table structure using SQLAlchemy Table
+            routines = table('routines',
+                           column('routine_name'),
+                           column('routine_schema'),
+                           column('routine_type'),
+                           schema='information_schema')
+
             if dialect in ('mysql', 'mariadb'):
                 # MySQL/MariaDB: filter by database name
-                result = self.session.execute(
-                    text("SELECT routine_name FROM information_schema.routines "
-                         "WHERE routine_schema = :db_name AND routine_type = 'FUNCTION'"),
-                    {"db_name": self.db_name}
+                stmt = select(routines.c.routine_name).where(
+                    (routines.c.routine_schema == self.db_name) &
+                    (routines.c.routine_type == 'FUNCTION')
                 )
             elif dialect == 'postgresql':
                 # PostgreSQL: filter by schema (typically 'public')
-                result = self.session.execute(
-                    text("SELECT routine_name FROM information_schema.routines "
-                         "WHERE routine_schema = 'public' AND routine_type = 'FUNCTION'")
+                stmt = select(routines.c.routine_name).where(
+                    (routines.c.routine_schema == 'public') &
+                    (routines.c.routine_type == 'FUNCTION')
                 )
             else:
                 logger.warning(
@@ -324,6 +329,7 @@ class DatabaseSchemaCheck:
                 )
                 return True
 
+            result = self.session.execute(stmt)
             functions_found = [row[0] for row in result.fetchall()]
         except Exception as e:
             logger.warning('Could not check database functions: %s', str(e))
