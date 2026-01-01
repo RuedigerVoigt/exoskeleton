@@ -234,10 +234,10 @@ class QueueManager:
         while True:
             try:
                 next_in_queue = self.get_next_task()
-            except OperationalError as op_err:
+            except OperationalError:
                 # Database connection lost
-                logger.error('Lost database connection. ' +
-                              'Trying to restore it in 10 seconds ...')
+                logger.error('Lost database connection. '
+                             'Trying to restore it in 10 seconds ...')
                 time.sleep(10)
                 try:
                     self.session = self.db_connection.get_session()
@@ -257,9 +257,9 @@ class QueueManager:
 
                     if self.stats.num_tasks_w_temporary_errors() > 0:
                         # there are still tasks, but they have to wait
-                        logger.debug("Tasks with temporary errors: " +
-                                      "waiting %s seconds until next try.",
-                                      self.queue_revisit)
+                        logger.debug("Tasks with temporary errors: "
+                                     "waiting %s seconds until next try.",
+                                     self.queue_revisit)
                         time.sleep(self.queue_revisit)
                         continue
 
@@ -269,7 +269,7 @@ class QueueManager:
                     num_permanent_errors = self.stats.num_tasks_w_permanent_errors()
                     if num_permanent_errors > 0:
                         logger.error("%s permanent errors!",
-                                      num_permanent_errors)
+                                     num_permanent_errors)
                     self.notify.send_msg_finish()
                     break
 

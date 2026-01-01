@@ -36,7 +36,7 @@ class RemoteControlChrome:
             browser_name: str,
             crawling_error_manager_object: error_manager.CrawlingErrorManager,
             stats_manager_object: statistics_manager.StatisticsManager
-            ) -> None:
+    ) -> None:
         """Check the path of the executable and if it is supported. """
 
         self.browser_name = ''
@@ -65,7 +65,7 @@ class RemoteControlChrome:
         for browser in self.SUPPORTED_BROWSERS:
             if self.check_executable_existence(browser):
                 logger.info('Found supported browser in PATH to save pdf: %s',
-                             browser)
+                            browser)
 
     def check_browser_support(self,
                               browser_name: str) -> bool:
@@ -119,7 +119,7 @@ class RemoteControlChrome:
             self.stats.log_temporary_problem(url)
         except subprocess.CalledProcessError:
             logger.exception('Process Error: cannot create PDF.',
-                              exc_info=True)
+                             exc_info=True)
             self.errorhandling.add_crawl_delay(queue_id, 5)
             self.stats.log_permanent_error(url)
         except (Exception, subprocess.SubprocessError):  # pylint: disable=broad-except

@@ -109,7 +109,7 @@ class NotificationManager:
         self.mailer.send_mail(
             f"Project {self.project_name} ABORTED",
             ("The bot lost the database connection and could not restore it.")
-             )
+        )
         logger.debug('Sent a message about lost database connection.')
 
     def send_custom_msg(self,

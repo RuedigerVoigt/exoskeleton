@@ -172,11 +172,11 @@ class DatabaseSchemaCheck:
 
         # Check and add missing error types
         for error_data in required_errors:
-            existing = self.session.query(models.ErrorType).filter(
+            existing_error = self.session.query(models.ErrorType).filter(
                 models.ErrorType.id == error_data['id']
             ).first()
 
-            if not existing:
+            if not existing_error:
                 new_error = models.ErrorType(
                     id=error_data['id'],
                     short=error_data['short'],
@@ -196,11 +196,11 @@ class DatabaseSchemaCheck:
 
         # Check and add missing storage types
         for storage_data in required_storage_types:
-            existing = self.session.query(models.StorageType).filter(
+            existing_storage = self.session.query(models.StorageType).filter(
                 models.StorageType.id == storage_data['id']
             ).first()
 
-            if not existing:
+            if not existing_storage:
                 new_storage = models.StorageType(
                     id=storage_data['id'],
                     shortName=storage_data['shortName'],

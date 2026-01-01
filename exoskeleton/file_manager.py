@@ -41,8 +41,8 @@ class FileManager:
            If a directory is set, but not accessible, fail early."""
 
         if not target_directory or target_directory.strip() == '':
-            logger.warning("Target directory is not set. Using the " +
-                            "current working directory as a fallback!")
+            logger.warning("Target directory is not set. Using the "
+                           "current working directory as a fallback!")
             return pathlib.Path.cwd()
 
         # Assuming that if a directory was set, it has to be used.

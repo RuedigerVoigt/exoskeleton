@@ -91,13 +91,13 @@ class StatisticsManager:
         logger.info(message)
 
     def __update_host_statistics(
-                self,
-                url: exo_url.ExoUrl,
-                successful_requests_increment: Literal[0, 1] = 0,
-                temporary_problems_increment: Literal[0, 1] = 0,
-                permanent_errors_increment: Literal[0, 1] = 0,
-                hit_rate_limit_increment: Literal[0, 1] = 0
-                ) -> None:
+            self,
+            url: exo_url.ExoUrl,
+            successful_requests_increment: Literal[0, 1] = 0,
+            temporary_problems_increment: Literal[0, 1] = 0,
+            permanent_errors_increment: Literal[0, 1] = 0,
+            hit_rate_limit_increment: Literal[0, 1] = 0
+    ) -> None:
         """ Updates the host based statistics. The URL gets shortened to
             the hostname. Increase the different counters."""
         # pylint: disable=too-many-arguments

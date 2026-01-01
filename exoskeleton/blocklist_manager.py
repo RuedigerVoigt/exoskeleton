@@ -26,7 +26,7 @@ class BlocklistManager:
     def __init__(
             self,
             db_connection: database_connection.DatabaseConnection
-            ) -> None:
+    ) -> None:
         self.db_connection = db_connection
         self.session: Session = self.db_connection.get_session()
 

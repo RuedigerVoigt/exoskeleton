@@ -35,7 +35,6 @@ Released under the Apache License 2.0
 """
 
 from collections import Counter
-import hashlib
 import logging
 import os
 import subprocess
@@ -166,7 +165,7 @@ BROWSER = os.getenv('TEST_BROWSER', 'chromium-browser')
 if TEST_MODE or not os.getenv('CI'):
     validate_test_database(DB_NAME)
 
-logging.info(f"Test database configuration:")
+logging.info("Test database configuration:")
 logging.info(f"  Host: {DB_HOST}:{DB_PORT}")
 logging.info(f"  Database: {DB_NAME}")
 logging.info(f"  User: {DB_USER}")
@@ -394,7 +393,6 @@ def test_add_same_task_with_different_labels():
     filemaster_labels_1 = {'i1fml1', 'i1fml2'}
     version_labels_1 = {'i1vl1', 'i1vl2', 'i1vl3'}
     test_url = 'https://www.google.com'
-    url_hash_1 = hashlib.sha256(test_url.encode('utf-8')).hexdigest()
     uuid_1 = exo.add_page_to_pdf(test_url,
                                  filemaster_labels_1,
                                  version_labels_1)
@@ -1068,8 +1066,6 @@ def test_safety_verify_database_rejects_populated():
 
 def test_safety_env_test_file_loading():
     """Test Layer 1: Verify that .env.test is loaded (not .env)."""
-    import os
-
     # Check that TEST_* prefixed variables are used
     assert DB_HOST is not None
     assert DB_NAME is not None
@@ -1119,7 +1115,7 @@ def test_no_host_no_port_no_pw():
        service requires a password."""
     from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
     with pytest.raises(SQLAlchemyOperationalError):
-        no_host_no_port_no_pass = exoskeleton.Exoskeleton(
+        exoskeleton.Exoskeleton(
             project_name='Exoskeleton Validation Test',
             database_settings={'database': DB_NAME,
                                'username': DB_USER},

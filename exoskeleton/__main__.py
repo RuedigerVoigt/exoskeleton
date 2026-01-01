@@ -73,8 +73,8 @@ class Exoskeleton:
                 'incompatible_versions': [],
                 'max_tested_version': '3.14'},
             nag_over_update={
-                    'nag_days_after_release': 120,
-                    'nag_in_hundred': 100},
+                'nag_days_after_release': 120,
+                'nag_in_hundred': 100},
             language_messages='en',
             system_support={
                 'full': {'Linux', 'MacOS', 'Windows'}
@@ -106,8 +106,6 @@ class Exoskeleton:
                                                           None)
         if self.milestone and not isinstance(self.milestone, int):
             raise ValueError('milestone_num must be integer!')
-
-
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Bot Behavior
@@ -154,7 +152,7 @@ class Exoskeleton:
             self.db,
             bot_behavior.get('queue_max_retries', 3),
             bot_behavior.get('rate_limit_wait', 1860)
-            )
+        )
 
         self.controlled_browser = remote_control_chrome.RemoteControlChrome(
             chrome_name,
@@ -247,8 +245,8 @@ class Exoskeleton:
             url = exo_url.ExoUrl(url)
         if not self.controlled_browser.browser_present:
             logger.warning(
-                'Will add this task to the queue, but without Chrome or ' +
-                'Chromium it cannot run! Provide the path to the ' +
+                'Will add this task to the queue, but without Chrome or '
+                'Chromium it cannot run! Provide the path to the '
                 'executable when you initialize exoskeleton.')
         uuid = self.queue.add_to_queue(url, 3, labels_master, labels_version,
                                        False, force_new_version)

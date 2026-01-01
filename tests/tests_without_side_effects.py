@@ -36,11 +36,7 @@ Released under the Apache License 2.0
 import logging
 from unittest.mock import patch
 
-logging.basicConfig(level=logging.DEBUG)
-
-import pyfakefs
 import pytest
-
 
 from exoskeleton import actions
 from exoskeleton import database_connection
@@ -48,9 +44,10 @@ from exoskeleton import database_schema_check
 from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
-from exoskeleton import notification_manager
 from exoskeleton import remote_control_chrome
 from exoskeleton import time_manager
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 # #############################################################################
@@ -60,14 +57,13 @@ from exoskeleton import time_manager
 def test_validate_test_database_VALID_NAMES():
     """Test that validate_test_database accepts valid database names containing 'test'."""
     # Import the function from the test file
-    import sys
     import os
     test_file_path = os.path.join(os.path.dirname(__file__), 'tests_with_side_effects.py')
 
     # Import the validation function directly
     import importlib.util
     spec = importlib.util.spec_from_file_location("test_module", test_file_path)
-    test_module = importlib.util.module_from_spec(spec)
+    importlib.util.module_from_spec(spec)
 
     # Valid database names (should NOT raise exception)
     valid_names = [
@@ -193,11 +189,11 @@ def test_actions_BAD_QUEUE_ID():
     # queue id is not a string
     with pytest.raises(ValueError) as excinfo:
         _ = actions.GetObjectBaseClass(
-                objects=dict(),
-                queue_id=1,  # !
-                url='https://www.example.com',
-                prettify_html=False
-                )
+            objects=dict(),
+            queue_id=1,  # !
+            url='https://www.example.com',
+            prettify_html=False
+        )
     assert "queue_id must be a string" in str(excinfo.value)
 
 
@@ -205,11 +201,11 @@ def test_actions_MISSING_URL():
     # queue id is not a string
     with pytest.raises(ValueError) as excinfo:
         _ = actions.GetObjectBaseClass(
-                objects=dict(),
-                queue_id='foo',
-                url=None,
-                prettify_html=False
-                )
+            objects=dict(),
+            queue_id='foo',
+            url=None,
+            prettify_html=False
+        )
     assert "Missing parameter url" in str(excinfo.value)
 
 # #############################################################################

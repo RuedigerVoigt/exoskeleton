@@ -296,13 +296,13 @@ class GetObjectBaseClass:
 
         except urllib3.exceptions.NewConnectionError:
             logger.error('New Connection Error: might be a rate limit',
-                          exc_info=True)
+                         exc_info=True)
             self.stats.log_rate_limit_hit(self.url)
             self.time.increase_wait()
 
         except Exception:
             logger.error('Unknown exception while trying to download.',
-                          exc_info=True)
+                         exc_info=True)
             self.stats.log_permanent_error(self.url)
             raise
         self.stats.increment_processed_counter()
