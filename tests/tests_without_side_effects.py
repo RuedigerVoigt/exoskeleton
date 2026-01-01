@@ -29,7 +29,7 @@ To generate a report limited to that run afterwards:
 coverage html
 ~~~~~~~~~~~~~~~~~~~~~
 Source: https://github.com/RuedigerVoigt/exoskeleton
-(c) 2019-2021 Rüdiger Voigt
+(c) 2019-2025 Rüdiger Voigt and contributors
 Released under the Apache License 2.0
 """
 
@@ -367,24 +367,3 @@ def test_DatabaseSchemaCheck_tables_from_models():
     assert 'fileVersions' in database_schema_check.DatabaseSchemaCheck.TABLES
     # Should have 15 tables (as of current schema)
     assert len(database_schema_check.DatabaseSchemaCheck.TABLES) == 15
-
-
-def test_DatabaseSchemaCheck_procedures_list():
-    """Test that PROCEDURES list is empty after complete ORM migration."""
-    procedures = database_schema_check.DatabaseSchemaCheck.PROCEDURES
-    # Should be a list
-    assert isinstance(procedures, list)
-    # Should be empty - all procedures migrated to Python/ORM
-    assert len(procedures) == 0
-
-
-def test_DatabaseSchemaCheck_functions_list():
-    """Test that FUNCTIONS list is empty after ORM migration."""
-    functions = database_schema_check.DatabaseSchemaCheck.FUNCTIONS
-    # Should be a list
-    assert isinstance(functions, list)
-    # Should be empty - all functions migrated to ORM/Inspector
-    assert len(functions) == 0
-
-
-# All tests for SQL parsing removed as stored procedures have been migrated to Python/ORM
