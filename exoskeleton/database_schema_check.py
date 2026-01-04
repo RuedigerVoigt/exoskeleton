@@ -150,11 +150,15 @@ class DatabaseSchemaCheck:
         # Define required error types
         # permanent=True means permanent error, permanent=False means temporary/retryable
         required_errors = [
-            # Permanent errors
+            # Special error codes
+            {'id': 3, 'short': 'gave_up', 'description': 'Gave up after too many retries', 'permanent': True},
+            # Permanent errors (HTTP status codes)
             {'id': 400, 'short': 'bad_request', 'description': 'Bad Request', 'permanent': True},
             {'id': 401, 'short': 'unauthorized', 'description': 'Unauthorized', 'permanent': True},
+            {'id': 402, 'short': 'payment_required', 'description': 'Payment Required', 'permanent': True},
             {'id': 403, 'short': 'forbidden', 'description': 'Forbidden', 'permanent': True},
             {'id': 404, 'short': 'not_found', 'description': 'Not Found', 'permanent': True},
+            {'id': 407, 'short': 'proxy_auth', 'description': 'Proxy Authentication Required', 'permanent': True},
             {'id': 410, 'short': 'gone', 'description': 'Gone', 'permanent': True},
             {'id': 451, 'short': 'unavailable_legal', 'description': 'Unavailable For Legal Reasons', 'permanent': True},
             {'id': 501, 'short': 'not_implemented', 'description': 'Not Implemented', 'permanent': True},
