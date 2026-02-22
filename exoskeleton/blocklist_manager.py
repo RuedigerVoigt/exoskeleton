@@ -14,6 +14,7 @@ from typing import Optional
 # external dependencies:
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+import userprovided
 
 from exoskeleton import database_connection
 from exoskeleton import models
@@ -33,12 +34,14 @@ class BlocklistManager:
     @staticmethod
     def __check_fqdn(fqdn: str) -> str:
         "Remove whitespace and check if it can be a FQDN"
-        fqdn = fqdn.strip()
-        if len(fqdn) > 255:
+        cleaned = userprovided.parameters.clean_trim(fqdn)
+        if cleaned is None:
+            raise ValueError('Not a valid FQDN: empty string.')
+        if len(cleaned) > 255:
             raise ValueError(
                 'Not a valid FQDN. Exoskeleton blocks on the hostname level ' +
                 '- not specific URLs.')
-        return fqdn
+        return cleaned
 
     def check_blocklist(self,
                         fqdn: str) -> bool:
@@ -52,6 +55,20 @@ class BlocklistManager:
         ).count()
 
         return count > 0
+
+    def check_url_against_blocklist(self,
+                                    url_string: str) -> bool:
+        """Check if a URL's domain matches any entry on the blocklist.
+           Supports subdomain matching: blocking 'example.com' also blocks
+           'www.example.com' and any other subdomain."""
+        all_fqdns = [
+            row.fqdn
+            for row in self.session.query(models.BlockList.fqdn).all()
+        ]
+        return any(
+            userprovided.url.url_matches_domain(url_string, blocked_fqdn)
+            for blocked_fqdn in all_fqdns
+        )
 
     def block_fqdn(self,
                    fqdn: str,

@@ -87,8 +87,8 @@ class QueueManager:
         if action not in (1, 2, 3, 4):
             raise ValueError('Invalid value for action!')
 
-        # Check if the FQDN of the URL is on the blocklist
-        if url.hostname and self.blocklist.check_blocklist(url.hostname):
+        # Check if the URL's domain (including subdomains) is on the blocklist
+        if self.blocklist.check_url_against_blocklist(str(url)):
             msg = 'Cannot add URL to queue: FQDN is on blocklist.'
             logger.exception(msg)
             raise err.HostOnBlocklistError(msg)
@@ -129,6 +129,42 @@ class QueueManager:
         # generate a random uuid for the file version
         uuid_value = uuid.uuid4().hex
 
+        # Create or get fileMaster entry
+        existing_master = self.session.query(models.FileMaster).filter(
+            models.FileMaster.urlHash == url.hash
+        ).first()
+
+        if not existing_master:
+            new_master = models.FileMaster(url=str(url), urlHash=url.hash)
+            self.session.add(new_master)
+            self.session.flush()  # Get the ID
+            file_master_id = new_master.id
+        else:
+            file_master_id = existing_master.id
+
+        # Determine storage type based on action
+        # action 1 (download file) -> storageTypeID 2 (disk)
+        # action 2 (save page code) -> storageTypeID 1 (database)
+        # action 3 (page to PDF) -> storageTypeID 3 (pdf)
+        # action 4 (save page text) -> storageTypeID 1 (database)
+        storage_type_map = {1: 2, 2: 1, 3: 3, 4: 1}
+        storage_type_id = storage_type_map[action]
+
+        # Create stub FileVersion record (will be updated when processed)
+        new_version = models.FileVersion(
+            id=uuid_value,
+            fileMasterID=file_master_id,
+            storageTypeID=storage_type_id,
+            actionAppliedID=action
+        )
+        self.session.add(new_version)
+        # Flush FileVersion first to satisfy FK constraint for label assignments
+        self.session.flush()
+
+        # Now assign version labels (FileVersion is flushed and visible for FK checks)
+        if labels_version:
+            self.labels.assign_labels_to_uuid(uuid_value, labels_version)
+
         # add the new task to the queue
         assert url.hostname is not None, "URL hostname cannot be None"
         fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
@@ -143,10 +179,6 @@ class QueueManager:
         )
         self.session.add(new_queue_item)
         self.session.commit()
-
-        # link labels to version item
-        if labels_version:
-            self.labels.assign_labels_to_uuid(uuid_value, labels_version)
 
         return uuid_value
 
@@ -221,10 +253,28 @@ class QueueManager:
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
-        "Remove all label links from item and delete it from the queue."
+        """Remove all label links from item, delete FileVersion stub, and delete from queue.
+
+        When an item is removed from the queue without being processed, we need to clean up:
+        1. Label associations (LabelToVersion)
+        2. FileVersion stub (created when added to queue)
+        3. Queue entry itself
+        """
+        # Remove label associations
+        self.session.query(models.LabelToVersion).filter(
+            models.LabelToVersion.versionUUID == queue_id
+        ).delete(synchronize_session=False)
+
+        # Remove FileVersion stub (created when added to queue, never processed)
+        self.session.query(models.FileVersion).filter(
+            models.FileVersion.id == queue_id
+        ).delete(synchronize_session=False)
+
+        # Remove queue entry
         self.session.query(models.Queue).filter(
             models.Queue.id == queue_id
         ).delete(synchronize_session=False)
+
         self.session.commit()
 
     def process_queue(self) -> None:
@@ -287,7 +337,7 @@ class QueueManager:
 
             # The FQDN might have been added to the blocklist *after*
             # the task entered into the queue!
-            if self.blocklist.check_blocklist(str(url.hostname)):
+            if self.blocklist.check_url_against_blocklist(str(url)):
                 logger.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)

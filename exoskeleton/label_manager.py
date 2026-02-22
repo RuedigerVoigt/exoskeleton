@@ -46,7 +46,8 @@ class LabelManager:
                          description: Optional[str] = None) -> None:
         """If the label is not already used, define a new label and description.
            In case the label already exists, do not update the description."""
-        if not self.__shortname_ok(shortname):
+        shortname = userprovided.parameters.clean_trim(shortname) or ''
+        if not shortname or not self.__shortname_ok(shortname):
             return
         try:
             # Create new Label using ORM
@@ -67,7 +68,8 @@ class LabelManager:
         """ Insert a new label into the database or update its description
             in case it already exists.
             Use __define_new_label if an update has to be avoided. """
-        if not self.__shortname_ok(shortname):
+        shortname = userprovided.parameters.clean_trim(shortname) or ''
+        if not shortname or not self.__shortname_ok(shortname):
             return
 
         # Query for existing label by shortName

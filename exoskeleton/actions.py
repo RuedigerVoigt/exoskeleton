@@ -39,41 +39,26 @@ def insert_file_to_db(db_connection: database_connection.DatabaseConnection,
                      hash_method: str,
                      hash_value: str,
                      action_applied_id: int) -> None:
-    """Insert file metadata into database using ORM.
-    Converted from insert_file_SP stored procedure.
+    """Update FileVersion with file metadata after download.
+    FileVersion stub was created when added to queue, now update with actual data.
 
     This function handles the transaction and error handling that was
     previously in the stored procedure."""
     session = db_connection.get_session()
 
     try:
-        # INSERT IGNORE into fileMaster - use merge or check existence
-        existing_master = session.query(models.FileMaster).filter(
-            models.FileMaster.urlHash == url_hash
-        ).first()
-
-        if not existing_master:
-            new_master = models.FileMaster(url=url, urlHash=url_hash)
-            session.add(new_master)
-            session.flush()  # Get the ID
-            file_master_id = new_master.id
-        else:
-            file_master_id = existing_master.id
-
-        # INSERT into fileVersions with storageTypeID = 2 (disk storage)
-        new_version = models.FileVersion(
-            id=queue_id,
-            fileMasterID=file_master_id,
-            storageTypeID=2,
-            mimeType=mime_type,
-            pathOrBucket=path_or_bucket,
-            fileName=file_name,
-            size=size,
-            hashMethod=hash_method,
-            hashValue=hash_value,
-            actionAppliedID=action_applied_id
-        )
-        session.add(new_version)
+        # UPDATE fileVersions with actual file data
+        # (FileVersion stub was created in queue_manager.add_to_queue)
+        session.query(models.FileVersion).filter(
+            models.FileVersion.id == queue_id
+        ).update({
+            models.FileVersion.mimeType: mime_type,
+            models.FileVersion.pathOrBucket: path_or_bucket,
+            models.FileVersion.fileName: file_name,
+            models.FileVersion.size: size,
+            models.FileVersion.hashMethod: hash_method,
+            models.FileVersion.hashValue: hash_value
+        }, synchronize_session=False)
 
         # DELETE from queue
         session.query(models.Queue).filter(
@@ -102,36 +87,21 @@ def insert_content_to_db(db_connection: database_connection.DatabaseConnection,
                          mime_type: str,
                          page_content: str,
                          action_applied_id: int) -> None:
-    """Insert page content into database using ORM.
-    Converted from insert_content_SP stored procedure.
+    """Update FileVersion and insert page content into database using ORM.
+    FileVersion stub was created when added to queue, now update with actual data.
 
     This function handles the transaction and error handling that was
     previously in the stored procedure."""
     session = db_connection.get_session()
 
     try:
-        # INSERT IGNORE into fileMaster - use merge or check existence
-        existing_master = session.query(models.FileMaster).filter(
-            models.FileMaster.urlHash == url_hash
-        ).first()
-
-        if not existing_master:
-            new_master = models.FileMaster(url=url, urlHash=url_hash)
-            session.add(new_master)
-            session.flush()  # Get the ID
-            file_master_id = new_master.id
-        else:
-            file_master_id = existing_master.id
-
-        # INSERT into fileVersions with storageTypeID = 1 (database storage)
-        new_version = models.FileVersion(
-            id=queue_id,
-            fileMasterID=file_master_id,
-            storageTypeID=1,
-            mimeType=mime_type,
-            actionAppliedID=action_applied_id
-        )
-        session.add(new_version)
+        # UPDATE fileVersions with mime type
+        # (FileVersion stub was created in queue_manager.add_to_queue)
+        session.query(models.FileVersion).filter(
+            models.FileVersion.id == queue_id
+        ).update({
+            models.FileVersion.mimeType: mime_type
+        }, synchronize_session=False)
 
         # INSERT into fileContent
         new_content = models.FileContent(
@@ -329,41 +299,26 @@ class GetObjectBaseClass:
                           hash_method: str,
                           hash_value: str,
                           action_applied_id: int) -> None:
-        """Insert file metadata into database using ORM.
-        Converted from insert_file_SP stored procedure.
+        """Update FileVersion with file metadata after download.
+        FileVersion stub was created when added to queue, now update with actual data.
 
         This method handles the transaction and error handling that was
         previously in the stored procedure."""
         session = self.db_connection.get_session()
 
         try:
-            # INSERT IGNORE into fileMaster - use merge or check existence
-            existing_master = session.query(models.FileMaster).filter(
-                models.FileMaster.urlHash == url_hash
-            ).first()
-
-            if not existing_master:
-                new_master = models.FileMaster(url=url, urlHash=url_hash)
-                session.add(new_master)
-                session.flush()  # Get the ID
-                file_master_id = new_master.id
-            else:
-                file_master_id = existing_master.id
-
-            # INSERT into fileVersions with storageTypeID = 2 (disk storage)
-            new_version = models.FileVersion(
-                id=queue_id,
-                fileMasterID=file_master_id,
-                storageTypeID=2,
-                mimeType=mime_type,
-                pathOrBucket=path_or_bucket,
-                fileName=file_name,
-                size=size,
-                hashMethod=hash_method,
-                hashValue=hash_value,
-                actionAppliedID=action_applied_id
-            )
-            session.add(new_version)
+            # UPDATE fileVersions with actual file data
+            # (FileVersion stub was created in queue_manager.add_to_queue)
+            session.query(models.FileVersion).filter(
+                models.FileVersion.id == queue_id
+            ).update({
+                models.FileVersion.mimeType: mime_type,
+                models.FileVersion.pathOrBucket: path_or_bucket,
+                models.FileVersion.fileName: file_name,
+                models.FileVersion.size: size,
+                models.FileVersion.hashMethod: hash_method,
+                models.FileVersion.hashValue: hash_value
+            }, synchronize_session=False)
 
             # DELETE from queue
             session.query(models.Queue).filter(

@@ -35,17 +35,16 @@ include = ["exoskeleton/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-beautifulsoup4 = ">=4.13.4"
+beautifulsoup4 = ">=4.14.3"
 bote = ">=1.2.2"
 compatibility = ">=2.0.0"
-lxml = ">=5.4.0"
-pycares = ">=4.1.2"
-pymysql = ">=1.1.1"
-python-dotenv = ">=1.1.1"
-requests = ">=2.5.0"
-urllib3 = ">=1.26.9"
-userprovided = ">=2.1.1"
-SQLAlchemy = ">=2.0.41"
+lxml = ">=6.0.2"
+pymysql = ">=1.1.2"
+python-dotenv = ">=1.2.1"
+requests = ">=2.32.5"
+urllib3 = ">=2.6.2"
+userprovided = ">=2.2.0"
+SQLAlchemy = ">=2.0.46"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
@@ -84,14 +83,13 @@ dependencies = [
     "beautifulsoup4>=4.13.4",
     "bote>=1.2.2",
     "compatibility>=2.0.0",
-    "lxml>=5.4.0",
-    "pycares>=4.1.2",
+    "lxml>=6.0.2",
     "pymysql>=1.1.1",
     "python-dotenv>=1.1.1",
-    "requests>=2.5.0",
-    "urllib3>=1.26.9",
-    "userprovided>=2.1.1",
-    "SQLAlchemy>=2.0.41",
+    "requests>=2.32.5",
+    "urllib3>=2.6.2",
+    "userprovided>=2.2.0",
+    "SQLAlchemy>=2.0.46",
 ]
 
 [project.optional-dependencies]
