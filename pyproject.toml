@@ -41,6 +41,7 @@ compatibility = ">=2.0.0"
 lxml = ">=6.0.2"
 pymysql = ">=1.1.2"
 python-dotenv = ">=1.2.1"
+pydantic = ">=2.0.0"
 requests = ">=2.32.5"
 urllib3 = ">=2.6.2"
 userprovided = ">=2.2.0"
@@ -80,12 +81,13 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
 ]
 dependencies = [
-    "beautifulsoup4>=4.13.4",
+    "beautifulsoup4>=4.14.3",
     "bote>=1.2.2",
     "compatibility>=2.0.0",
     "lxml>=6.0.2",
-    "pymysql>=1.1.1",
-    "python-dotenv>=1.1.1",
+    "pymysql>=1.1.2",
+    "python-dotenv>=1.2.1",
+    "pydantic>=2.0.0",
     "requests>=2.32.5",
     "urllib3>=2.6.2",
     "userprovided>=2.2.0",

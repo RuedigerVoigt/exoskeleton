@@ -20,6 +20,9 @@ from typing import Union, Optional
 import compatibility
 import userprovided
 
+# internal:
+from exoskeleton import validators
+
 # import other modules of this framework
 import importlib.metadata
 from datetime import date
@@ -100,17 +103,9 @@ class Exoskeleton:
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         mail_settings = dict() if not mail_settings else mail_settings
-        mail_behavior = dict() if not mail_behavior else mail_behavior
 
-        self.milestone: Optional[int] = mail_behavior.get('milestone_num',
-                                                          None)
-        if self.milestone and not isinstance(self.milestone, int):
-            raise ValueError('milestone_num must be integer!')
-
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # INIT: Bot Behavior
-        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+        # userprovided validates allowed keys; Pydantic fills defaults and
+        # checks cross-field constraints (e.g. wait_min <= wait_max).
         if bot_behavior:
             userprovided.parameters.validate_dict_keys(
                 dict_to_check=bot_behavior,
@@ -123,8 +118,25 @@ class Exoskeleton:
                               'wait_max'},
                 necessary_keys=None,
                 dict_name='bot_behavior')
-        else:
-            bot_behavior = dict()
+        bot_behavior_model = validators.BotBehavior(**(bot_behavior or {}))
+        bot_behavior = bot_behavior_model.model_dump()
+
+        if mail_behavior:
+            userprovided.parameters.validate_dict_keys(
+                dict_to_check=mail_behavior,
+                allowed_keys={'milestone_num',
+                              'send_start_msg',
+                              'send_finish_msg'},
+                necessary_keys=None,
+                dict_name='mail_behavior')
+        mail_behavior_model = validators.MailBehavior(**(mail_behavior or {}))
+        mail_behavior = mail_behavior_model.model_dump()
+
+        self.milestone: Optional[int] = mail_behavior_model.milestone_num
+
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # INIT: Bot Behavior
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         # Seconds until a connection times out:
         self.connection_timeout: int = userprovided.parameters.int_in_range(
