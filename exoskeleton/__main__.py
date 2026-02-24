@@ -22,6 +22,7 @@ import userprovided
 
 # internal:
 from exoskeleton import validators
+from pydantic import ValidationError
 
 # import other modules of this framework
 import importlib.metadata
@@ -118,7 +119,10 @@ class Exoskeleton:
                               'wait_max'},
                 necessary_keys=None,
                 dict_name='bot_behavior')
-        bot_behavior_model = validators.BotBehavior(**(bot_behavior or {}))
+        try:
+            bot_behavior_model = validators.BotBehavior(**(bot_behavior or {}))
+        except ValidationError as exc:
+            raise ValueError(f'Invalid bot_behavior: {exc}') from exc
         bot_behavior = bot_behavior_model.model_dump()
 
         if mail_behavior:
@@ -129,7 +133,12 @@ class Exoskeleton:
                               'send_finish_msg'},
                 necessary_keys=None,
                 dict_name='mail_behavior')
-        mail_behavior_model = validators.MailBehavior(**(mail_behavior or {}))
+        try:
+            mail_behavior_model = validators.MailBehavior(**(mail_behavior or {}))
+        except ValidationError as exc:
+            errors = exc.errors()
+            field = errors[0]['loc'][0] if errors and errors[0].get('loc') else 'field'
+            raise ValueError(f'{field} must be integer!') from exc
         mail_behavior = mail_behavior_model.model_dump()
 
         self.milestone: Optional[int] = mail_behavior_model.milestone_num

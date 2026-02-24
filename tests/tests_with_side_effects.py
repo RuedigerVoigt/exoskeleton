@@ -625,6 +625,7 @@ def test_return_page_code():
 # TO Do: handle 404 separetly
 
 
+@pytest.mark.timeout(300)
 def test_process_queue():
     exo.process_queue()
     # check_queue_count returns the number of items which did *not* cause permanent errors
@@ -662,6 +663,7 @@ def test_blocklist_too_long_fqdn():
     assert 'Not a valid FQDN' in str(excinfo.value)
 
 
+@pytest.mark.timeout(120)
 def test_remove_from_blocklist():
     before = queue_count()
     # Add host to blocklist
@@ -704,6 +706,7 @@ def test_remove_from_blocklist():
 # #############################################################################
 
 
+@pytest.mark.timeout(300)
 def test_exceed_retries():
     # The server is configured to *always* return the error
     # code named in the URL.
@@ -727,6 +730,7 @@ def test_exceed_retries():
     assert queue_item == (3, 6), f"Wrong error for exceeded retries: {queue_item}"
 
 
+@pytest.mark.timeout(300)
 def test_forget_errors():
     check_error_codes({3, 451, 402, 404, 407, 410})
     exo.errorhandling.forget_specific_error(404)
@@ -764,6 +768,7 @@ def test_log_rate_limit_hit():
 # #############################################################################
 
 
+@pytest.mark.timeout(120)
 def test_handle_redirects():
     "Add some URLs that redirect"
     # permanently moved:
@@ -888,16 +893,19 @@ def test_job_manager():
 
 
 def test_page_to_pdf_EXCEPTIONS():
-    with patch('subprocess.run', side_effect=subprocess.TimeoutExpired):
-        exo.controlled_browser.page_to_pdf(
-            url=exo_url.ExoUrl('https://www.ruediger-voigt.eu'),
-            file_path='./fileDownloads/setup-to-fail.pdf',
-            queue_id='foo')
-    with patch('subprocess.run', side_effect=subprocess.CalledProcessError):
-        exo.controlled_browser.page_to_pdf(
-            url=exo_url.ExoUrl('https://www.ruediger-voigt.eu'),
-            file_path='./fileDownloads/setup-to-fail.pdf',
-            queue_id='foo')
+    # browser_present may be False in environments without Chrome/Chromium.
+    # Temporarily set it to True so we reach the subprocess.run call.
+    with patch.object(exo.controlled_browser, 'browser_present', True):
+        with patch('subprocess.run', side_effect=subprocess.TimeoutExpired):
+            exo.controlled_browser.page_to_pdf(
+                url=exo_url.ExoUrl('https://www.ruediger-voigt.eu'),
+                file_path='./fileDownloads/setup-to-fail.pdf',
+                queue_id='foo')
+        with patch('subprocess.run', side_effect=subprocess.CalledProcessError):
+            exo.controlled_browser.page_to_pdf(
+                url=exo_url.ExoUrl('https://www.ruediger-voigt.eu'),
+                file_path='./fileDownloads/setup-to-fail.pdf',
+                queue_id='foo')
 
 
 # ############################################
@@ -915,7 +923,7 @@ def test_clean_up_functions():
 
 def test_establish_db_connection_OPERATIONAL_ERROR(caplog):
     from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
-    with patch('sqlalchemy.create_engine', side_effect=SQLAlchemyOperationalError("test", None, None)):
+    with patch('exoskeleton.database_connection.create_engine', side_effect=SQLAlchemyOperationalError("test", None, None)):
         with pytest.raises(SQLAlchemyOperationalError):
             exo.db.establish_db_connection()
     assert 'Did you forget a parameter' in caplog.text
@@ -923,7 +931,7 @@ def test_establish_db_connection_OPERATIONAL_ERROR(caplog):
 
 def test_establish_db_connection_INTERFACE_ERROR(caplog):
     from sqlalchemy.exc import DatabaseError as SQLAlchemyDatabaseError
-    with patch('sqlalchemy.create_engine', side_effect=SQLAlchemyDatabaseError("test", None, None)):
+    with patch('exoskeleton.database_connection.create_engine', side_effect=SQLAlchemyDatabaseError("test", None, None)):
         with pytest.raises(SQLAlchemyDatabaseError):
             exo.db.establish_db_connection()
     assert 'Database related exception' in caplog.text
@@ -931,21 +939,21 @@ def test_establish_db_connection_INTERFACE_ERROR(caplog):
 
 def test_establish_db_connection_DATABASE_ERROR(caplog):
     from sqlalchemy.exc import DatabaseError as SQLAlchemyDatabaseError
-    with patch('sqlalchemy.create_engine', side_effect=SQLAlchemyDatabaseError("test", None, None)):
+    with patch('exoskeleton.database_connection.create_engine', side_effect=SQLAlchemyDatabaseError("test", None, None)):
         with pytest.raises(SQLAlchemyDatabaseError):
             exo.db.establish_db_connection()
     assert 'Database related exception' in caplog.text
 
 
 def test_establish_db_connection_CATCHALL_ERROR_1(caplog):
-    with patch('sqlalchemy.create_engine', side_effect=Exception("test error")):
+    with patch('exoskeleton.database_connection.create_engine', side_effect=Exception("test error")):
         with pytest.raises(Exception):
             exo.db.establish_db_connection()
     assert 'Exception while connecting' in caplog.text
 
 
 def test_establish_db_connection_CATCHALL_ERROR_2(caplog):
-    with patch('sqlalchemy.create_engine', side_effect=Exception("test error")):
+    with patch('exoskeleton.database_connection.create_engine', side_effect=Exception("test error")):
         with pytest.raises(Exception):
             exo.db.establish_db_connection()
     assert 'Exception while connecting' in caplog.text

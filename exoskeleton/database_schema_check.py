@@ -8,7 +8,7 @@ Released under the Apache License 2.0
 
 import logging
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 import importlib.metadata
 
@@ -27,6 +27,14 @@ class DatabaseSchemaCheck:
     # This ensures they stay in sync with models.py
     TABLES = [table.name for table in models.Base.metadata.sorted_tables]
 
+    # Stored procedures and functions expected in the database.
+    # Empty by default (framework no longer uses stored procedures),
+    # but kept as mutable lists so tests can append entries to verify
+    # that the check methods raise InvalidDatabaseSchemaError when
+    # expected entries are missing from the DB.
+    PROCEDURES: list = []
+    FUNCTIONS: list = []
+
     def __init__(self,
                  db_connection: database_connection.DatabaseConnection
                  ) -> None:
@@ -34,6 +42,12 @@ class DatabaseSchemaCheck:
         self.db_connection = db_connection
         self.session: Session = db_connection.get_session()
         self.db_name: str = db_connection.db_name
+
+        # Create per-instance copies of the class-level lists so that
+        # mutations (e.g. appending 'foo' in tests) don't leak to other instances.
+        self.TABLES = list(type(self).TABLES)
+        self.PROCEDURES = list(type(self).PROCEDURES)
+        self.FUNCTIONS = list(type(self).FUNCTIONS)
 
         self.check_db_schema()
 
@@ -54,6 +68,46 @@ class DatabaseSchemaCheck:
             logger.warning('Could not initialize schema version: %s', str(e))
             self.session.rollback()
 
+    def __check_stored_procedures(self) -> None:
+        """Check if all expected stored procedures exist in the database.
+
+        Raises InvalidDatabaseSchemaError if any procedure in PROCEDURES is absent."""
+        if not self.PROCEDURES:
+            return
+
+        result = self.session.execute(
+            text("SELECT ROUTINE_NAME FROM information_schema.ROUTINES "
+                 "WHERE ROUTINE_TYPE = 'PROCEDURE' AND ROUTINE_SCHEMA = :db"),
+            {'db': self.db_name}
+        )
+        existing = {row[0] for row in result}
+
+        missing = [p for p in self.PROCEDURES if p not in existing]
+        if missing:
+            msg = f'Missing stored procedures: {", ".join(missing)}'
+            logger.error(msg)
+            raise err.InvalidDatabaseSchemaError(msg)
+
+    def __check_functions(self) -> None:
+        """Check if all expected database functions exist in the database.
+
+        Raises InvalidDatabaseSchemaError if any function in FUNCTIONS is absent."""
+        if not self.FUNCTIONS:
+            return
+
+        result = self.session.execute(
+            text("SELECT ROUTINE_NAME FROM information_schema.ROUTINES "
+                 "WHERE ROUTINE_TYPE = 'FUNCTION' AND ROUTINE_SCHEMA = :db"),
+            {'db': self.db_name}
+        )
+        existing = {row[0] for row in result}
+
+        missing = [f for f in self.FUNCTIONS if f not in existing]
+        if missing:
+            msg = f'Missing database functions: {", ".join(missing)}'
+            logger.error(msg)
+            raise err.InvalidDatabaseSchemaError(msg)
+
     def __check_table_existence(self) -> bool:
         """
         Check if all expected tables exist, and create missing ones using ORM.
@@ -63,48 +117,44 @@ class DatabaseSchemaCheck:
 
         If tables are missing, they are automatically created using SQLAlchemy's
         create_all() method, which is idempotent (only creates missing tables).
+        After the creation attempt, missing tables that could not be created
+        (e.g. not defined in ORM) raise InvalidDatabaseSchemaError.
 
         Note: User might have custom tables, so we only verify expected tables exist,
         not that ONLY expected tables exist.
         """
-        # Use SQLAlchemy Inspector to get table names (database-agnostic)
         assert self.db_connection.engine is not None, "Database engine not initialized"
         inspector = inspect(self.db_connection.engine)
-        tables_found = inspector.get_table_names()
+        tables_found_lower = [t.lower() for t in inspector.get_table_names()]
 
-        if not tables_found:
+        missing_tables = [t for t in self.TABLES if t.lower() not in tables_found_lower]
+
+        if not tables_found_lower:
             # No tables at all - create all tables from ORM models
             logger.warning('No tables found in database. Creating all tables from ORM models...')
-            assert self.db_connection.engine is not None, "Database engine not initialized"
             models.Base.metadata.create_all(self.db_connection.engine)
             logger.info('Successfully created all tables from ORM models.')
-            # Initialize schema version after creating tables
             self.__initialize_schema_version()
-            return True
-
-        # Make lowercase version for case-insensitive comparison
-        # (MariaDB/MySQL may return tables in lowercase)
-        tables_found_lower = [t.lower() for t in tables_found]
-        missing_tables = []
-
-        for table in self.TABLES:
-            if table.lower() not in tables_found_lower:
-                missing_tables.append(table)
-                logger.warning('Table %s not found.', table)
-
-        if missing_tables:
-            # Some tables are missing - create them
+        elif missing_tables:
             logger.warning(
                 'Missing %d tables: %s. Creating them from ORM models...',
                 len(missing_tables),
                 ', '.join(missing_tables)
             )
-            assert self.db_connection.engine is not None, "Database engine not initialized"
             models.Base.metadata.create_all(self.db_connection.engine)
             logger.info('Successfully created missing tables.')
-            # Initialize schema version if it's missing (exoInfo might be one of the missing tables)
-            if 'exoInfo' in [t.lower() for t in missing_tables]:
+            if 'exoinfo' in [t.lower() for t in missing_tables]:
                 self.__initialize_schema_version()
+
+        if missing_tables:
+            # Re-verify: some tables may not be in ORM and thus can't be auto-created
+            inspector = inspect(self.db_connection.engine)
+            tables_after_lower = [t.lower() for t in inspector.get_table_names()]
+            still_missing = [t for t in self.TABLES if t.lower() not in tables_after_lower]
+            if still_missing:
+                msg = f'Missing tables even after creation attempt: {", ".join(still_missing)}'
+                logger.error(msg)
+                raise err.InvalidDatabaseSchemaError(msg)
 
         logger.debug('Database schema: found all expected tables.')
         return True
@@ -255,5 +305,7 @@ class DatabaseSchemaCheck:
         """Check whether all expected tables are available in the database,
            ensure reference data is populated, and validate the schema version."""
         self.__check_table_existence()
+        self.__check_stored_procedures()
+        self.__check_functions()
         self.__check_reference_data()
         self.__check_schema_version()

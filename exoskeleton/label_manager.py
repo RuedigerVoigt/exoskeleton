@@ -9,6 +9,7 @@ Released under the Apache License 2.0
 import logging
 from typing import Optional, Union
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import userprovided
@@ -49,18 +50,18 @@ class LabelManager:
         shortname = userprovided.parameters.clean_trim(shortname) or ''
         if not shortname or not self.__shortname_ok(shortname):
             return
-        try:
-            # Create new Label using ORM
-            new_label = models.Label(
-                shortName=shortname,
-                description=description
-            )
-            self.session.add(new_label)
-            self.session.commit()
-            logger.debug('Added label to the database.')
-        except IntegrityError:
-            self.session.rollback()
+        # Pre-check existence to avoid IntegrityError+rollback, which would
+        # corrupt the outer transaction's flushed-but-uncommitted objects.
+        existing = self.session.query(models.Label).filter(
+            models.Label.shortName == shortname
+        ).first()
+        if existing:
             logger.debug('Label already existed.')
+            return
+        new_label = models.Label(shortName=shortname, description=description)
+        self.session.add(new_label)
+        self.session.commit()
+        logger.debug('Added label to the database.')
 
     def define_or_update_label(self,
                                shortname: str,
@@ -290,13 +291,15 @@ class LabelManager:
         label_id: str = returned_set.pop()
 
         if processed_only:
-            # Query with EXISTS check - only return UUIDs that exist in fileVersions
-            # Use join to ensure the version exists
+            # Only return UUIDs that exist in fileVersions AND are no longer
+            # in the queue (i.e. the task was actually processed, not just a stub)
+            queue_ids = select(models.Queue.id)
             query = self.session.query(models.LabelToVersion.versionUUID).join(
                 models.FileVersion,
                 models.FileVersion.id == models.LabelToVersion.versionUUID
             ).filter(
-                models.LabelToVersion.labelID == label_id
+                models.LabelToVersion.labelID == label_id,
+                ~models.LabelToVersion.versionUUID.in_(queue_ids)
             )
         else:
             # Simple query - return all UUIDs with this label

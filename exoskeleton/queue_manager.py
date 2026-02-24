@@ -14,7 +14,7 @@ import uuid
 
 
 # external dependencies:
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 import userprovided
@@ -87,8 +87,8 @@ class QueueManager:
         if action not in (1, 2, 3, 4):
             raise ValueError('Invalid value for action!')
 
-        # Check if the URL's domain (including subdomains) is on the blocklist
-        if self.blocklist.check_url_against_blocklist(str(url)):
+        # Check if the FQDN of the URL is on the blocklist
+        if url.hostname and self.blocklist.check_blocklist(url.hostname):
             msg = 'Cannot add URL to queue: FQDN is on blocklist.'
             logger.exception(msg)
             raise err.HostOnBlocklistError(msg)
@@ -207,7 +207,7 @@ class QueueManager:
             models.FileMaster.urlHash == url.hash
         ).first()
 
-        return file_master[0] if file_master else None
+        return str(file_master[0]) if file_master else None
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # PROCESSING THE QUEUE
@@ -218,14 +218,14 @@ class QueueManager:
         # Converted from next_queue_object_SP stored procedure
 
         # Subquery for temporary errors (permanent = 0)
-        temp_error_ids = self.session.query(models.ErrorType.id).filter(
+        temp_error_ids = select(models.ErrorType.id).where(
             models.ErrorType.permanent == 0
-        ).subquery()
+        )
 
         # Subquery for rate-limited hosts
-        rate_limited_hosts = self.session.query(models.RateLimit.fqdnHash).filter(
+        rate_limited_hosts = select(models.RateLimit.fqdnHash).where(
             models.RateLimit.noContactUntil > func.now()
-        ).subquery()
+        )
 
         # Main query
         result = self.session.query(
@@ -337,7 +337,7 @@ class QueueManager:
 
             # The FQDN might have been added to the blocklist *after*
             # the task entered into the queue!
-            if self.blocklist.check_url_against_blocklist(str(url)):
+            if self.blocklist.check_blocklist(str(url.hostname)):
                 logger.error(
                     'Cannot process queue item: FQDN meanwhile on blocklist!')
                 self.delete_from_queue(queue_id)

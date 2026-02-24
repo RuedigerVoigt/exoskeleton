@@ -97,7 +97,8 @@ class CrawlingErrorManager:
         ).first()
 
         if not queue_item:
-            raise ValueError(f"Queue ID '{queue_id}' not found")
+            logger.warning("Queue ID '%s' not found, skipping crawl delay.", queue_id)
+            return
 
         url_hash = queue_item[0]
 

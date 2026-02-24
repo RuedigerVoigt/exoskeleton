@@ -49,6 +49,7 @@ SQLAlchemy = ">=2.0.46"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
+pytest-timeout = "^2.0.0"
 coverage = "^7.0.0"
 flake8 = "^7.0.0"
 mypy = "^1.0.0"
@@ -97,6 +98,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
+    "pytest-timeout>=2.0.0",
     "coverage>=7.0.0",
     "flake8>=7.0.0",
     "mypy>=1.0.0",
@@ -118,6 +120,7 @@ build-backend = "poetry.core.masonry.api"
 console_output_style = "classic"
 testpaths = ["tests"]
 python_files = ["tests_*.py"]
+timeout = 120
 
 [tool.coverage.run]
 branch = true
