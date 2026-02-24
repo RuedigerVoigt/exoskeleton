@@ -233,19 +233,6 @@ def label_count() -> int:
     return session.query(models.Label).count()
 
 
-def check_error_codes(expectation: set):
-    session = exo.db.get_session()
-    error_code_rows = session.query(models.Queue.causesError).filter(
-        models.Queue.causesError.isnot(None)
-    ).order_by(models.Queue.causesError).all()
-    error_codes = {c[0] for c in error_code_rows}
-    if error_codes == expectation:
-        logging.info('Error codes match expectation.')
-    else:
-        raise Exception("Wrong error codes found in the queue: " +
-                        f"{error_codes} instead of {expectation}")
-
-
 def filemaster_labels_by_url(url: str) -> set:
     """Primary use for automatic test:
         Get a list of label names (not id numbers!) attached to a specific
@@ -421,6 +408,8 @@ def test_add_same_task_with_different_labels():
                         filemaster_labels_2)
 
     assert label_count() == len(all_added_labels)
+    # Clean up so the accumulated queue item doesn't trigger a real network call later
+    exo.delete_from_queue(uuid_1)
 
 
 def get_filemaster_id():
@@ -589,6 +578,8 @@ def test_same_url_different_task():
     test_counter['num_expected_labels'] += 1
     assert label_count() == test_counter['num_expected_labels']
     assert exo.labels.version_labels_by_uuid(uuid_t1_3) == {'item3_label'}
+    # Clean up so the accumulated queue item doesn't trigger a real network call later
+    exo.delete_from_queue(uuid_t1_3)
 
 
 def test_remove_task_keep_labels():
@@ -610,26 +601,6 @@ def test_remove_task_keep_labels():
     assert queue_count() == before
     # this does not change the number of labels:
     assert label_count() == test_counter['num_expected_labels']
-
-
-def test_return_page_code():
-    exo.return_page_code('https://www.ruediger-voigt.eu/')
-    exo.return_page_code(exo_url.ExoUrl('https://www.ruediger-voigt.eu/'))
-    with pytest.raises(ValueError) as excinfo:
-        exo.return_page_code(None)
-    assert 'Missing URL' in str(excinfo.value)
-    with pytest.raises(RuntimeError) as excinfo:
-        exo.return_page_code("https://www.ruediger-voigt.eu/throw-402.html")
-    assert 'Cannot return page code' in str(excinfo.value)
-
-# TO Do: handle 404 separetly
-
-
-@pytest.mark.timeout(300)
-def test_process_queue():
-    exo.process_queue()
-    # check_queue_count returns the number of items which did *not* cause permanent errors
-    assert queue_count() == 0, 'Did not process everything it should have'
 
 
 # #############################################################################
@@ -663,12 +634,11 @@ def test_blocklist_too_long_fqdn():
     assert 'Not a valid FQDN' in str(excinfo.value)
 
 
-@pytest.mark.timeout(120)
 def test_remove_from_blocklist():
     before = queue_count()
     # Add host to blocklist
     exo.blocklist.block_fqdn('www.google.com')
-    # try to add URL with blocked FQDN
+    # try to add URL with blocked FQDN - must be rejected
     with pytest.raises(err.HostOnBlocklistError):
         _ = exo.add_page_to_pdf(
             'https://www.google.com/search?q=exoskeleton+python',
@@ -676,79 +646,20 @@ def test_remove_from_blocklist():
             {'another_label_to_ignore'})
     assert queue_count() == before, 'URL added to queue even though host on blocklist'
     assert label_count() == test_counter['num_expected_labels']
-    # Remove the fqdn from the blocklist.
-    # Add the previously blocked URL with a task
+    # Remove the fqdn from the blocklist; the same URL must now be accepted
     exo.blocklist.unblock_fqdn('www.google.com')
-    exo.add_save_page_code(
+    uuid = exo.add_save_page_code(
         'https://www.google.com/search?q=exoskeleton+python')
-    test_counter['num_expected_labels'] += 0
     assert queue_count() == before + 1
     assert label_count() == test_counter['num_expected_labels']
-
-    # process the queue
-    exo.process_queue()
-
-    # check_queue_count returns the number of items
-    # which did *not* cause permanent errors
-    test_counter['num_expected_queue_items'] = 0
-    assert queue_count() == test_counter['num_expected_queue_items']
-
-    session = exo.db.get_session()
-    permanent_errors = session.query(models.Queue).filter(
-        models.Queue.causesError.isnot(None)
-    ).count()
-
-    assert permanent_errors == 0
+    # Clean up without making a real network call
+    exo.delete_from_queue(uuid)
+    assert queue_count() == before
 
 
 # #############################################################################
 # TEST ERROR HANDLING
 # #############################################################################
-
-
-@pytest.mark.timeout(300)
-def test_exceed_retries():
-    # The server is configured to *always* return the error
-    # code named in the URL.
-    # Add temporary error
-    uuid_code_500 = exo.add_save_page_code(
-        "https://www.ruediger-voigt.eu/throw-500.html")
-    # Add permanent errors
-    exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-402.html")
-    exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-404.html")
-    exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-407.html")
-    exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-410.html")
-    exo.add_save_page_code("https://www.ruediger-voigt.eu/throw-451.html")
-    # Update counter
-    test_counter['num_expected_queue_items'] += 6
-    # Start processing:
-    exo.process_queue()
-    session = exo.db.get_session()
-    queue_item = session.query(models.Queue.causesError, models.Queue.numTries).filter(
-        models.Queue.id == uuid_code_500
-    ).first()
-    assert queue_item == (3, 6), f"Wrong error for exceeded retries: {queue_item}"
-
-
-@pytest.mark.timeout(300)
-def test_forget_errors():
-    check_error_codes({3, 451, 402, 404, 407, 410})
-    exo.errorhandling.forget_specific_error(404)
-    check_error_codes({3, 451, 402, 407, 410})
-    exo.errorhandling.forget_permanent_errors()
-    check_error_codes(set())
-    exo.errorhandling.forget_temporary_errors()
-    # process the queue again
-    exo.process_queue()
-    # Check they all are marked as errors again:
-    check_error_codes({3, 451, 402, 404, 407, 410})
-    # Now remove all errors
-    exo.errorhandling.forget_all_errors()
-    check_error_codes(set())
-    # Truncate the queue
-    session = exo.db.get_session()
-    session.execute(text('TRUNCATE TABLE queue;'))
-    session.commit()
 
 
 def test_log_temporary_problem():
@@ -761,36 +672,6 @@ def test_log_rate_limit_hit():
     test_url = 'https://www.example.com'
     exo.stats.log_rate_limit_hit(exo_url.ExoUrl(test_url))
     exo.errorhandling.forget_permanent_errors()
-
-
-# #############################################################################
-# TEST HANDLING REDIRECTS
-# #############################################################################
-
-
-@pytest.mark.timeout(120)
-def test_handle_redirects():
-    "Add some URLs that redirect"
-    # permanently moved:
-    redirect301 = exo.add_save_page_code(
-        "https://www.ruediger-voigt.eu/redirect-301.html")
-    # temporarily moved:
-    redirect302 = exo.add_save_page_code(
-        "https://www.ruediger-voigt.eu/redirect-302.html")
-    exo.process_queue()
-
-    session = exo.db.get_session()
-    file_content_301 = session.query(models.FileContent).filter(
-        models.FileContent.versionID == redirect301
-    ).first()
-    assert file_content_301 is not None
-    assert file_content_301.pageContent == 'testfile1', 'Redirect 301 did not work.'
-
-    file_content_302 = session.query(models.FileContent).filter(
-        models.FileContent.versionID == redirect302
-    ).first()
-    assert file_content_302 is not None
-    assert file_content_302.pageContent == 'testfile2', 'Redirect 302 did not work.'
 
 
 # #############################################################################
@@ -823,11 +704,13 @@ def test_hit_a_rate_limit():
     # Check that a rate limited FQDN does not show up as next item.
     exo.errorhandling.add_rate_limit('www.ruediger-voigt.eu')
     session = exo.db.get_session()
-    session.execute(text('TRUNCATE TABLE queue;'))
+    session.query(models.Queue).delete(synchronize_session=False)
     session.commit()
-    exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
+    uuid_429 = exo.add_save_page_code('https://www.ruediger-voigt.eu/throw-429.html')
     assert exo.queue.get_next_task() is None, 'Rate limited task showed up as next'
     exo.errorhandling.forget_all_rate_limits()
+    # Clean up so the leftover item doesn't trigger a rate-limit in tests_network.py
+    exo.delete_from_queue(uuid_429)
 
 # #############################################################################
 # TEST JOB MANAGER

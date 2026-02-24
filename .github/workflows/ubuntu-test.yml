@@ -72,5 +72,14 @@ jobs:
         TEST_BROWSER: 'chromium-browser'
       run: pytest tests/tests_with_side_effects.py
 
+    - name: Run network integration tests with pytest
+      env:
+        TEST_DB_HOST: '127.0.0.1'
+        TEST_DB_PORT: '12345'
+        TEST_DB_NAME: 'exoskeleton_test'
+        TEST_DB_USER: 'exoskeleton_test'
+        TEST_DB_PASSWORD: 'exoskeleton_test'
+      run: pytest tests/tests_network.py
+
     - name: List downloaded files
       run: ls -l ./fileDownloads
