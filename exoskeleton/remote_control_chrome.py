@@ -99,7 +99,7 @@ class RemoteControlChrome:
             # and os.spawn!
             subprocess.run([self.browser_name,
                             "--headless",
-                            "--new-windows",
+                            "--new-window",
                             "--disable-gpu",
                             "--account-consistency",
                             # No additional quotation marks around the path:

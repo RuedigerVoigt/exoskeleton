@@ -35,10 +35,10 @@ class LabelManager:
 
     @staticmethod
     def __shortname_ok(shortname: str) -> bool:
-        "Check if the label's shortname does not exceed 31 characters."
-        if len(shortname) > 31:
+        "Check if the label's shortname does not exceed 63 characters."
+        if len(shortname) > 63:
             logger.error(
-                "Cannot add labelname: exceeding max length of 31 characters.")
+                "Cannot add labelname: exceeding max length of 63 characters.")
             return False
         return True
 
@@ -126,7 +126,10 @@ class LabelManager:
         ).all()
 
         # Extract the IDs from the result (each row is a tuple with one element)
-        ids_associated = {assoc[0] for assoc in existing_associations} if existing_associations else set()
+        ids_associated = (
+            {assoc[0] for assoc in existing_associations}
+            if existing_associations else set()
+        )
 
         # ignore all labels already associated:
         remaining_ids = tuple(id_list - ids_associated)
@@ -176,7 +179,10 @@ class LabelManager:
         ).all()
 
         # Extract the IDs from the result (each row is a tuple with one element)
-        ids_associated = {assoc[0] for assoc in existing_associations} if existing_associations else set()
+        ids_associated = (
+            {assoc[0] for assoc in existing_associations}
+            if existing_associations else set()
+        )
 
         # ignore all labels already associated:
         remaining_ids = tuple(id_list - ids_associated)

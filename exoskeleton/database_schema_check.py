@@ -195,33 +195,52 @@ class DatabaseSchemaCheck:
                 )
                 self.session.add(new_action)
                 logger.info('Added missing action: %s (id=%d)',
-                           action_data['description'], action_data['id'])
+                            action_data['description'], action_data['id'])
 
         # Define required error types
         # permanent=True means permanent error, permanent=False means temporary/retryable
         required_errors = [
             # Special error codes
-            {'id': 3, 'short': 'gave_up', 'description': 'Gave up after too many retries', 'permanent': True},
+            {'id': 3, 'short': 'gave_up',
+             'description': 'Gave up after too many retries', 'permanent': True},
             # Permanent errors (HTTP status codes)
-            {'id': 400, 'short': 'bad_request', 'description': 'Bad Request', 'permanent': True},
-            {'id': 401, 'short': 'unauthorized', 'description': 'Unauthorized', 'permanent': True},
-            {'id': 402, 'short': 'payment_required', 'description': 'Payment Required', 'permanent': True},
-            {'id': 403, 'short': 'forbidden', 'description': 'Forbidden', 'permanent': True},
-            {'id': 404, 'short': 'not_found', 'description': 'Not Found', 'permanent': True},
-            {'id': 407, 'short': 'proxy_auth', 'description': 'Proxy Authentication Required', 'permanent': True},
-            {'id': 410, 'short': 'gone', 'description': 'Gone', 'permanent': True},
-            {'id': 451, 'short': 'unavailable_legal', 'description': 'Unavailable For Legal Reasons', 'permanent': True},
-            {'id': 501, 'short': 'not_implemented', 'description': 'Not Implemented', 'permanent': True},
+            {'id': 400, 'short': 'bad_request',
+             'description': 'Bad Request', 'permanent': True},
+            {'id': 401, 'short': 'unauthorized',
+             'description': 'Unauthorized', 'permanent': True},
+            {'id': 402, 'short': 'payment_required',
+             'description': 'Payment Required', 'permanent': True},
+            {'id': 403, 'short': 'forbidden',
+             'description': 'Forbidden', 'permanent': True},
+            {'id': 404, 'short': 'not_found',
+             'description': 'Not Found', 'permanent': True},
+            {'id': 407, 'short': 'proxy_auth',
+             'description': 'Proxy Authentication Required', 'permanent': True},
+            {'id': 410, 'short': 'gone',
+             'description': 'Gone', 'permanent': True},
+            {'id': 451, 'short': 'unavailable_legal',
+             'description': 'Unavailable For Legal Reasons', 'permanent': True},
+            {'id': 501, 'short': 'not_implemented',
+             'description': 'Not Implemented', 'permanent': True},
             # Temporary errors
-            {'id': 408, 'short': 'timeout', 'description': 'Request Timeout', 'permanent': False},
-            {'id': 429, 'short': 'rate_limit', 'description': 'Too Many Requests', 'permanent': False},
-            {'id': 500, 'short': 'server_error', 'description': 'Internal Server Error', 'permanent': False},
-            {'id': 502, 'short': 'bad_gateway', 'description': 'Bad Gateway', 'permanent': False},
-            {'id': 503, 'short': 'service_unavailable', 'description': 'Service Unavailable', 'permanent': False},
-            {'id': 504, 'short': 'gateway_timeout', 'description': 'Gateway Timeout', 'permanent': False},
-            {'id': 509, 'short': 'bandwidth_exceeded', 'description': 'Bandwidth Limit Exceeded', 'permanent': False},
-            {'id': 529, 'short': 'site_overloaded', 'description': 'Site is overloaded', 'permanent': False},
-            {'id': 598, 'short': 'network_read_timeout', 'description': 'Network read timeout error', 'permanent': False}
+            {'id': 408, 'short': 'timeout',
+             'description': 'Request Timeout', 'permanent': False},
+            {'id': 429, 'short': 'rate_limit',
+             'description': 'Too Many Requests', 'permanent': False},
+            {'id': 500, 'short': 'server_error',
+             'description': 'Internal Server Error', 'permanent': False},
+            {'id': 502, 'short': 'bad_gateway',
+             'description': 'Bad Gateway', 'permanent': False},
+            {'id': 503, 'short': 'service_unavailable',
+             'description': 'Service Unavailable', 'permanent': False},
+            {'id': 504, 'short': 'gateway_timeout',
+             'description': 'Gateway Timeout', 'permanent': False},
+            {'id': 509, 'short': 'bandwidth_exceeded',
+             'description': 'Bandwidth Limit Exceeded', 'permanent': False},
+            {'id': 529, 'short': 'site_overloaded',
+             'description': 'Site is overloaded', 'permanent': False},
+            {'id': 598, 'short': 'network_read_timeout',
+             'description': 'Network read timeout error', 'permanent': False}
         ]
 
         # Check and add missing error types
@@ -239,7 +258,7 @@ class DatabaseSchemaCheck:
                 )
                 self.session.add(new_error)
                 logger.info('Added missing error type: %s (id=%d)',
-                           error_data['description'], error_data['id'])
+                            error_data['description'], error_data['id'])
 
         # Define required storage types
         required_storage_types = [
@@ -262,7 +281,7 @@ class DatabaseSchemaCheck:
                 )
                 self.session.add(new_storage)
                 logger.info('Added missing storage type: %s (id=%d)',
-                           storage_data['shortName'], storage_data['id'])
+                            storage_data['shortName'], storage_data['id'])
 
         # Commit all changes
         try:

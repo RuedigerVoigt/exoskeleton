@@ -29,7 +29,8 @@ class Queue(Base):
     url = Column(Text, nullable=False)
     urlHash = Column(CHAR(64), nullable=False, index=True)
     fqdnHash = Column(CHAR(64), nullable=False)
-    addedToQueue = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp(), index=True)
+    addedToQueue = Column(
+        TIMESTAMP, nullable=False, server_default=func.current_timestamp(), index=True)
     causesError = Column(Integer, ForeignKey('errorType.id'), nullable=True, index=True)
     numTries = Column(Integer, default=0)
     delayUntil = Column(TIMESTAMP, nullable=True, index=True)
@@ -44,7 +45,8 @@ class Job(Base):
     __tablename__ = 'jobs'
 
     jobName = Column(String(127), primary_key=True)
-    created = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp(), index=True)
+    created = Column(
+        TIMESTAMP, nullable=False, server_default=func.current_timestamp(), index=True)
     finished = Column(TIMESTAMP, nullable=True, index=True)
     startUrl = Column(Text, nullable=False)
     startUrlHash = Column(CHAR(64), nullable=False)
@@ -98,11 +100,12 @@ class FileMaster(Base):
     numVersions_t = Column(Integer, default=0)
 
     # Relationships
-    versions = relationship("FileVersion", back_populates="file_master", cascade="all, delete-orphan")
+    versions = relationship(
+        "FileVersion", back_populates="file_master", cascade="all, delete-orphan")
     labels = relationship("LabelToMaster",
-                         back_populates="file_master",
-                         foreign_keys="[LabelToMaster.urlHash]",
-                         primaryjoin="FileMaster.urlHash==LabelToMaster.urlHash")
+                          back_populates="file_master",
+                          foreign_keys="[LabelToMaster.urlHash]",
+                          primaryjoin="FileMaster.urlHash==LabelToMaster.urlHash")
 
 
 class FileVersion(Base):
@@ -126,7 +129,8 @@ class FileVersion(Base):
     file_master = relationship("FileMaster", back_populates="versions")
     storage_type = relationship("StorageType", back_populates="file_versions")
     action_applied = relationship("Action", back_populates="file_versions")
-    content = relationship("FileContent", back_populates="version", uselist=False, cascade="all, delete-orphan")
+    content = relationship(
+        "FileContent", back_populates="version", uselist=False, cascade="all, delete-orphan")
     labels = relationship("LabelToVersion", back_populates="version")
 
 
@@ -149,7 +153,7 @@ class StatisticsHost(Base):
     fqdn = Column(String(255), nullable=False)
     firstSeen = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp())
     lastSeen = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp(),
-                     onupdate=func.current_timestamp(), index=True)
+                      onupdate=func.current_timestamp(), index=True)
     successfulRequests = Column(Integer, nullable=False, default=0)
     temporaryProblems = Column(Integer, nullable=False, default=0)
     permamentErrors = Column(Integer, nullable=False, default=0)
@@ -180,9 +184,9 @@ class LabelToMaster(Base):
     # Relationships
     label = relationship("Label", back_populates="master_associations")
     file_master = relationship("FileMaster",
-                              back_populates="labels",
-                              foreign_keys="[LabelToMaster.urlHash]",
-                              primaryjoin="FileMaster.urlHash==LabelToMaster.urlHash")
+                               back_populates="labels",
+                               foreign_keys="[LabelToMaster.urlHash]",
+                               primaryjoin="FileMaster.urlHash==LabelToMaster.urlHash")
 
 
 class LabelToVersion(Base):
@@ -192,7 +196,7 @@ class LabelToVersion(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     labelID = Column(Integer, ForeignKey('labels.id'), nullable=False, index=True)
     versionUUID = Column(CHAR(32), ForeignKey('fileVersions.id'),
-                        nullable=False, index=True)
+                         nullable=False, index=True)
 
     # Relationships
     label = relationship("Label", back_populates="version_associations")

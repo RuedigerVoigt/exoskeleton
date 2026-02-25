@@ -28,17 +28,18 @@ from exoskeleton import time_manager
 logger = logging.getLogger(__name__)
 
 
-def insert_file_to_db(db_connection: database_connection.DatabaseConnection,
-                     url: str,
-                     url_hash: str,
-                     queue_id: str,
-                     mime_type: str,
-                     path_or_bucket: str,
-                     file_name: str,
-                     size: int,
-                     hash_method: str,
-                     hash_value: str,
-                     action_applied_id: int) -> None:
+def insert_file_to_db(
+        db_connection: database_connection.DatabaseConnection,
+        url: str,
+        url_hash: str,
+        queue_id: str,
+        mime_type: str,
+        path_or_bucket: str,
+        file_name: str,
+        size: int,
+        hash_method: str,
+        hash_value: str,
+        action_applied_id: int) -> None:
     """Update FileVersion with file metadata after download.
     FileVersion stub was created when added to queue, now update with actual data.
 
@@ -130,8 +131,9 @@ def insert_content_to_db(db_connection: database_connection.DatabaseConnection,
         raise
 
 
-def delete_all_versions(db_connection: database_connection.DatabaseConnection,
-                       file_master_id: int) -> None:
+def delete_all_versions(
+        db_connection: database_connection.DatabaseConnection,
+        file_master_id: int) -> None:
     """Delete all versions of a file including labels and the fileMaster entry.
     Converted from delete_all_versions_SP stored procedure.
 
@@ -288,17 +290,18 @@ class GetObjectBaseClass:
         "Write the result to the database"
         raise NotImplementedError('Thou shalt use a derived class')
 
-    def _insert_file_to_db(self,
-                          url: str,
-                          url_hash: str,
-                          queue_id: str,
-                          mime_type: str,
-                          path_or_bucket: str,
-                          file_name: str,
-                          size: int,
-                          hash_method: str,
-                          hash_value: str,
-                          action_applied_id: int) -> None:
+    def _insert_file_to_db(
+            self,
+            url: str,
+            url_hash: str,
+            queue_id: str,
+            mime_type: str,
+            path_or_bucket: str,
+            file_name: str,
+            size: int,
+            hash_method: str,
+            hash_value: str,
+            action_applied_id: int) -> None:
         """Update FileVersion with file metadata after download.
         FileVersion stub was created when added to queue, now update with actual data.
 
