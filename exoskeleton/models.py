@@ -10,8 +10,17 @@ from sqlalchemy import (
     Column, String, Integer, Text, TIMESTAMP, Boolean,
     ForeignKey, func
 )
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, relationship, validates
 from sqlalchemy.dialects.mysql import TINYINT, MEDIUMTEXT, CHAR
+
+
+def _validate_sha256_hex(value: str, field: str) -> str:
+    """Raise ValueError if value is not a 64-character lowercase hex string."""
+    if not isinstance(value, str) or len(value) != 64:
+        raise ValueError(f"{field} must be a 64-character SHA-256 hex string")
+    if not all(c in '0123456789abcdef' for c in value):
+        raise ValueError(f"{field} must contain only lowercase hex characters")
+    return value
 
 
 class Base(DeclarativeBase):
@@ -38,6 +47,14 @@ class Queue(Base):
     # Relationships
     action_rel = relationship("Action", back_populates="queue_items")
     error_rel = relationship("ErrorType", back_populates="queue_items")
+
+    @validates('urlHash')
+    def validate_url_hash(self, key: str, value: str) -> str:
+        return _validate_sha256_hex(value, 'Queue.urlHash')
+
+    @validates('fqdnHash')
+    def validate_fqdn_hash(self, key: str, value: str) -> str:
+        return _validate_sha256_hex(value, 'Queue.fqdnHash')
 
 
 class Job(Base):
@@ -99,6 +116,10 @@ class FileMaster(Base):
     urlHash = Column(CHAR(64), nullable=False, unique=True)
     numVersions_t = Column(Integer, default=0)
 
+    @validates('urlHash')
+    def validate_url_hash(self, key: str, value: str) -> str:
+        return _validate_sha256_hex(value, 'FileMaster.urlHash')
+
     # Relationships
     versions = relationship(
         "FileVersion", back_populates="file_master", cascade="all, delete-orphan")
@@ -124,6 +145,12 @@ class FileVersion(Base):
     hashMethod = Column(String(6), nullable=True)
     hashValue = Column(String(512), nullable=True)
     comment = Column(String(256), nullable=True)
+
+    @validates('hashMethod')
+    def validate_hash_method(self, key: str, value: str) -> str:
+        if value is not None and value != 'sha256':
+            raise ValueError(f"Unsupported hashMethod: {value!r}")
+        return value
 
     # Relationships
     file_master = relationship("FileMaster", back_populates="versions")
@@ -168,6 +195,15 @@ class Label(Base):
     shortName = Column(String(63), nullable=False, unique=True)
     description = Column(Text, nullable=True)
 
+    @validates('shortName')
+    def validate_short_name(self, key: str, value: str) -> str:
+        if not value or not value.strip():
+            raise ValueError("Label shortName cannot be empty")
+        if len(value) > 63:
+            raise ValueError(
+                f"Label shortName exceeds 63 characters: {value!r}")
+        return value
+
     # Relationships
     master_associations = relationship("LabelToMaster", back_populates="label")
     version_associations = relationship("LabelToVersion", back_populates="label")
@@ -180,6 +216,10 @@ class LabelToMaster(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     labelID = Column(Integer, ForeignKey('labels.id'), nullable=False, index=True)
     urlHash = Column(CHAR(64), nullable=False, index=True)
+
+    @validates('urlHash')
+    def validate_url_hash(self, key: str, value: str) -> str:
+        return _validate_sha256_hex(value, 'LabelToMaster.urlHash')
 
     # Relationships
     label = relationship("Label", back_populates="master_associations")

@@ -44,6 +44,7 @@ from exoskeleton import database_schema_check
 from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
+from exoskeleton import models
 from exoskeleton import remote_control_chrome
 from exoskeleton import time_manager
 
@@ -351,6 +352,96 @@ def test_TimeManager_functions():
     # random-wait needs to be patched
     with patch('time.sleep', return_value=None):
         my_tm.random_wait()
+
+# #############################################################################
+# DatabaseSchemaCheck Class
+# #############################################################################
+
+
+# #############################################################################
+# SQLAlchemy Model Validators
+# #############################################################################
+
+VALID_HASH = 'a' * 64  # 64 lowercase hex chars — valid SHA-256 placeholder
+
+
+def test_models_sha256_hash_validator_VALID():
+    """Valid 64-char lowercase hex strings are accepted on all hash fields."""
+    q = models.Queue()
+    q.urlHash = VALID_HASH
+    q.fqdnHash = VALID_HASH
+
+    fm = models.FileMaster()
+    fm.urlHash = VALID_HASH
+
+    ltm = models.LabelToMaster()
+    ltm.urlHash = VALID_HASH
+
+
+def test_models_sha256_hash_validator_TOO_SHORT():
+    with pytest.raises(ValueError):
+        models.Queue(urlHash='a' * 63)
+
+
+def test_models_sha256_hash_validator_TOO_LONG():
+    with pytest.raises(ValueError):
+        models.FileMaster(urlHash='a' * 65)
+
+
+def test_models_sha256_hash_validator_NON_HEX():
+    with pytest.raises(ValueError):
+        models.LabelToMaster(urlHash='g' * 64)  # 'g' is not hex
+
+
+def test_models_sha256_hash_validator_UPPERCASE():
+    """Uppercase hex chars are rejected — hashes are always lowercase hexdigest."""
+    with pytest.raises(ValueError):
+        models.Queue(urlHash='A' * 64)
+
+
+def test_models_label_shortname_validator_VALID():
+    lbl = models.Label(shortName='my-label')
+    assert lbl.shortName == 'my-label'
+
+
+def test_models_label_shortname_validator_EMPTY():
+    with pytest.raises(ValueError):
+        models.Label(shortName='')
+
+
+def test_models_label_shortname_validator_WHITESPACE_ONLY():
+    with pytest.raises(ValueError):
+        models.Label(shortName='   ')
+
+
+def test_models_label_shortname_validator_TOO_LONG():
+    with pytest.raises(ValueError):
+        models.Label(shortName='x' * 64)
+
+
+def test_models_label_shortname_validator_MAX_LENGTH():
+    """Exactly 63 characters is the maximum and must be accepted."""
+    lbl = models.Label(shortName='x' * 63)
+    assert len(lbl.shortName) == 63
+
+
+def test_models_hash_method_validator_VALID():
+    fv = models.FileVersion()
+    fv.hashMethod = 'sha256'
+    assert fv.hashMethod == 'sha256'
+
+
+def test_models_hash_method_validator_NONE():
+    """None is allowed — hashMethod is nullable."""
+    fv = models.FileVersion()
+    fv.hashMethod = None
+    assert fv.hashMethod is None
+
+
+def test_models_hash_method_validator_INVALID():
+    with pytest.raises(ValueError):
+        models.FileVersion(hashMethod='md5')
+
 
 # #############################################################################
 # DatabaseSchemaCheck Class

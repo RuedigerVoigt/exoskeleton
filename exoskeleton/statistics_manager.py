@@ -109,8 +109,10 @@ class StatisticsManager:
         ).first()
 
         if host_stats:
-            host_stats.successfulRequests += successful_requests_increment  # type: ignore[assignment]
-            host_stats.temporaryProblems += temporary_problems_increment  # type: ignore[assignment]
+            host_stats.successfulRequests += (  # type: ignore[assignment]
+                successful_requests_increment)
+            host_stats.temporaryProblems += (  # type: ignore[assignment]
+                temporary_problems_increment)
             host_stats.permamentErrors += permanent_errors_increment  # type: ignore[assignment]
             host_stats.hitRateLimit += hit_rate_limit_increment  # type: ignore[assignment]
         else:
