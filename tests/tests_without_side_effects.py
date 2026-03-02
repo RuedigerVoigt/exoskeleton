@@ -33,8 +33,10 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 
+import hashlib
 import logging
-from unittest.mock import patch
+import pathlib
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -45,7 +47,9 @@ from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
 from exoskeleton import models
+from exoskeleton import notification_manager
 from exoskeleton import remote_control_chrome
+from exoskeleton import statistics_manager as stat_mgr
 from exoskeleton import time_manager
 
 logging.basicConfig(level=logging.DEBUG)
@@ -356,6 +360,144 @@ def test_TimeManager_functions():
 # #############################################################################
 # DatabaseSchemaCheck Class
 # #############################################################################
+
+
+# #############################################################################
+# NotificationManager Class
+# #############################################################################
+
+def _make_notify(processed=0, milestone=None, send_start=False, send_finish=False):
+    """Return a NotificationManager with a mocked bote.Mailer."""
+    mock_tm = MagicMock(spec=time_manager.TimeManager)
+    mock_tm.estimate_remaining_time.return_value = 600
+    mock_stats = MagicMock(spec=stat_mgr.StatisticsManager)
+    mock_stats.get_processed_counter.return_value = processed
+    mock_stats.queue_stats.return_value = {
+        'tasks_without_error': 5, 'tasks_with_temp_errors': 2}
+    mock_stats.num_tasks_w_permanent_errors.return_value = 0
+    with patch('bote.Mailer') as mock_cls:
+        mock_cls.return_value = MagicMock()
+        nm = notification_manager.NotificationManager(
+            project_name='Test Project',
+            mail_settings={'host': 'smtp.example.com'},
+            mail_behavior={
+                'send_start_msg': send_start,
+                'send_finish_msg': send_finish,
+            },
+            time_manager_object=mock_tm,
+            stats_manager_object=mock_stats,
+            milestone=milestone,
+        )
+    nm.stats = mock_stats
+    return nm
+
+
+def test_NotificationManager_no_mail_settings():
+    mock_tm = MagicMock(spec=time_manager.TimeManager)
+    mock_stats = MagicMock(spec=stat_mgr.StatisticsManager)
+    nm = notification_manager.NotificationManager(
+        project_name='Test', mail_settings={}, mail_behavior={},
+        time_manager_object=mock_tm, stats_manager_object=mock_stats,
+    )
+    assert nm.send_mails is False
+
+
+def test_NotificationManager_with_mail_sends_start():
+    nm = _make_notify(send_start=True)
+    assert nm.send_mails is True
+    nm.mailer.send_mail.assert_called_once()
+
+
+def test_NotificationManager_milestone_not_reached():
+    nm = _make_notify(processed=7, milestone=10)
+    assert nm._NotificationManager__check_is_milestone() is False
+
+
+def test_NotificationManager_milestone_zero():
+    nm = _make_notify(processed=10, milestone=0)
+    assert nm._NotificationManager__check_is_milestone() is False
+
+
+def test_NotificationManager_milestone_reached():
+    nm = _make_notify(processed=10, milestone=10)
+    assert nm._NotificationManager__check_is_milestone() is True
+
+
+def test_NotificationManager_send_msg_milestone():
+    nm = _make_notify(processed=5, milestone=5)
+    nm.mailer.send_mail.reset_mock()
+    nm.send_msg_milestone()
+    nm.mailer.send_mail.assert_called_once()
+
+
+def test_NotificationManager_send_msg_milestone_no_milestone():
+    nm = _make_notify(processed=5, milestone=None)
+    nm.mailer.send_mail.reset_mock()
+    nm.send_msg_milestone()
+    nm.mailer.send_mail.assert_not_called()
+
+
+def test_NotificationManager_send_msg_finish_configured():
+    nm = _make_notify(send_finish=True)
+    nm.mailer.send_mail.reset_mock()
+    nm.send_msg_finish()
+    nm.mailer.send_mail.assert_called_once()
+
+
+def test_NotificationManager_send_msg_finish_not_configured():
+    nm = _make_notify(send_finish=False)
+    nm.mailer.send_mail.reset_mock()
+    nm.send_msg_finish()
+    nm.mailer.send_mail.assert_not_called()
+
+
+def test_NotificationManager_send_msg_abort():
+    nm = _make_notify()
+    nm.mailer.send_mail.reset_mock()
+    nm.send_msg_abort_lost_db()
+    nm.mailer.send_mail.assert_called_once()
+
+
+def test_NotificationManager_send_custom_msg():
+    nm = _make_notify()
+    nm.mailer.send_mail.reset_mock()
+    nm.send_custom_msg('My Subject', 'My Body')
+    nm.mailer.send_mail.assert_called_once_with('My Subject', 'My Body')
+
+
+# #############################################################################
+# FileManager - file I/O methods
+# #############################################################################
+
+
+def test_FileManager_write_response_to_file(fs):
+    fs.create_dir('/fake/dl/')
+    fm = file_manager.FileManager(None, '/fake/dl/', '')
+    mock_response = MagicMock()
+    mock_response.iter_content.return_value = [b'hello ', b'world']
+    result = fm.write_response_to_file(mock_response, 'out.txt')
+    assert result.name == 'out.txt'
+    assert result.exists()
+    assert result.read_bytes() == b'hello world'
+
+
+def test_FileManager_get_file_hash(fs):
+    content = b'hello world'
+    fs.create_file('/fake/dl/sample.txt', contents=content)
+    fm = file_manager.FileManager(None, '/fake/dl/', '')
+    hash_val = fm.get_file_hash(pathlib.Path('/fake/dl/sample.txt'))
+    assert hash_val == hashlib.sha256(content).hexdigest()
+
+
+def test_FileManager_get_file_size(fs):
+    fs.create_file('/fake/dl/sized.txt', contents=b'hello')
+    size = file_manager.FileManager.get_file_size(pathlib.Path('/fake/dl/sized.txt'))
+    assert size == 5
+
+
+def test_FileManager_get_file_size_MISSING(fs):
+    with pytest.raises(Exception):
+        file_manager.FileManager.get_file_size(pathlib.Path('/fake/nonexistent.txt'))
 
 
 # #############################################################################

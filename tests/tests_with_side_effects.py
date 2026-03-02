@@ -674,6 +674,78 @@ def test_log_rate_limit_hit():
     exo.errorhandling.forget_permanent_errors()
 
 
+def test_add_to_queue_invalid_action_with_exourl():
+    """Passing a valid ExoUrl with an unsupported action ID raises ValueError."""
+    with pytest.raises(ValueError) as excinfo:
+        exo.queue.add_to_queue(exo_url.ExoUrl('https://www.example.com'), 99999)
+    assert 'Invalid value for action' in str(excinfo.value)
+
+
+def test_log_temporary_problem_gave_up():
+    """log_temporary_problem marks a task as gave_up after max retries."""
+    url = 'https://www.example.com/error-gave-up.html'
+    uuid_1 = exo.add_save_page_code(url)
+    session = exo.db.get_session()
+    # Set numTries to max - 1 so the next call pushes it to max.
+    session.query(models.Queue).filter(
+        models.Queue.id == uuid_1
+    ).update(
+        {models.Queue.numTries: exo.errorhandling.queue_max_retries - 1},
+        synchronize_session=False
+    )
+    session.commit()
+    exo.errorhandling.add_crawl_delay(uuid_1, 500)
+    item = session.query(models.Queue.causesError).filter(
+        models.Queue.id == uuid_1
+    ).first()
+    assert item[0] == 3  # error code 3 = gave_up
+    exo.delete_from_queue(uuid_1)
+
+
+def test_log_temporary_problem_delay_branches():
+    """Cover the five delay branches (num_tries 1-4 and >4)."""
+    session = exo.db.get_session()
+    for i, tries_before in enumerate([0, 1, 2, 3, 4]):
+        url = f'https://www.example.com/delay-branch-{i}.html'
+        uuid_1 = exo.add_save_page_code(url)
+        session.query(models.Queue).filter(
+            models.Queue.id == uuid_1
+        ).update(
+            {models.Queue.numTries: tries_before},
+            synchronize_session=False
+        )
+        session.commit()
+        exo.errorhandling.add_crawl_delay(uuid_1, 500)
+        item = session.query(models.Queue.delayUntil).filter(
+            models.Queue.id == uuid_1
+        ).first()
+        assert item[0] is not None, f"No delay set for tries_before={tries_before}"
+        exo.delete_from_queue(uuid_1)
+
+
+def test_mark_permanent_error_invalid_id():
+    """mark_permanent_error with a non-existent queue ID raises ValueError."""
+    with pytest.raises(ValueError) as excinfo:
+        exo.errorhandling.mark_permanent_error(
+            '00000000000000000000000000000000', 404)
+    assert 'not found' in str(excinfo.value)
+
+
+def test_forget_all_errors():
+    """forget_all_errors clears error flags and resets try counters."""
+    url = 'https://www.example.com/forget-all-errors.html'
+    uuid_1 = exo.add_save_page_code(url)
+    exo.errorhandling.mark_permanent_error(uuid_1, 404)
+    exo.errorhandling.forget_all_errors()
+    session = exo.db.get_session()
+    item = session.query(
+        models.Queue.causesError, models.Queue.numTries
+    ).filter(models.Queue.id == uuid_1).first()
+    assert item[0] is None
+    assert item[1] == 0
+    exo.delete_from_queue(uuid_1)
+
+
 # #############################################################################
 # TEST RATE LIMIT
 # #############################################################################
