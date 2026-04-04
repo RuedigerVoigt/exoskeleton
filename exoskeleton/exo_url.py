@@ -7,7 +7,6 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 
-from hashlib import sha256
 import logging
 from urllib.parse import urlparse
 
@@ -53,4 +52,4 @@ class ExoUrl:
     def generate_sha256_hash(url_string: str) -> str:
         """Generate the SHA256 hash of an URL the same way the database does.
            The encoding of the database is a version of UTF-8."""
-        return sha256(url_string.encode('utf-8')).hexdigest()
+        return userprovided.hashing.calculate_string_hash(url_string)

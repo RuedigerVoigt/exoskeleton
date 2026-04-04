@@ -109,3 +109,6 @@ venv.bak/
 # Specific test directories and files
 fileDownloads/*
 salted-cache.sqlite3
+
+# Windows null device artifact
+nul
