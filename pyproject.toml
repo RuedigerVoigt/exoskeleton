@@ -35,27 +35,27 @@ include = ["exoskeleton/py.typed"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-beautifulsoup4 = ">=4.14.3"
+beautifulsoup4 = ">=4.15.0"
 bote = ">=1.2.2"
-compatibility = ">=2.0.0"
-lxml = ">=6.0.2"
-pymysql = ">=1.1.2"
-python-dotenv = ">=1.2.1"
-pydantic = ">=2.0.0"
-requests = ">=2.32.5"
-urllib3 = ">=2.6.2"
-userprovided = ">=2.2.0"
-SQLAlchemy = ">=2.0.46"
+compatibility = ">=2.2.0"
+lxml = ">=6.1.1"
+pymysql = ">=1.2.0"
+python-dotenv = ">=1.2.2"
+pydantic = ">=2.13.4"
+requests = ">=2.34.2"
+urllib3 = ">=2.7.0"
+userprovided = ">=2.5.0"
+SQLAlchemy = ">=2.0.51"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
-pytest-timeout = "^2.0.0"
-coverage = "^7.0.0"
-flake8 = "^7.0.0"
-mypy = "^1.0.0"
-bandit = "^1.7.0"
-types-requests = "^2.31.0"
-pyfakefs = "^5.0.0"
+pytest = "^9.1.0"
+pytest-timeout = "^2.4.0"
+coverage = "^7.14.1"
+flake8 = "^7.3.0"
+mypy = "^2.1.0"
+bandit = "^1.9.4"
+types-requests = "^2.33.0.20260518"
+pyfakefs = "^6.2.0"
 
 [project]
 name = "exoskeleton"
@@ -82,27 +82,27 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
 ]
 dependencies = [
-    "beautifulsoup4>=4.14.3",
+    "beautifulsoup4>=4.15.0",
     "bote>=1.2.2",
-    "compatibility>=2.0.0",
-    "lxml>=6.0.2",
-    "pymysql>=1.1.2",
-    "python-dotenv>=1.2.1",
-    "pydantic>=2.0.0",
-    "requests>=2.32.5",
-    "urllib3>=2.6.2",
-    "userprovided>=2.2.0",
-    "SQLAlchemy>=2.0.46",
+    "compatibility>=2.2.0",
+    "lxml>=6.1.1",
+    "pymysql>=1.2.0",
+    "python-dotenv>=1.2.2",
+    "pydantic>=2.13.4",
+    "requests>=2.34.2",
+    "urllib3>=2.7.0",
+    "userprovided>=2.5.0",
+    "SQLAlchemy>=2.0.51",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-timeout>=2.0.0",
-    "coverage>=7.0.0",
-    "flake8>=7.0.0",
-    "mypy>=1.0.0",
-    "bandit>=1.7.0",
+    "pytest>=9.1.0",
+    "pytest-timeout>=2.4.0",
+    "coverage>=7.14.1",
+    "flake8>=7.3.0",
+    "mypy>=2.1.0",
+    "bandit>=1.9.4",
 ]
 
 [project.urls]

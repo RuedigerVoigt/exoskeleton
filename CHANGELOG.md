@@ -50,6 +50,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
   * Added: `SQLAlchemy>=2.0.41`
   * Added: `python-dotenv>=1.1.1`
   * Updated all dependencies to latest versions
+  * Raised minimum versions of all dependencies to their latest releases
   * Added `[project.optional-dependencies]` for PEP 517/518 compatibility
 
 * **Security**:
