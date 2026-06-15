@@ -56,6 +56,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 * **Security**:
   * Added Bandit security scanning to CI/CD workflows
   * Added pip-audit workflow to scan runtime and dev dependencies for known vulnerabilities (CVEs) on every push/PR and on a daily schedule
+  * Pinned all GitHub Actions to full commit SHAs
 
 * **Testing**:
   * All test configuration migrated to `pyproject.toml`
