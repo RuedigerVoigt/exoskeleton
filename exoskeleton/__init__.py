@@ -2,7 +2,7 @@
 
 import importlib.metadata
 
-from exoskeleton.__main__ import Exoskeleton
+from exoskeleton.core import Exoskeleton
 
 __all__ = ['Exoskeleton']
 
