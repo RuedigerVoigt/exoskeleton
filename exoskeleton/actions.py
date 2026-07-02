@@ -242,6 +242,8 @@ class GetObjectBaseClass:
                 if content_type:
                     self.mime_type = (content_type).split(';')[0]
                 self.store_result(response)
+                self.stats.increment_processed_counter()
+                self.stats.log_successful_request(self.url)
             elif status_code in self.HTTP_PERMANENT_ERRORS:
                 self.errorhandling.mark_permanent_error(self.queue_id, status_code)
                 self.stats.log_permanent_error(self.url)
@@ -277,8 +279,6 @@ class GetObjectBaseClass:
                          exc_info=True)
             self.stats.log_permanent_error(self.url)
             raise
-        self.stats.increment_processed_counter()
-        self.stats.log_successful_request(self.url)
 
     def handle_action(self) -> requests.Response:
         "Do the actual request"
