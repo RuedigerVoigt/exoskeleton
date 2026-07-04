@@ -15,6 +15,7 @@ import logging
 import userprovided
 
 from exoskeleton import database_connection
+from exoskeleton.error_codes import ErrorCode
 from exoskeleton import models
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,8 @@ class CrawlingErrorManager:
             if num_tries == self.queue_max_retries:
                 # This is treated as a *permanent* failure!
                 logger.error('Giving up: too many tries for task %s', queue_id)
-                # 'gave_up' in the errorType table:
-                queue_item.causesError = 3  # type: ignore[assignment]
+                queue_item.causesError = int(  # type: ignore[assignment]
+                    ErrorCode.GAVE_UP)
                 return
 
             logger.info('Adding crawl delay to task %s', queue_id)
@@ -99,7 +100,7 @@ class CrawlingErrorManager:
             }, synchronize_session=False)
 
             # Mark the specific item with error
-            queue_item.causesError = error_type  # type: ignore[assignment]
+            queue_item.causesError = int(error_type)  # type: ignore[assignment]
 
     def mark_permanent_error(self,
                              queue_id: str,

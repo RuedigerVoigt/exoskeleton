@@ -12,6 +12,7 @@ import shutil
 import subprocess
 
 from exoskeleton import error_manager
+from exoskeleton.error_codes import ErrorCode
 from exoskeleton import exo_url
 from exoskeleton import statistics_manager
 
@@ -115,14 +116,15 @@ class RemoteControlChrome:
         except subprocess.TimeoutExpired:
             logger.exception(
                 'Cannot create PDF due to subprocess timeout.', exc_info=True)
-            self.errorhandling.add_crawl_delay(queue_id, 4)
+            self.errorhandling.add_crawl_delay(queue_id, ErrorCode.TIMEOUT)
             self.stats.log_temporary_problem(url)
         except subprocess.CalledProcessError:
             logger.exception('Process Error: cannot create PDF.',
                              exc_info=True)
-            self.errorhandling.add_crawl_delay(queue_id, 5)
+            self.errorhandling.add_crawl_delay(
+                queue_id, ErrorCode.PDF_PROCESS_ERROR)
             self.stats.log_permanent_error(url)
         except (Exception, subprocess.SubprocessError):  # pylint: disable=broad-except
             logger.exception('Exception.', exc_info=True)
-            self.errorhandling.add_crawl_delay(queue_id, 0)
+            self.errorhandling.add_crawl_delay(queue_id, ErrorCode.UNKNOWN)
             self.stats.log_temporary_problem(url)

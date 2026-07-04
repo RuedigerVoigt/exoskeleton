@@ -17,6 +17,7 @@ from sqlalchemy.exc import DatabaseError, SQLAlchemyError
 
 from exoskeleton import database_connection
 from exoskeleton import error_manager
+from exoskeleton.error_codes import ErrorCode
 from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
@@ -36,7 +37,8 @@ def _mark_queue_item_as_error_source(
         with db_connection.session_scope() as session:
             session.query(models.Queue).filter(
                 models.Queue.id == queue_id
-            ).update({models.Queue.causesError: 2}, synchronize_session=False)
+            ).update({models.Queue.causesError: int(ErrorCode.STORAGE_FAILED)},
+                     synchronize_session=False)
     except SQLAlchemyError:
         logger.error('Could not mark queue item %s as causing an error.',
                      queue_id, exc_info=True)
@@ -182,13 +184,14 @@ class GetObjectBaseClass:
     # pylint: disable=too-many-arguments
 
     # HTTP response codes have to be handeled differently depending on whether
-    # they signal a permanent or temporary error. The following lists include
-    # some non-standard codes. See:
-    # https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-    HTTP_PERMANENT_ERRORS: Final = (400, 401, 402, 403, 404, 405, 406,
-                                    407, 410, 451, 501)
-    # 429 (Rate Limit) is handeled separately:
-    HTTP_TEMP_ERRORS: Final = (408, 500, 502, 503, 504, 509, 529, 598)
+    # they signal a permanent or temporary error. Derived from ErrorCode so
+    # these stay in sync with the seeded errorType rows (see error_codes.py).
+    # 429 (Rate Limit) is handeled separately, so it is excluded here.
+    HTTP_PERMANENT_ERRORS: Final = tuple(
+        int(c) for c in ErrorCode if c.permanent and int(c) >= 400)
+    HTTP_TEMP_ERRORS: Final = tuple(
+        int(c) for c in ErrorCode
+        if not c.permanent and int(c) >= 400 and int(c) != 429)
 
     def __init__(
             self,
@@ -244,7 +247,7 @@ class GetObjectBaseClass:
                 self.stats.log_permanent_error(self.url)
         except requests.exceptions.Timeout:
             logger.error('Reached timeout.', exc_info=True)
-            self.errorhandling.add_crawl_delay(self.queue_id, 4)
+            self.errorhandling.add_crawl_delay(self.queue_id, ErrorCode.TIMEOUT)
             self.stats.log_temporary_problem(self.url)
 
         except requests.exceptions.ConnectionError:
