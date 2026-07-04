@@ -274,58 +274,6 @@ class GetObjectBaseClass:
         "Write the result to the database"
         raise NotImplementedError('Thou shalt use a derived class')
 
-    def _insert_file_to_db(
-            self,
-            url: str,
-            url_hash: str,
-            queue_id: str,
-            mime_type: str,
-            path_or_bucket: str,
-            file_name: str,
-            size: int,
-            hash_method: str,
-            hash_value: str,
-            action_applied_id: int) -> None:
-        """Update FileVersion with file metadata after download.
-        FileVersion stub was created when added to queue, now update with actual data.
-
-        This method handles the transaction and error handling that was
-        previously in the stored procedure."""
-        session = self.db_connection.get_session()
-
-        try:
-            # UPDATE fileVersions with actual file data
-            # (FileVersion stub was created in queue_manager.add_to_queue)
-            session.query(models.FileVersion).filter(
-                models.FileVersion.id == queue_id
-            ).update({
-                models.FileVersion.mimeType: mime_type,
-                models.FileVersion.pathOrBucket: path_or_bucket,
-                models.FileVersion.fileName: file_name,
-                models.FileVersion.size: size,
-                models.FileVersion.hashMethod: hash_method,
-                models.FileVersion.hashValue: hash_value
-            }, synchronize_session=False)
-
-            # DELETE from queue
-            session.query(models.Queue).filter(
-                models.Queue.id == queue_id
-            ).delete(synchronize_session=False)
-
-            session.commit()
-
-        except SQLAlchemyError:
-            session.rollback()
-            # Update queue to mark error (causesError = 2)
-            try:
-                session.query(models.Queue).filter(
-                    models.Queue.id == queue_id
-                ).update({models.Queue.causesError: 2}, synchronize_session=False)
-                session.commit()
-            except SQLAlchemyError:
-                session.rollback()
-            raise
-
 
 class GetFile(GetObjectBaseClass):
     "Download a file"
