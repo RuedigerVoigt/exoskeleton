@@ -158,6 +158,28 @@ class DatabaseSchemaCheck:
         logger.debug('Database schema: found all expected tables.')
         return True
 
+    def __ensure_columns(self) -> None:
+        """Add columns introduced after a database was first created.
+
+        create_all() only creates missing *tables*, not missing columns on
+        existing tables. Nullable operational columns added in later versions
+        are auto-added here so existing installations keep working without a
+        manual migration (same self-healing approach as reference data).
+        """
+        assert self.db_connection.engine is not None, "Database engine not initialized"
+        inspector = inspect(self.db_connection.engine)
+        existing_tables = [t.lower() for t in inspector.get_table_names()]
+
+        # queue.lockedUntil - lease column for atomic task claiming
+        if 'queue' in existing_tables:
+            queue_columns = {c['name'] for c in inspector.get_columns('queue')}
+            if 'lockedUntil' not in queue_columns:
+                logger.warning('Adding missing column queue.lockedUntil ...')
+                with self.db_connection.engine.begin() as conn:
+                    conn.execute(text(
+                        'ALTER TABLE queue ADD COLUMN lockedUntil TIMESTAMP NULL'))
+                logger.info('Added column queue.lockedUntil.')
+
     def __check_reference_data(self) -> None:
         """
         Check if required reference data exists in the database and add missing entries.
@@ -322,6 +344,7 @@ class DatabaseSchemaCheck:
         """Check whether all expected tables are available in the database,
            ensure reference data is populated, and validate the schema version."""
         self.__check_table_existence()
+        self.__ensure_columns()
         self.__check_stored_procedures()
         self.__check_functions()
         self.__check_reference_data()

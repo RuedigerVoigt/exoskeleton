@@ -43,6 +43,9 @@ class Queue(Base):
     causesError = Column(Integer, ForeignKey('errorType.id'), nullable=True, index=True)
     numTries = Column(Integer, default=0)
     delayUntil = Column(TIMESTAMP, nullable=True, index=True)
+    # Lease timestamp for atomic task claiming: a worker sets this when it
+    # claims the task so concurrent workers skip it until the lease expires.
+    lockedUntil = Column(TIMESTAMP, nullable=True, index=True)
 
     # Relationships
     action_rel = relationship("Action", back_populates="queue_items")

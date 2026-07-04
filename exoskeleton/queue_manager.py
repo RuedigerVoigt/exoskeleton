@@ -6,6 +6,7 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 # standard library:
+from datetime import datetime, timedelta
 from hashlib import sha256
 import logging
 import time
@@ -39,6 +40,12 @@ class QueueManager:
     # pylint: disable=too-many-arguments
     # pylint: disable=too-many-statements
     # pylint: disable=too-many-branches
+
+    # Seconds a claimed task stays leased to the worker that grabbed it.
+    # Long enough to cover a download plus the following random_wait, so a
+    # second worker does not pick up a task still in progress. If a worker
+    # dies mid-task the lease expires and the task becomes claimable again.
+    TASK_LEASE_SECONDS = 300
 
     def __init__(
             self,
@@ -228,8 +235,18 @@ class QueueManager:
     # PROCESSING THE QUEUE
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def get_next_task(self) -> Optional[str]:
-        "Get the next suitable task"
+    def get_next_task(self) -> Optional[tuple]:
+        """Atomically claim and return the next suitable task.
+
+        The candidate row is locked with FOR UPDATE ... SKIP LOCKED and
+        immediately leased (lockedUntil set into the future) in the same
+        transaction. Concurrent workers therefore skip a task that is already
+        being processed and never grab the same row twice. Returns None if no
+        actionable task is available.
+
+        Requires MariaDB 10.6+ (for SKIP LOCKED). On backends without row
+        locking (e.g. SQLite) the lease column still prevents re-processing.
+        """
         # Converted from next_queue_object_SP stored procedure
 
         # Subquery for temporary errors (permanent = 0)
@@ -242,9 +259,10 @@ class QueueManager:
             models.RateLimit.noContactUntil > func.now()
         )
 
-        # Main query
+        lease_until = datetime.now() + timedelta(seconds=self.TASK_LEASE_SECONDS)
+
         with self.db_connection.session_scope() as session:
-            result = session.query(
+            candidate = session.query(
                 models.Queue.id,
                 models.Queue.action,
                 models.Queue.url,
@@ -261,11 +279,28 @@ class QueueManager:
                         models.Queue.delayUntil.is_(None),
                         models.Queue.delayUntil < func.now()
                     ),
+                    or_(
+                        models.Queue.lockedUntil.is_(None),
+                        models.Queue.lockedUntil < func.now()
+                    ),
                     models.Queue.action.in_([1, 2, 3, 4])
                 )
-            ).order_by(models.Queue.addedToQueue.asc()).first()
+            ).order_by(
+                models.Queue.addedToQueue.asc()
+            ).with_for_update(skip_locked=True).first()
 
-        return result  # type: ignore[no-any-return, return-value]
+            if candidate is None:
+                return None
+
+            # Claim the row: set the lease before the lock is released on commit.
+            session.query(models.Queue).filter(
+                models.Queue.id == candidate[0]
+            ).update(
+                {models.Queue.lockedUntil: lease_until},
+                synchronize_session=False)
+
+            # Materialize before the session closes and detaches the row.
+            return tuple(candidate)
 
     def delete_from_queue(self,
                           queue_id: str) -> None:
