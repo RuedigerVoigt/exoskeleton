@@ -706,6 +706,12 @@ def test_log_temporary_problem_delay_branches():
     """Cover the five delay branches (num_tries 1-4 and >4)."""
     session = exo.db.get_session()
     for i, tries_before in enumerate([0, 1, 2, 3, 4]):
+        # End any transaction left open by the previous iteration so this
+        # session starts a fresh MVCC read view. The framework's add_* and
+        # delete_* calls now each run in their own transaction; without this
+        # commit the long-lived read view goes stale and the locking UPDATE
+        # below fails with MariaDB error 1020 ("Record has changed ...").
+        session.commit()
         url = f'https://www.example.com/delay-branch-{i}.html'
         uuid_1 = exo.add_save_page_code(url)
         session.query(models.Queue).filter(
