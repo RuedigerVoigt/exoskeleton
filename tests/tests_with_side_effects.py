@@ -48,6 +48,7 @@ import exoskeleton
 from exoskeleton import exo_url
 from exoskeleton import err
 from exoskeleton import models
+from exoskeleton.error_codes import ErrorCode
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -749,6 +750,56 @@ def test_forget_all_errors():
     ).filter(models.Queue.id == uuid_1).first()
     assert item[0] is None
     assert item[1] == 0
+    exo.delete_from_queue(uuid_1)
+
+
+def test_error_codes_all_seeded():
+    """Regression (item 1): every ErrorCode has a matching errorType row.
+    Queue.causesError is a foreign key to errorType.id, so a missing row
+    means any write of that id fails at runtime."""
+    with exo.db.session_scope() as session:
+        for code in ErrorCode:
+            row = session.query(models.ErrorType).filter(
+                models.ErrorType.id == int(code)
+            ).first()
+            assert row is not None, f'errorType row missing for {code.name}'
+            assert bool(row.permanent) == code.permanent
+
+
+def test_add_crawl_delay_accepts_internal_error_codes():
+    """Regression (item 1): the timeout and headless-Chrome error paths write
+    internal ErrorCode ids (4, 5, 6). These previously had no errorType row,
+    so add_crawl_delay crashed with a foreign-key violation."""
+    for code in (ErrorCode.TIMEOUT, ErrorCode.PDF_PROCESS_ERROR,
+                 ErrorCode.UNKNOWN):
+        url = f'https://www.example.com/errcode-{int(code)}.html'
+        uuid_1 = exo.add_save_page_code(url)
+        # Must not raise a foreign-key error:
+        exo.errorhandling.add_crawl_delay(uuid_1, code)
+        with exo.db.session_scope() as session:
+            item = session.query(models.Queue.causesError).filter(
+                models.Queue.id == uuid_1
+            ).first()
+        assert item[0] == int(code)
+        exo.delete_from_queue(uuid_1)
+
+
+def test_storage_failed_code_is_writable():
+    """Regression (item 1): the storage-failure path marks causesError with
+    STORAGE_FAILED (id 7), which previously used the unseeded id 2."""
+    url = 'https://www.example.com/storage-failed.html'
+    uuid_1 = exo.add_save_page_code(url)
+    with exo.db.session_scope() as session:
+        session.query(models.Queue).filter(
+            models.Queue.id == uuid_1
+        ).update(
+            {models.Queue.causesError: int(ErrorCode.STORAGE_FAILED)},
+            synchronize_session=False)
+    with exo.db.session_scope() as session:
+        item = session.query(models.Queue.causesError).filter(
+            models.Queue.id == uuid_1
+        ).first()
+    assert item[0] == int(ErrorCode.STORAGE_FAILED)
     exo.delete_from_queue(uuid_1)
 
 
