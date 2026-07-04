@@ -51,7 +51,6 @@ class QueueManager:
             label_manager_object: label_manager.LabelManager,
             bot_behavior: dict) -> None:
         self.db_connection = db_connection
-        self.session: Session = self.db_connection.get_session()
         self.blocklist = blocklist_manager_object
         self.time = time_manager_object
         self.stats = stats_manager_object
@@ -93,96 +92,105 @@ class QueueManager:
             logger.exception(msg)
             raise err.HostOnBlocklistError(msg)
 
-        # Add labels for the master entry.
-        # Ignore labels for the version at this point, as it might
-        # not get processed.
-        if labels_master:
-            self.labels.assign_labels_to_master(url, labels_master)
+        # One session for the whole operation: master entry, version stub,
+        # labels and queue entry are committed together.
+        with self.db_connection.session_scope() as session:
+            # Add labels for the master entry.
+            # Ignore labels for the version at this point, as it might
+            # not get processed. (An early return below still commits
+            # these on scope exit - intended, as labels of duplicate
+            # URLs attach to the existing file.)
+            if labels_master:
+                self.labels.assign_labels_to_master(
+                    url, labels_master, session=session)
 
-        if not force_new_version:
-            # check if the URL has already been processed
-            id_in_file_master = self.get_filemaster_id_by_url(url)
+            if not force_new_version:
+                # check if the URL has already been processed
+                id_in_file_master = self.get_filemaster_id_by_url(
+                    url, session=session)
 
-            if id_in_file_master:
-                # The URL has been processed in _some_ way.
-                # Check if was the _same_ as now requested.
-                file_version = self.session.query(models.FileVersion.id).filter(
-                    models.FileVersion.fileMasterID == id_in_file_master,
-                    models.FileVersion.actionAppliedID == action
-                ).first()
+                if id_in_file_master:
+                    # The URL has been processed in _some_ way.
+                    # Check if was the _same_ as now requested.
+                    file_version = session.query(models.FileVersion.id).filter(
+                        models.FileVersion.fileMasterID == id_in_file_master,
+                        models.FileVersion.actionAppliedID == action
+                    ).first()
 
-                if file_version:
-                    logger.info(
-                        'Skipping file already processed in the same way.')
-                    return None
+                    if file_version:
+                        logger.info(
+                            'Skipping file already processed in the same way.')
+                        return None
 
-                # log and simply go on
-                logger.debug(
-                    'File already processed, BUT not this way: Added to queue.')
+                    # log and simply go on
+                    logger.debug(
+                        'File already processed, BUT not this way: Added to queue.')
+                else:
+                    # File has not been processed yet.
+                    # If the exact same task is *not* already in the queue, add it.
+                    if self.__get_queue_uuids(session, url, action):
+                        logger.info('Exact same task already in queue.')
+                        return None
+
+            # generate a random uuid for the file version
+            uuid_value = uuid.uuid4().hex
+
+            # Create or get fileMaster entry
+            existing_master = session.query(models.FileMaster).filter(
+                models.FileMaster.urlHash == url.hash
+            ).first()
+
+            if not existing_master:
+                new_master = models.FileMaster(url=str(url), urlHash=url.hash)
+                session.add(new_master)
+                session.flush()  # Get the ID
+                file_master_id = new_master.id
             else:
-                # File has not been processed yet.
-                # If the exact same task is *not* already in the queue, add it.
-                if self.__get_queue_uuids(url, action):
-                    logger.info('Exact same task already in queue.')
-                    return None
+                file_master_id = existing_master.id
 
-        # generate a random uuid for the file version
-        uuid_value = uuid.uuid4().hex
+            # Determine storage type based on action
+            # action 1 (download file) -> storageTypeID 2 (disk)
+            # action 2 (save page code) -> storageTypeID 1 (database)
+            # action 3 (page to PDF) -> storageTypeID 3 (pdf)
+            # action 4 (save page text) -> storageTypeID 1 (database)
+            storage_type_map = {1: 2, 2: 1, 3: 3, 4: 1}
+            storage_type_id = storage_type_map[action]
 
-        # Create or get fileMaster entry
-        existing_master = self.session.query(models.FileMaster).filter(
-            models.FileMaster.urlHash == url.hash
-        ).first()
+            # Create stub FileVersion record (will be updated when processed)
+            new_version = models.FileVersion(
+                id=uuid_value,
+                fileMasterID=file_master_id,
+                storageTypeID=storage_type_id,
+                actionAppliedID=action
+            )
+            session.add(new_version)
+            # Flush FileVersion first to satisfy FK constraint for label assignments
+            session.flush()
 
-        if not existing_master:
-            new_master = models.FileMaster(url=str(url), urlHash=url.hash)
-            self.session.add(new_master)
-            self.session.flush()  # Get the ID
-            file_master_id = new_master.id
-        else:
-            file_master_id = existing_master.id
+            # Now assign version labels (FileVersion is flushed and visible
+            # for FK checks because the same session is used)
+            if labels_version:
+                self.labels.assign_labels_to_uuid(
+                    uuid_value, labels_version, session=session)
 
-        # Determine storage type based on action
-        # action 1 (download file) -> storageTypeID 2 (disk)
-        # action 2 (save page code) -> storageTypeID 1 (database)
-        # action 3 (page to PDF) -> storageTypeID 3 (pdf)
-        # action 4 (save page text) -> storageTypeID 1 (database)
-        storage_type_map = {1: 2, 2: 1, 3: 3, 4: 1}
-        storage_type_id = storage_type_map[action]
+            # add the new task to the queue
+            assert url.hostname is not None, "URL hostname cannot be None"
+            fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
 
-        # Create stub FileVersion record (will be updated when processed)
-        new_version = models.FileVersion(
-            id=uuid_value,
-            fileMasterID=file_master_id,
-            storageTypeID=storage_type_id,
-            actionAppliedID=action
-        )
-        self.session.add(new_version)
-        # Flush FileVersion first to satisfy FK constraint for label assignments
-        self.session.flush()
-
-        # Now assign version labels (FileVersion is flushed and visible for FK checks)
-        if labels_version:
-            self.labels.assign_labels_to_uuid(uuid_value, labels_version)
-
-        # add the new task to the queue
-        assert url.hostname is not None, "URL hostname cannot be None"
-        fqdn_hash = sha256(url.hostname.encode('utf-8')).hexdigest()
-
-        new_queue_item = models.Queue(
-            id=uuid_value,
-            action=action,
-            url=str(url),
-            urlHash=url.hash,
-            fqdnHash=fqdn_hash,
-            prettifyHtml=prettify_html
-        )
-        self.session.add(new_queue_item)
-        self.session.commit()
+            new_queue_item = models.Queue(
+                id=uuid_value,
+                action=action,
+                url=str(url),
+                urlHash=url.hash,
+                fqdnHash=fqdn_hash,
+                prettifyHtml=prettify_html
+            )
+            session.add(new_queue_item)
 
         return uuid_value
 
-    def __get_queue_uuids(self,
+    @staticmethod
+    def __get_queue_uuids(session: Session,
                           url: exo_url.ExoUrl,
                           action: int) -> set:
         """Based on the URL and action ID this returns a set of UUIDs in the
@@ -190,7 +198,7 @@ class QueueManager:
            but as you can force exoskeleton to repeat tasks on the same
            URL it can be multiple. Returns an empty set if such combination
            is not in the queue."""
-        queue_uuids = self.session.query(models.Queue.id).filter(
+        queue_uuids = session.query(models.Queue.id).filter(
             models.Queue.urlHash == url.hash,
             models.Queue.action == action
         ).order_by(models.Queue.addedToQueue.asc()).all()
@@ -198,14 +206,21 @@ class QueueManager:
         return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()
 
     def get_filemaster_id_by_url(self,
-                                 url: Union[exo_url.ExoUrl, str]
+                                 url: Union[exo_url.ExoUrl, str],
+                                 session: Optional[Session] = None
                                  ) -> Optional[str]:
         "Get the id of the filemaster entry associated with this URL"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        file_master = self.session.query(models.FileMaster.id).filter(
-            models.FileMaster.urlHash == url.hash
-        ).first()
+        if session is not None:
+            file_master = session.query(models.FileMaster.id).filter(
+                models.FileMaster.urlHash == url.hash
+            ).first()
+        else:
+            with self.db_connection.session_scope() as new_session:
+                file_master = new_session.query(models.FileMaster.id).filter(
+                    models.FileMaster.urlHash == url.hash
+                ).first()
 
         return str(file_master[0]) if file_master else None
 
@@ -228,26 +243,27 @@ class QueueManager:
         )
 
         # Main query
-        result = self.session.query(
-            models.Queue.id,
-            models.Queue.action,
-            models.Queue.url,
-            models.Queue.urlHash,
-            models.Queue.prettifyHtml
-        ).filter(
-            and_(
-                or_(
-                    models.Queue.causesError.is_(None),
-                    models.Queue.causesError.in_(temp_error_ids)  # type: ignore[arg-type]
-                ),
-                ~models.Queue.fqdnHash.in_(rate_limited_hosts),  # type: ignore[arg-type]
-                or_(
-                    models.Queue.delayUntil.is_(None),
-                    models.Queue.delayUntil < func.now()
-                ),
-                models.Queue.action.in_([1, 2, 3, 4])
-            )
-        ).order_by(models.Queue.addedToQueue.asc()).first()
+        with self.db_connection.session_scope() as session:
+            result = session.query(
+                models.Queue.id,
+                models.Queue.action,
+                models.Queue.url,
+                models.Queue.urlHash,
+                models.Queue.prettifyHtml
+            ).filter(
+                and_(
+                    or_(
+                        models.Queue.causesError.is_(None),
+                        models.Queue.causesError.in_(temp_error_ids)  # type: ignore[arg-type]
+                    ),
+                    ~models.Queue.fqdnHash.in_(rate_limited_hosts),  # type: ignore[arg-type]
+                    or_(
+                        models.Queue.delayUntil.is_(None),
+                        models.Queue.delayUntil < func.now()
+                    ),
+                    models.Queue.action.in_([1, 2, 3, 4])
+                )
+            ).order_by(models.Queue.addedToQueue.asc()).first()
 
         return result  # type: ignore[no-any-return, return-value]
 
@@ -260,22 +276,21 @@ class QueueManager:
         2. FileVersion stub (created when added to queue)
         3. Queue entry itself
         """
-        # Remove label associations
-        self.session.query(models.LabelToVersion).filter(
-            models.LabelToVersion.versionUUID == queue_id
-        ).delete(synchronize_session=False)
+        with self.db_connection.session_scope() as session:
+            # Remove label associations
+            session.query(models.LabelToVersion).filter(
+                models.LabelToVersion.versionUUID == queue_id
+            ).delete(synchronize_session=False)
 
-        # Remove FileVersion stub (created when added to queue, never processed)
-        self.session.query(models.FileVersion).filter(
-            models.FileVersion.id == queue_id
-        ).delete(synchronize_session=False)
+            # Remove FileVersion stub (created when added to queue, never processed)
+            session.query(models.FileVersion).filter(
+                models.FileVersion.id == queue_id
+            ).delete(synchronize_session=False)
 
-        # Remove queue entry
-        self.session.query(models.Queue).filter(
-            models.Queue.id == queue_id
-        ).delete(synchronize_session=False)
-
-        self.session.commit()
+            # Remove queue entry
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).delete(synchronize_session=False)
 
     def process_queue(self) -> None:
         "Process the queue"
@@ -285,12 +300,12 @@ class QueueManager:
             try:
                 next_in_queue = self.get_next_task()
             except OperationalError:
-                # Database connection lost
+                # Database connection lost. Sessions are per-operation, so
+                # simply retrying is enough - the pool reconnects itself.
                 logger.error('Lost database connection. '
                              'Trying to restore it in 10 seconds ...')
                 time.sleep(10)
                 try:
-                    self.session = self.db_connection.get_session()
                     next_in_queue = self.get_next_task()
                     logger.info('Restored database connection!')
                 except Exception as exc:

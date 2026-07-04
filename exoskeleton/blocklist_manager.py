@@ -12,7 +12,6 @@ from hashlib import sha256
 from typing import Optional
 
 # external dependencies:
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 import userprovided
 
@@ -29,7 +28,6 @@ class BlocklistManager:
             db_connection: database_connection.DatabaseConnection
     ) -> None:
         self.db_connection = db_connection
-        self.session: Session = self.db_connection.get_session()
 
     @staticmethod
     def __check_fqdn(fqdn: str) -> str:
@@ -50,9 +48,10 @@ class BlocklistManager:
         # Calculate FQDN hash the same way the database does (SHA256)
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
 
-        count = self.session.query(models.BlockList).filter(
-            models.BlockList.fqdnHash == fqdn_hash
-        ).count()
+        with self.db_connection.session_scope() as session:
+            count = session.query(models.BlockList).filter(
+                models.BlockList.fqdnHash == fqdn_hash
+            ).count()
 
         return count > 0
 
@@ -61,10 +60,11 @@ class BlocklistManager:
         """Check if a URL's domain matches any entry on the blocklist.
            Supports subdomain matching: blocking 'example.com' also blocks
            'www.example.com' and any other subdomain."""
-        all_fqdns = [
-            row.fqdn
-            for row in self.session.query(models.BlockList.fqdn).all()
-        ]
+        with self.db_connection.session_scope() as session:
+            all_fqdns = [
+                row.fqdn
+                for row in session.query(models.BlockList.fqdn).all()
+            ]
         return any(
             userprovided.url.url_matches_domain(url_string, blocked_fqdn)
             for blocked_fqdn in all_fqdns
@@ -79,15 +79,14 @@ class BlocklistManager:
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
 
         try:
-            new_block = models.BlockList(
-                fqdn=fqdn,
-                fqdnHash=fqdn_hash,
-                comment=comment
-            )
-            self.session.add(new_block)
-            self.session.commit()
+            with self.db_connection.session_scope() as session:
+                new_block = models.BlockList(
+                    fqdn=fqdn,
+                    fqdnHash=fqdn_hash,
+                    comment=comment
+                )
+                session.add(new_block)
         except IntegrityError:
-            self.session.rollback()
             # Just log, do not raise as it does not matter.
             logger.info(f"FQDN {fqdn} already on blocklist.")
 
@@ -97,13 +96,13 @@ class BlocklistManager:
         fqdn = self.__check_fqdn(fqdn)
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
 
-        self.session.query(models.BlockList).filter(
-            models.BlockList.fqdnHash == fqdn_hash
-        ).delete(synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            session.query(models.BlockList).filter(
+                models.BlockList.fqdnHash == fqdn_hash
+            ).delete(synchronize_session=False)
 
     def truncate_blocklist(self) -> None:
         "Remove *all* entries from the blocklist."
-        self.session.query(models.BlockList).delete(synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            session.query(models.BlockList).delete(synchronize_session=False)
         logger.info("Truncated the blocklist.")

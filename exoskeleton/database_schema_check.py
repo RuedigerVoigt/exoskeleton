@@ -9,7 +9,6 @@ Released under the Apache License 2.0
 import logging
 
 from sqlalchemy import inspect, text
-from sqlalchemy.orm import Session
 import importlib.metadata
 
 from exoskeleton import database_connection
@@ -40,7 +39,6 @@ class DatabaseSchemaCheck:
                  ) -> None:
         "Sets defaults"
         self.db_connection = db_connection
-        self.session: Session = db_connection.get_session()
         self.db_name: str = db_connection.db_name
 
         # Create per-instance copies of the class-level lists so that
@@ -59,14 +57,13 @@ class DatabaseSchemaCheck:
         is set properly. Uses ORM merge for idempotent upsert.
         """
         try:
-            # Use merge for upsert behavior (insert or update)
-            schema_info = models.ExoInfo(exoKey='schema', exoValue='2.0.0')
-            self.session.merge(schema_info)
-            self.session.commit()
+            with self.db_connection.session_scope() as session:
+                # Use merge for upsert behavior (insert or update)
+                schema_info = models.ExoInfo(exoKey='schema', exoValue='2.0.0')
+                session.merge(schema_info)
             logger.info('Schema version initialized to 2.0.0')
         except Exception as e:
             logger.warning('Could not initialize schema version: %s', str(e))
-            self.session.rollback()
 
     def __check_stored_procedures(self) -> None:
         """Check if all expected stored procedures exist in the database.
@@ -75,12 +72,13 @@ class DatabaseSchemaCheck:
         if not self.PROCEDURES:
             return
 
-        result = self.session.execute(
-            text("SELECT ROUTINE_NAME FROM information_schema.ROUTINES "
-                 "WHERE ROUTINE_TYPE = 'PROCEDURE' AND ROUTINE_SCHEMA = :db"),
-            {'db': self.db_name}
-        )
-        existing = {row[0] for row in result}
+        with self.db_connection.session_scope() as session:
+            result = session.execute(
+                text("SELECT ROUTINE_NAME FROM information_schema.ROUTINES "
+                     "WHERE ROUTINE_TYPE = 'PROCEDURE' AND ROUTINE_SCHEMA = :db"),
+                {'db': self.db_name}
+            )
+            existing = {row[0] for row in result}
 
         missing = [p for p in self.PROCEDURES if p not in existing]
         if missing:
@@ -95,12 +93,13 @@ class DatabaseSchemaCheck:
         if not self.FUNCTIONS:
             return
 
-        result = self.session.execute(
-            text("SELECT ROUTINE_NAME FROM information_schema.ROUTINES "
-                 "WHERE ROUTINE_TYPE = 'FUNCTION' AND ROUTINE_SCHEMA = :db"),
-            {'db': self.db_name}
-        )
-        existing = {row[0] for row in result}
+        with self.db_connection.session_scope() as session:
+            result = session.execute(
+                text("SELECT ROUTINE_NAME FROM information_schema.ROUTINES "
+                     "WHERE ROUTINE_TYPE = 'FUNCTION' AND ROUTINE_SCHEMA = :db"),
+                {'db': self.db_name}
+            )
+            existing = {row[0] for row in result}
 
         missing = [f for f in self.FUNCTIONS if f not in existing]
         if missing:
@@ -174,6 +173,13 @@ class DatabaseSchemaCheck:
         """
         logger.debug('Checking reference data...')
 
+        with self.db_connection.session_scope() as session:
+            self.__add_missing_reference_data(session)
+        logger.debug('Reference data check complete.')
+
+    @staticmethod
+    def __add_missing_reference_data(session) -> None:  # type: ignore[no-untyped-def]
+        "Insert missing reference rows within the given session."
         # Define required actions
         required_actions = [
             {'id': 1, 'description': 'Download file'},
@@ -184,7 +190,7 @@ class DatabaseSchemaCheck:
 
         # Check and add missing actions
         for action_data in required_actions:
-            existing = self.session.query(models.Action).filter(
+            existing = session.query(models.Action).filter(
                 models.Action.id == action_data['id']
             ).first()
 
@@ -193,7 +199,7 @@ class DatabaseSchemaCheck:
                     id=action_data['id'],
                     description=action_data['description']
                 )
-                self.session.add(new_action)
+                session.add(new_action)
                 logger.info('Added missing action: %s (id=%d)',
                             action_data['description'], action_data['id'])
 
@@ -245,7 +251,7 @@ class DatabaseSchemaCheck:
 
         # Check and add missing error types
         for error_data in required_errors:
-            existing_error = self.session.query(models.ErrorType).filter(
+            existing_error = session.query(models.ErrorType).filter(
                 models.ErrorType.id == error_data['id']
             ).first()
 
@@ -256,7 +262,7 @@ class DatabaseSchemaCheck:
                     description=error_data['description'],
                     permanent=error_data['permanent']
                 )
-                self.session.add(new_error)
+                session.add(new_error)
                 logger.info('Added missing error type: %s (id=%d)',
                             error_data['description'], error_data['id'])
 
@@ -269,7 +275,7 @@ class DatabaseSchemaCheck:
 
         # Check and add missing storage types
         for storage_data in required_storage_types:
-            existing_storage = self.session.query(models.StorageType).filter(
+            existing_storage = session.query(models.StorageType).filter(
                 models.StorageType.id == storage_data['id']
             ).first()
 
@@ -279,18 +285,9 @@ class DatabaseSchemaCheck:
                     shortName=storage_data['shortName'],
                     fullName=storage_data['fullName']
                 )
-                self.session.add(new_storage)
+                session.add(new_storage)
                 logger.info('Added missing storage type: %s (id=%d)',
                             storage_data['shortName'], storage_data['id'])
-
-        # Commit all changes
-        try:
-            self.session.commit()
-            logger.debug('Reference data check complete.')
-        except Exception as e:
-            logger.error('Error adding reference data: %s', str(e))
-            self.session.rollback()
-            raise
 
     def __check_schema_version(self) -> None:
         "Check if the database schema is a compatible version."
@@ -299,16 +296,17 @@ class DatabaseSchemaCheck:
         # version check.
 
         # Use ORM instead of database function for database portability
-        schema_info = self.session.query(models.ExoInfo).filter(
-            models.ExoInfo.exoKey == 'schema'
-        ).first()
+        with self.db_connection.session_scope() as session:
+            schema_info = session.query(models.ExoInfo).filter(
+                models.ExoInfo.exoKey == 'schema'
+            ).first()
 
-        if not schema_info:
-            msg = 'Schema version info not found in exoInfo table.'
-            logger.exception(msg)
-            raise RuntimeError(msg)
+            if not schema_info:
+                msg = 'Schema version info not found in exoInfo table.'
+                logger.exception(msg)
+                raise RuntimeError(msg)
 
-        db_schema = schema_info.exoValue
+            db_schema = schema_info.exoValue
 
         # Not taking the comparison value from package metadata as multiple versions
         # of exoskeleton might share the same database schema.

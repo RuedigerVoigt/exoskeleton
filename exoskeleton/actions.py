@@ -28,6 +28,20 @@ from exoskeleton import time_manager
 logger = logging.getLogger(__name__)
 
 
+def _mark_queue_item_as_error_source(
+        db_connection: database_connection.DatabaseConnection,
+        queue_id: str) -> None:
+    "Mark a queue item whose result could not be stored (causesError = 2)."
+    try:
+        with db_connection.session_scope() as session:
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).update({models.Queue.causesError: 2}, synchronize_session=False)
+    except SQLAlchemyError:
+        logger.error('Could not mark queue item %s as causing an error.',
+                     queue_id, exc_info=True)
+
+
 def insert_file_to_db(
         db_connection: database_connection.DatabaseConnection,
         url: str,
@@ -45,39 +59,28 @@ def insert_file_to_db(
 
     This function handles the transaction and error handling that was
     previously in the stored procedure."""
-    session = db_connection.get_session()
-
     try:
-        # UPDATE fileVersions with actual file data
-        # (FileVersion stub was created in queue_manager.add_to_queue)
-        session.query(models.FileVersion).filter(
-            models.FileVersion.id == queue_id
-        ).update({
-            models.FileVersion.mimeType: mime_type,
-            models.FileVersion.pathOrBucket: path_or_bucket,
-            models.FileVersion.fileName: file_name,
-            models.FileVersion.size: size,
-            models.FileVersion.hashMethod: hash_method,
-            models.FileVersion.hashValue: hash_value
-        }, synchronize_session=False)
+        with db_connection.session_scope() as session:
+            # UPDATE fileVersions with actual file data
+            # (FileVersion stub was created in queue_manager.add_to_queue)
+            session.query(models.FileVersion).filter(
+                models.FileVersion.id == queue_id
+            ).update({
+                models.FileVersion.mimeType: mime_type,
+                models.FileVersion.pathOrBucket: path_or_bucket,
+                models.FileVersion.fileName: file_name,
+                models.FileVersion.size: size,
+                models.FileVersion.hashMethod: hash_method,
+                models.FileVersion.hashValue: hash_value
+            }, synchronize_session=False)
 
-        # DELETE from queue
-        session.query(models.Queue).filter(
-            models.Queue.id == queue_id
-        ).delete(synchronize_session=False)
-
-        session.commit()
-
-    except SQLAlchemyError:
-        session.rollback()
-        # Update queue to mark error (causesError = 2)
-        try:
+            # DELETE from queue
             session.query(models.Queue).filter(
                 models.Queue.id == queue_id
-            ).update({models.Queue.causesError: 2}, synchronize_session=False)
-            session.commit()
-        except SQLAlchemyError:
-            session.rollback()
+            ).delete(synchronize_session=False)
+
+    except SQLAlchemyError:
+        _mark_queue_item_as_error_source(db_connection, queue_id)
         raise
 
 
@@ -93,41 +96,30 @@ def insert_content_to_db(db_connection: database_connection.DatabaseConnection,
 
     This function handles the transaction and error handling that was
     previously in the stored procedure."""
-    session = db_connection.get_session()
-
     try:
-        # UPDATE fileVersions with mime type
-        # (FileVersion stub was created in queue_manager.add_to_queue)
-        session.query(models.FileVersion).filter(
-            models.FileVersion.id == queue_id
-        ).update({
-            models.FileVersion.mimeType: mime_type
-        }, synchronize_session=False)
+        with db_connection.session_scope() as session:
+            # UPDATE fileVersions with mime type
+            # (FileVersion stub was created in queue_manager.add_to_queue)
+            session.query(models.FileVersion).filter(
+                models.FileVersion.id == queue_id
+            ).update({
+                models.FileVersion.mimeType: mime_type
+            }, synchronize_session=False)
 
-        # INSERT into fileContent
-        new_content = models.FileContent(
-            versionID=queue_id,
-            pageContent=page_content
-        )
-        session.add(new_content)
+            # INSERT into fileContent
+            new_content = models.FileContent(
+                versionID=queue_id,
+                pageContent=page_content
+            )
+            session.add(new_content)
 
-        # DELETE from queue
-        session.query(models.Queue).filter(
-            models.Queue.id == queue_id
-        ).delete(synchronize_session=False)
-
-        session.commit()
-
-    except SQLAlchemyError:
-        session.rollback()
-        # Update queue to mark error (causesError = 2)
-        try:
+            # DELETE from queue
             session.query(models.Queue).filter(
                 models.Queue.id == queue_id
-            ).update({models.Queue.causesError: 2}, synchronize_session=False)
-            session.commit()
-        except SQLAlchemyError:
-            session.rollback()
+            ).delete(synchronize_session=False)
+
+    except SQLAlchemyError:
+        _mark_queue_item_as_error_source(db_connection, queue_id)
         raise
 
 
@@ -144,9 +136,7 @@ def delete_all_versions(
         db_connection: Database connection object
         file_master_id: The ID of the fileMaster entry to delete
     """
-    session = db_connection.get_session()
-
-    try:
+    with db_connection.session_scope() as session:
         # Get the urlHash before we start deleting
         file_master = session.query(models.FileMaster).filter(
             models.FileMaster.id == file_master_id
@@ -184,12 +174,6 @@ def delete_all_versions(
         session.query(models.FileMaster).filter(
             models.FileMaster.id == file_master_id
         ).delete(synchronize_session=False)
-
-        session.commit()
-
-    except SQLAlchemyError:
-        session.rollback()
-        raise
 
 
 class GetObjectBaseClass:

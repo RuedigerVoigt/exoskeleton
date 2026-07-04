@@ -6,8 +6,9 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 # standard library:
+from contextlib import contextmanager
 import logging
-from typing import cast, Optional
+from typing import cast, Iterator, Optional
 
 # external dependencies:
 from sqlalchemy import create_engine, text
@@ -71,14 +72,11 @@ class DatabaseConnection:
         # Establish the database connection using SQLAlchemy
         self.engine: Optional[Engine] = None
         self.Session: Optional[sessionmaker] = None
-        self._session: Optional[Session] = None
         self.establish_db_connection()
 
     def __del__(self) -> None:
-        """Cleanup: close session and dispose engine."""
+        """Cleanup: dispose the engine and its connection pool."""
         try:
-            if self._session:
-                self._session.close()
             if self.engine:
                 self.engine.dispose()
         except Exception:  # pylint: disable=broad-except
@@ -129,15 +127,34 @@ class DatabaseConnection:
 
     def get_session(self) -> Session:
         """
-        Get a SQLAlchemy session for database operations.
+        Create and return a *new* SQLAlchemy session.
 
-        Returns:
-            Session: A SQLAlchemy session object
+        The caller is responsible for closing it. For transactional
+        work prefer session_scope(), which commits, rolls back and
+        closes automatically.
         """
-        if self._session is None or not self._session.is_active:
-            if self.Session is None:
-                logger.info("Lost database connection. Trying to reconnect...")
-                self.establish_db_connection()
-            if self.Session:
-                self._session = self.Session()
-        return self._session  # type: ignore
+        if self.Session is None:
+            logger.info("No session factory. Trying to (re)connect...")
+            self.establish_db_connection()
+        assert self.Session is not None, "Database connection not established"
+        return cast(Session, self.Session())
+
+    @contextmanager
+    def session_scope(self) -> Iterator[Session]:
+        """
+        Provide a transactional scope for a series of operations:
+        commit on success, roll back on exception, always close.
+
+        Usage:
+            with db_connection.session_scope() as session:
+                session.add(...)
+        """
+        session = self.get_session()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()

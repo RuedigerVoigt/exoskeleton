@@ -13,7 +13,6 @@ from typing import Union
 # external dependencies:
 import userprovided
 from sqlalchemy import func
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from exoskeleton import database_connection
@@ -34,7 +33,6 @@ class JobManager:
                  ) -> None:
         "Sets defaults"
         self.db_connection = db_connection
-        self.session: Session = db_connection.get_session()
 
     def define_new(self,
                    job_name: str,
@@ -50,24 +48,25 @@ class JobManager:
             start_url = exo_url.ExoUrl(start_url)
         job_name = job_name.strip()
         try:
-            new_job = models.Job(
-                jobName=job_name,
-                startUrl=str(start_url),
-                startUrlHash=sha256(str(start_url).encode('utf-8')).hexdigest()
-            )
-            self.session.add(new_job)
-            self.session.commit()
+            with self.db_connection.session_scope() as session:
+                new_job = models.Job(
+                    jobName=job_name,
+                    startUrl=str(start_url),
+                    startUrlHash=sha256(
+                        str(start_url).encode('utf-8')).hexdigest()
+                )
+                session.add(new_job)
             logger.debug('Defined new job.')
         except IntegrityError:
-            self.session.rollback()
             # A job with this name already exists
             # Check if startURL is the same:
-            existing_job = self.session.query(models.Job).filter(
-                models.Job.jobName == job_name
-            ).first()
-            if existing_job and existing_job.startUrl != str(start_url):
-                raise ValueError('A job with the identical name but ' +
-                                 '*different* startURL is already defined!')
+            with self.db_connection.session_scope() as session:
+                existing_job = session.query(models.Job).filter(
+                    models.Job.jobName == job_name
+                ).first()
+                if existing_job and existing_job.startUrl != str(start_url):
+                    raise ValueError('A job with the identical name but ' +
+                                     '*different* startURL is already defined!')
             logger.warning(
                 'A job with identical name and startURL is already defined.')
 
@@ -82,15 +81,15 @@ class JobManager:
         if not isinstance(current_url, exo_url.ExoUrl):
             current_url = exo_url.ExoUrl(current_url)
 
-        result = self.session.query(models.Job).filter(
-            models.Job.jobName == job_name
-        ).update({
-            models.Job.currentUrl: str(current_url)
-        }, synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            result = session.query(models.Job).filter(
+                models.Job.jobName == job_name
+            ).update({
+                models.Job.currentUrl: str(current_url)
+            }, synchronize_session=False)
 
-        if result == 0:
-            raise ValueError('A job with this name is not known.')
+            if result == 0:
+                raise ValueError('A job with this name is not known.')
 
     def get_current_url(self,
                         job_name: str) -> str:
@@ -99,12 +98,14 @@ class JobManager:
             Raises ValueError if the job is unknown.
             Raises RuntimeError if the job is already finished."""
 
-        job = self.session.query(
-            models.Job.finished,
-            func.coalesce(models.Job.currentUrl, models.Job.startUrl).label('url')
-        ).filter(
-            models.Job.jobName == job_name
-        ).first()
+        with self.db_connection.session_scope() as session:
+            job = session.query(
+                models.Job.finished,
+                func.coalesce(
+                    models.Job.currentUrl, models.Job.startUrl).label('url')
+            ).filter(
+                models.Job.jobName == job_name
+            ).first()
 
         if job is None:
             raise ValueError('Job is unknown!')
@@ -121,13 +122,13 @@ class JobManager:
             raise ValueError('Missing job_name')
         job_name = job_name.strip()
 
-        result = self.session.query(models.Job).filter(
-            models.Job.jobName == job_name
-        ).update({
-            models.Job.finished: func.current_timestamp()
-        }, synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            result = session.query(models.Job).filter(
+                models.Job.jobName == job_name
+            ).update({
+                models.Job.finished: func.current_timestamp()
+            }, synchronize_session=False)
 
-        if result == 0:
-            raise ValueError('A job with this name is not known.')
+            if result == 0:
+                raise ValueError('A job with this name is not known.')
         logger.debug('Marked job %s as finished.', job_name)

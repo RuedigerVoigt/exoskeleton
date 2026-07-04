@@ -12,7 +12,6 @@ from hashlib import sha256
 import logging
 
 # external dependencies:
-from sqlalchemy.orm import Session
 import userprovided
 
 from exoskeleton import database_connection
@@ -36,7 +35,6 @@ class CrawlingErrorManager:
                  queue_max_retries: int,
                  rate_limit_wait_seconds: int) -> None:
         self.db_connection = db_connection
-        self.session: Session = db_connection.get_session()
         # Maximum number of retries if downloading a page/file failed:
         self.queue_max_retries: int = queue_max_retries
         self.queue_max_retries = userprovided.parameters.int_in_range(
@@ -56,83 +54,67 @@ class CrawlingErrorManager:
         may affect the same URL, the delay is added to all of them."""
         wait_time = 0
 
-        # Increase the tries counter and get the new count
-        self.session.query(models.Queue).filter(
-            models.Queue.id == queue_id
-        ).update({
-            models.Queue.numTries: models.Queue.numTries + 1
-        }, synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            queue_item = session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).first()
 
-        # Get the updated count
-        queue_item = self.session.query(models.Queue.numTries).filter(
-            models.Queue.id == queue_id
-        ).first()
-        num_tries = int(queue_item[0]) if queue_item else 0
+            if not queue_item:
+                logger.warning(
+                    "Queue ID '%s' not found, skipping crawl delay.", queue_id)
+                return
 
-        # Does the number of tries exceed the configured maximum?
-        if num_tries == self.queue_max_retries:
-            # This is treated as a *permanent* failure!
-            logger.error('Giving up: too many tries for task %s', queue_id)
-            self.mark_permanent_error(queue_id, 3)
-            return
+            queue_item.numTries = (  # type: ignore[assignment]
+                queue_item.numTries or 0) + 1
+            num_tries = int(queue_item.numTries)
 
-        logger.info('Adding crawl delay to task %s', queue_id)
-        # Using the class constant DELAY_TRIES because it can be easily
-        # overwritten for automatic testing!
-        if num_tries == 1:
-            wait_time = self.DELAY_TRIES[0]  # 15 minutes
-        elif num_tries == 2:
-            wait_time = self.DELAY_TRIES[1]  # 30 minutes
-        elif num_tries == 3:
-            wait_time = self.DELAY_TRIES[2]  # 1 hour
-        elif num_tries == 4:
-            wait_time = self.DELAY_TRIES[3]  # 3 hours
-        elif num_tries > 4:
-            wait_time = self.DELAY_TRIES[4]  # 6 hours
+            # Does the number of tries exceed the configured maximum?
+            if num_tries == self.queue_max_retries:
+                # This is treated as a *permanent* failure!
+                logger.error('Giving up: too many tries for task %s', queue_id)
+                # 'gave_up' in the errorType table:
+                queue_item.causesError = 3  # type: ignore[assignment]
+                return
 
-        # Get the URL hash for this queue item
-        queue_item = self.session.query(models.Queue.urlHash).filter(  # type: ignore[assignment]
-            models.Queue.id == queue_id
-        ).first()
+            logger.info('Adding crawl delay to task %s', queue_id)
+            # Using the class constant DELAY_TRIES because it can be easily
+            # overwritten for automatic testing!
+            if num_tries == 1:
+                wait_time = self.DELAY_TRIES[0]  # 15 minutes
+            elif num_tries == 2:
+                wait_time = self.DELAY_TRIES[1]  # 30 minutes
+            elif num_tries == 3:
+                wait_time = self.DELAY_TRIES[2]  # 1 hour
+            elif num_tries == 4:
+                wait_time = self.DELAY_TRIES[3]  # 3 hours
+            elif num_tries > 4:
+                wait_time = self.DELAY_TRIES[4]  # 6 hours
 
-        if not queue_item:
-            logger.warning("Queue ID '%s' not found, skipping crawl delay.", queue_id)
-            return
+            # Update all queue items with same URL hash
+            delay_until = datetime.now() + timedelta(seconds=wait_time)
+            session.query(models.Queue).filter(
+                models.Queue.urlHash == queue_item.urlHash
+            ).update({
+                models.Queue.delayUntil: delay_until
+            }, synchronize_session=False)
 
-        url_hash = queue_item[0]
-
-        # Update all queue items with same URL hash
-        delay_until = datetime.now() + timedelta(seconds=wait_time)
-        self.session.query(models.Queue).filter(
-            models.Queue.urlHash == url_hash
-        ).update({
-            models.Queue.delayUntil: delay_until
-        }, synchronize_session=False)
-
-        # Mark the specific item with error
-        self.session.query(models.Queue).filter(
-            models.Queue.id == queue_id
-        ).update({
-            models.Queue.causesError: error_type
-        }, synchronize_session=False)
-
-        self.session.commit()
+            # Mark the specific item with error
+            queue_item.causesError = error_type  # type: ignore[assignment]
 
     def mark_permanent_error(self,
                              queue_id: str,
                              error: int) -> None:
         """ Mark task in queue that causes a *permanent* error.
             Without this exoskeleton would try to execute it again."""
-        result = self.session.query(models.Queue).filter(
-            models.Queue.id == queue_id
-        ).update({
-            models.Queue.causesError: error
-        }, synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            result = session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).update({
+                models.Queue.causesError: error
+            }, synchronize_session=False)
 
-        if result == 0:
-            raise ValueError(f"Queue ID '{queue_id}' not found")
+            if result == 0:
+                raise ValueError(f"Queue ID '{queue_id}' not found")
 
         logger.info('Marked task %s as causing a permanent error.', queue_id)
 
@@ -142,55 +124,43 @@ class CrawlingErrorManager:
            error, as if they are new tasks by removing that mark and any delay.
            The number of the error has to correspond to the errorType
            database table."""
-        self.session.query(models.Queue).filter(
-            models.Queue.causesError == specific_error
-        ).update({
-            models.Queue.causesError: None,
-            models.Queue.numTries: 0,
-            models.Queue.delayUntil: None
-        }, synchronize_session=False)
-        self.session.commit()
-
-    def forget_temporary_errors(self) -> None:
-        """Treat all queued tasks, that are marked to cause a *temporary*
-        error, as if they are new tasks by removing that mark and any delay."""
-        # Get IDs of temporary errors
-        temp_error_ids = self.session.query(models.ErrorType.id).filter(
-            models.ErrorType.permanent.is_(False)
-        ).all()
-        temp_error_ids = [id[0] for id in temp_error_ids]
-
-        # Update queue items with those errors
-        if temp_error_ids:
-            self.session.query(models.Queue).filter(
-                models.Queue.causesError.in_(temp_error_ids)
+        with self.db_connection.session_scope() as session:
+            session.query(models.Queue).filter(
+                models.Queue.causesError == specific_error
             ).update({
                 models.Queue.causesError: None,
                 models.Queue.numTries: 0,
                 models.Queue.delayUntil: None
             }, synchronize_session=False)
-            self.session.commit()
+
+    def forget_temporary_errors(self) -> None:
+        """Treat all queued tasks, that are marked to cause a *temporary*
+        error, as if they are new tasks by removing that mark and any delay."""
+        self.__forget_errors_by_permanence(permanent=False)
 
     def forget_permanent_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause a *permanent*
            error, as if they are new tasks by removing that mark and
            any delay."""
-        # Get IDs of permanent errors
-        perm_error_ids = self.session.query(models.ErrorType.id).filter(
-            models.ErrorType.permanent.is_(True)
-        ).all()
-        perm_error_ids = [id[0] for id in perm_error_ids]
+        self.__forget_errors_by_permanence(permanent=True)
 
-        # Update queue items with those errors
-        if perm_error_ids:
-            self.session.query(models.Queue).filter(
-                models.Queue.causesError.in_(perm_error_ids)
-            ).update({
-                models.Queue.causesError: None,
-                models.Queue.numTries: 0,
-                models.Queue.delayUntil: None
-            }, synchronize_session=False)
-            self.session.commit()
+    def __forget_errors_by_permanence(self,
+                                      permanent: bool) -> None:
+        "Reset all queue items whose error type matches the permanence flag."
+        with self.db_connection.session_scope() as session:
+            error_ids = session.query(models.ErrorType.id).filter(
+                models.ErrorType.permanent.is_(permanent)
+            ).all()
+            error_ids = [id[0] for id in error_ids]
+
+            if error_ids:
+                session.query(models.Queue).filter(
+                    models.Queue.causesError.in_(error_ids)
+                ).update({
+                    models.Queue.causesError: None,
+                    models.Queue.numTries: 0,
+                    models.Queue.delayUntil: None
+                }, synchronize_session=False)
 
     def forget_all_errors(self) -> None:
         """Treat all queued tasks, that are marked to cause any type of
@@ -198,12 +168,12 @@ class CrawlingErrorManager:
            task specific delay.
            However, this does not remove delays due to rate limit on a per host
            basis. Use corresponding functions to remove those."""
-        self.session.query(models.Queue).update({
-            models.Queue.causesError: None,
-            models.Queue.numTries: 0,
-            models.Queue.delayUntil: None
-        }, synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            session.query(models.Queue).update({
+                models.Queue.causesError: None,
+                models.Queue.numTries: 0,
+                models.Queue.delayUntil: None
+            }, synchronize_session=False)
 
     def add_rate_limit(self,
                        fqdn: str) -> None:
@@ -218,32 +188,31 @@ class CrawlingErrorManager:
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
         no_contact_until = datetime.now() + timedelta(seconds=self.rate_limit_wait)
 
-        rate_limit = self.session.query(models.RateLimit).filter(
-            models.RateLimit.fqdnHash == fqdn_hash
-        ).first()
+        with self.db_connection.session_scope() as session:
+            rate_limit = session.query(models.RateLimit).filter(
+                models.RateLimit.fqdnHash == fqdn_hash
+            ).first()
 
-        if rate_limit:
-            rate_limit.noContactUntil = no_contact_until  # type: ignore[assignment]
-        else:
-            rate_limit = models.RateLimit(
-                fqdnHash=fqdn_hash,
-                fqdn=fqdn,
-                noContactUntil=no_contact_until
-            )
-            self.session.add(rate_limit)
-
-        self.session.commit()
+            if rate_limit:
+                rate_limit.noContactUntil = no_contact_until  # type: ignore[assignment]
+            else:
+                rate_limit = models.RateLimit(
+                    fqdnHash=fqdn_hash,
+                    fqdn=fqdn,
+                    noContactUntil=no_contact_until
+                )
+                session.add(rate_limit)
 
     def forget_specific_rate_limit(self,
                                    fqdn: str) -> None:
         "Forget that the bot hit a rate limit for a specific FQDN."
         fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
-        self.session.query(models.RateLimit).filter(
-            models.RateLimit.fqdnHash == fqdn_hash
-        ).delete(synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            session.query(models.RateLimit).filter(
+                models.RateLimit.fqdnHash == fqdn_hash
+            ).delete(synchronize_session=False)
 
     def forget_all_rate_limits(self) -> None:
         """Forget all rate limits the bot hit."""
-        self.session.query(models.RateLimit).delete(synchronize_session=False)
-        self.session.commit()
+        with self.db_connection.session_scope() as session:
+            session.query(models.RateLimit).delete(synchronize_session=False)
