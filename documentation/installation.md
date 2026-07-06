@@ -17,7 +17,7 @@ MariaDB claims to be a drop-in replacement for MySQL. They share a large part of
 
 ### The Right Version of Python
 
-Exoskeleton needs at least Python 3.8. To check your python version, open a command line prompt and type one of these commands:
+Exoskeleton needs at least Python 3.11. To check your python version, open a command line prompt and type one of these commands:
 ```bash
 # If only a single version is installed:
 python --version
@@ -27,7 +27,7 @@ python --version
 python3 --version
 ```
 
-Python 3.9 and 3.10 are tested and fully supported.
+Python 3.11 through 3.14 are tested and fully supported.
 
 ### Installing with Pip
 
