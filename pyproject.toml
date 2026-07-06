@@ -47,9 +47,9 @@ userprovided = ">=2.5.0"
 SQLAlchemy = ">=2.0.51"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^9.1.0"
+pytest = "^9.1.1"
 pytest-timeout = "^2.4.0"
-coverage = "^7.14.1"
+coverage = "^7.15.0"
 flake8 = "^7.3.0"
 mypy = "^2.1.0"
 bandit = "^1.9.4"
@@ -95,9 +95,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=9.1.0",
+    "pytest>=9.1.1",
     "pytest-timeout>=2.4.0",
-    "coverage>=7.14.1",
+    "coverage>=7.15.0",
     "flake8>=7.3.0",
     "mypy>=2.1.0",
     "bandit>=1.9.4",
