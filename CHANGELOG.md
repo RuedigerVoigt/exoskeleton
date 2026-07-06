@@ -19,6 +19,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
   * **Dropped support for Python 3.8, 3.9, and 3.10** (End of Life)
   * **Minimum Python version:** 3.11
   * **Added support for:** Python 3.13 and 3.14
+  * **CI now also tests against the Python 3.15 beta** on Ubuntu as an allowed-to-fail job
 
 **Logging Improvements:**
 
