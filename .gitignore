@@ -112,3 +112,6 @@ salted-cache.sqlite3
 
 # Windows null device artifact
 nul
+
+# Poetry lock file - not committed for a library
+poetry.lock
