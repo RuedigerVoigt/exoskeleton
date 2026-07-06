@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 import logging
 import time
-from typing import Literal, Optional, Union
+from typing import Literal
 import uuid
 
 
@@ -82,10 +82,10 @@ class QueueManager:
     def add_to_queue(self,
                      url: exo_url.ExoUrl,
                      action: Literal[1, 2, 3, 4],
-                     labels_master: Optional[set] = None,
-                     labels_version: Optional[set] = None,
+                     labels_master: set | None = None,
+                     labels_version: set | None = None,
                      prettify_html: bool = False,
-                     force_new_version: bool = False) -> Optional[str]:
+                     force_new_version: bool = False) -> str | None:
         """ More general function to add items to queue. Called by
             add_file_download, add_save_page_code and add_page_to_pdf."""
         if not isinstance(url, exo_url.ExoUrl):
@@ -213,9 +213,9 @@ class QueueManager:
         return {uuid[0] for uuid in queue_uuids} if queue_uuids else set()
 
     def get_filemaster_id_by_url(self,
-                                 url: Union[exo_url.ExoUrl, str],
-                                 session: Optional[Session] = None
-                                 ) -> Optional[str]:
+                                 url: exo_url.ExoUrl | str,
+                                 session: Session | None = None
+                                 ) -> str | None:
         "Get the id of the filemaster entry associated with this URL"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
@@ -235,7 +235,7 @@ class QueueManager:
     # PROCESSING THE QUEUE
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    def get_next_task(self) -> Optional[tuple]:
+    def get_next_task(self) -> tuple | None:
         """Atomically claim and return the next suitable task.
 
         The candidate row is locked with FOR UPDATE ... SKIP LOCKED and

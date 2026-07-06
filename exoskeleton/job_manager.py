@@ -8,7 +8,6 @@ Released under the Apache License 2.0
 # standard library:
 from hashlib import sha256
 import logging
-from typing import Union
 
 # external dependencies:
 import userprovided
@@ -36,7 +35,7 @@ class JobManager:
 
     def define_new(self,
                    job_name: str,
-                   start_url: Union[exo_url.ExoUrl, str]) -> None:
+                   start_url: exo_url.ExoUrl | str) -> None:
         "Create a new crawl job identified by its name and add a start URL."
         if not job_name:
             raise ValueError('Provide a valid job_name')
@@ -72,7 +71,7 @@ class JobManager:
 
     def update_current_url(self,
                            job_name: str,
-                           current_url: Union[exo_url.ExoUrl, str]) -> None:
+                           current_url: exo_url.ExoUrl | str) -> None:
         "Set the currentUrl for a specific job. "
         if not job_name:
             raise ValueError('Provide the job name.')

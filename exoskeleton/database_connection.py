@@ -8,7 +8,7 @@ Released under the Apache License 2.0
 # standard library:
 from contextlib import contextmanager
 import logging
-from typing import cast, Iterator, Optional
+from typing import cast, Iterator
 
 # external dependencies:
 from sqlalchemy import create_engine, text
@@ -70,8 +70,8 @@ class DatabaseConnection:
                 'No database passphrase provided. Trying to connect without.')
 
         # Establish the database connection using SQLAlchemy
-        self.engine: Optional[Engine] = None
-        self.Session: Optional[sessionmaker] = None
+        self.engine: Engine | None = None
+        self.Session: sessionmaker | None = None
         self.establish_db_connection()
 
     def __del__(self) -> None:

@@ -9,7 +9,6 @@ Released under the Apache License 2.0
 # standard library:
 import logging
 from hashlib import sha256
-from typing import Optional
 
 # external dependencies:
 from sqlalchemy.exc import IntegrityError
@@ -72,7 +71,7 @@ class BlocklistManager:
 
     def block_fqdn(self,
                    fqdn: str,
-                   comment: Optional[str] = None) -> None:
+                   comment: str | None = None) -> None:
         """Add a specific fully qualified domain name (fqdn)
            - like www.example.com - to the blocklist. Does not handle URLs."""
         fqdn = self.__check_fqdn(fqdn)

@@ -6,7 +6,6 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 import logging
-from typing import Optional
 
 import bote
 import userprovided
@@ -28,7 +27,7 @@ class NotificationManager:
                  mail_behavior: dict,
                  time_manager_object: time_manager.TimeManager,
                  stats_manager_object: statistics_manager.StatisticsManager,
-                 milestone: Optional[int] = None):
+                 milestone: int | None = None):
         """Sets defaults"""
         # pylint: disable=too-many-arguments
 

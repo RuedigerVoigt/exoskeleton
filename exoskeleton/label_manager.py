@@ -7,7 +7,6 @@ Released under the Apache License 2.0
 """
 
 import logging
-from typing import Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -49,8 +48,8 @@ class LabelManager:
 
     def define_new_label(self,
                          shortname: str,
-                         description: Optional[str] = None,
-                         session: Optional[Session] = None) -> None:
+                         description: str | None = None,
+                         session: Session | None = None) -> None:
         """If the label is not already used, define a new label and description.
            In case the label already exists, do not update the description."""
         shortname = userprovided.parameters.clean_trim(shortname) or ''
@@ -65,7 +64,7 @@ class LabelManager:
     @staticmethod
     def _define_new_label(session: Session,
                           shortname: str,
-                          description: Optional[str]) -> None:
+                          description: str | None) -> None:
         "Add a label within the given session (commit is up to the caller)."
         # Pre-check existence to avoid IntegrityError+rollback, which would
         # corrupt the outer transaction's flushed-but-uncommitted objects.
@@ -82,7 +81,7 @@ class LabelManager:
 
     def define_or_update_label(self,
                                shortname: str,
-                               description: Optional[str] = None) -> None:
+                               description: str | None = None) -> None:
         """ Insert a new label into the database or update its description
             in case it already exists.
             Use define_new_label if an update has to be avoided. """
@@ -107,9 +106,9 @@ class LabelManager:
     # #########################################################################
 
     def assign_labels_to_master(self,
-                                url: Union[exo_url.ExoUrl, str],
+                                url: exo_url.ExoUrl | str,
                                 labels: set,
-                                session: Optional[Session] = None) -> None:
+                                session: Session | None = None) -> None:
         """ Assigns one or multiple labels to the *fileMaster* entry.
             Removes duplicates and adds new labels to the label list
             if necessary."""
@@ -164,7 +163,7 @@ class LabelManager:
     def assign_labels_to_uuid(self,
                               uuid_string: str,
                               labels: set,
-                              session: Optional[Session] = None) -> None:
+                              session: Session | None = None) -> None:
         """Assigns one or multiple labels to a specific version of a file.
             Removes duplicates and adds new labels if necessary."""
         if not labels:
@@ -222,7 +221,7 @@ class LabelManager:
             return str(file_version[0])
 
     def filemaster_labels_by_url(self,
-                                 url: Union[exo_url.ExoUrl, str]) -> set:
+                                 url: exo_url.ExoUrl | str) -> set:
         """Get a list of label names (not id numbers!) attached to a specific
            filemaster entry using the URL associated."""
         if not isinstance(url, exo_url.ExoUrl):
@@ -272,8 +271,8 @@ class LabelManager:
         return joined_set
 
     def get_label_ids(self,
-                      label_set: Union[set, str],
-                      session: Optional[Session] = None) -> set:
+                      label_set: set | str,
+                      session: Session | None = None) -> set:
         """ Given a set of labels, this returns the corresponding ids
             in the labels table. """
         if not label_set:

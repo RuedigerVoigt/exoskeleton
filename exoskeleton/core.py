@@ -14,7 +14,6 @@ Released under the Apache License 2.0
 # python standard library:
 from collections import Counter
 import logging
-from typing import Union, Optional
 
 # Sister projects:
 import compatibility
@@ -62,9 +61,9 @@ class Exoskeleton:
                  filename_prefix: str = '',
                  project_name: str = 'Bot',
                  bot_user_agent: str = 'Bot',
-                 bot_behavior: Union[dict, None] = None,
-                 mail_settings: Union[dict, None] = None,
-                 mail_behavior: Union[dict, None] = None,
+                 bot_behavior: dict | None = None,
+                 mail_settings: dict | None = None,
+                 mail_behavior: dict | None = None,
                  chrome_name: str = ''):
         "Set defaults, create instances, ..."
 
@@ -141,7 +140,7 @@ class Exoskeleton:
             raise ValueError(f'{field} must be integer!') from exc
         mail_behavior = mail_behavior_model.model_dump()
 
-        self.milestone: Optional[int] = mail_behavior_model.milestone_num
+        self.milestone: int | None = mail_behavior_model.milestone_num
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # INIT: Bot Behavior
@@ -220,7 +219,7 @@ class Exoskeleton:
         self.queue.process_queue()
 
     def return_page_code(self,
-                         url: Union[exo_url.ExoUrl, str]) -> str:
+                         url: exo_url.ExoUrl | str) -> str:
         "Immediately return a page's code. Do *not* store it in the database."
         if not url:
             raise ValueError('Missing URL')
@@ -231,10 +230,10 @@ class Exoskeleton:
     # QUEUE MANAGEMENT:
 
     def add_file_download(self,
-                          url: Union[exo_url.ExoUrl, str],
-                          labels_master: Optional[set] = None,
-                          labels_version: Optional[set] = None,
-                          force_new_version: bool = False) -> Optional[str]:
+                          url: exo_url.ExoUrl | str,
+                          labels_master: set | None = None,
+                          labels_version: set | None = None,
+                          force_new_version: bool = False) -> str | None:
         "Add a file download URL to the queue"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
@@ -244,11 +243,11 @@ class Exoskeleton:
         return uuid
 
     def add_save_page_code(self,
-                           url: Union[exo_url.ExoUrl, str],
-                           labels_master: Optional[set] = None,
-                           labels_version: Optional[set] = None,
+                           url: exo_url.ExoUrl | str,
+                           labels_master: set | None = None,
+                           labels_version: set | None = None,
                            prettify_html: bool = False,
-                           force_new_version: bool = False) -> Optional[str]:
+                           force_new_version: bool = False) -> str | None:
         "Add an URL to the queue to save its HTML code into the database."
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
@@ -257,10 +256,10 @@ class Exoskeleton:
         return uuid
 
     def add_page_to_pdf(self,
-                        url: Union[exo_url.ExoUrl, str],
-                        labels_master: Optional[set] = None,
-                        labels_version: Optional[set] = None,
-                        force_new_version: bool = False) -> Optional[str]:
+                        url: exo_url.ExoUrl | str,
+                        labels_master: set | None = None,
+                        labels_version: set | None = None,
+                        force_new_version: bool = False) -> str | None:
         "Add an URL to the queue to print it to PDF with headless Chrome. "
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
@@ -274,10 +273,10 @@ class Exoskeleton:
         return uuid
 
     def add_save_page_text(self,
-                           url: Union[exo_url.ExoUrl, str],
-                           labels_master: Optional[set] = None,
-                           labels_version: Optional[set] = None,
-                           force_new_version: bool = False) -> Optional[str]:
+                           url: exo_url.ExoUrl | str,
+                           labels_master: set | None = None,
+                           labels_version: set | None = None,
+                           force_new_version: bool = False) -> str | None:
         """Add the task 'Extract the text (not the code) from a HTML page and
            store it into the database' to the queue.
            This can be useful for some language processing tasks, but compared

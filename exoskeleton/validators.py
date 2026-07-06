@@ -14,7 +14,6 @@ Source: https://github.com/RuedigerVoigt/exoskeleton
 Released under the Apache License 2.0
 """
 
-from typing import Optional
 
 from pydantic import BaseModel, model_validator
 
@@ -42,6 +41,6 @@ class BotBehavior(BaseModel):
 class MailBehavior(BaseModel):
     """Structured defaults for mail_behavior."""
 
-    milestone_num: Optional[int] = None
+    milestone_num: int | None = None
     send_start_msg: bool = True
     send_finish_msg: bool = False
