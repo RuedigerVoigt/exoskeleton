@@ -4,7 +4,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 
 
-## Version 3.0.0 (UPCOMING November 2025)
+## Version 3.0.0 (UPCOMING July 2026)
 
 **Breaking Changes:**
 
