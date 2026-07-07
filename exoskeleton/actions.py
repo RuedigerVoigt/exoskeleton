@@ -480,7 +480,7 @@ class ExoActions:
                 raise RuntimeError('Cannot return page code')
             return str(response.text)
 
-        except (TimeoutError, ConnectionError):
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             logger.exception(
                 'Exception while getting page-code', exc_info=True)
             self.stats.log_temporary_problem(url)

@@ -213,6 +213,42 @@ def test_actions_MISSING_URL():
         )
     assert "Missing parameter url" in str(excinfo.value)
 
+
+def make_exo_actions() -> actions.ExoActions:
+    "Build an ExoActions instance with mocked collaborators for unit tests."
+    return actions.ExoActions(
+        db_connection=MagicMock(),
+        stats_manager_object=MagicMock(),
+        file_manager_object=MagicMock(),
+        time_manager_object=MagicMock(),
+        crawling_error_manager_object=MagicMock(),
+        remote_control_chrome_object=MagicMock(),
+        user_agent='test-agent',
+        connection_timeout=5
+    )
+
+
+@pytest.mark.parametrize(
+    'raised_exception',
+    [
+        actions.requests.exceptions.Timeout,
+        actions.requests.exceptions.ConnectionError,
+    ]
+)
+def test_return_page_code_logs_temporary_problem(raised_exception):
+    # Regression test: return_page_code must catch requests' own
+    # Timeout / ConnectionError (not the builtins of the same name)
+    # and log the failure as a temporary problem before re-raising.
+    exo_actions = make_exo_actions()
+    url = exo_url.ExoUrl('https://www.example.com')
+
+    with patch('exoskeleton.actions.requests.get',
+               side_effect=raised_exception()):
+        with pytest.raises(raised_exception):
+            exo_actions.return_page_code(url)
+
+    exo_actions.stats.log_temporary_problem.assert_called_once_with(url)
+
 # #############################################################################
 # ExoUrl class
 # #############################################################################
