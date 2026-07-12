@@ -296,6 +296,20 @@ class QueueManager:
             # Materialize before the session closes and detaches the row.
             return tuple(candidate)
 
+    def release_lease(self,
+                      queue_id: str) -> None:
+        """Clear the lease (lockedUntil) on a queue item once it has been
+        processed, so a task left in the queue after a temporary error is
+        governed by delayUntil rather than staying locked for the full lease
+        period. Matches zero rows for a successfully processed item, which has
+        already been deleted from the queue."""
+        with self.db_connection.session_scope() as session:
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).update(
+                {models.Queue.lockedUntil: None},
+                synchronize_session=False)
+
     def delete_from_queue(self,
                           queue_id: str) -> None:
         """Remove all label links from item, delete FileVersion stub, and delete from queue.
@@ -395,6 +409,11 @@ class QueueManager:
                 else:
                     self.actions.get_object(
                         queue_id, action_type, url, prettify_html)
+                    # Release the lease now that the task is done. A successful
+                    # task is already deleted; an errored one stays in the
+                    # queue and its retry timing must be governed by delayUntil,
+                    # not by the 300s lease.
+                    self.release_lease(queue_id)
 
                 self.notify.send_msg_milestone()
 

@@ -38,6 +38,14 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 **Other Changes:**
 
+* **Fixed: temporary-error tasks were never retried**:
+  * The task lease (`queue.lockedUntil`) introduced for multi-worker safety was
+    set when a task was claimed but never released after processing. Items left
+    in the queue after a temporary error stayed locked for the full 300s lease,
+    so they were not retried and never reached the `gave_up` state. The lease is
+    now released once a task is processed; retry timing is governed by
+    `delayUntil` as intended. This fixes the hanging network integration tests.
+
 * **Action types as enum (`exoskeleton.ActionType`)**:
   * New module `action_types.py` is the single source of truth for action ids
     and their storage types; the `actions` and `storageTypes` reference tables
