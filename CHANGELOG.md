@@ -78,6 +78,10 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
   * Updated workflows for Windows, macOS, and Ubuntu
   * Test Database Safety System to prevent accidental production database damage: see [Test Database Safety Guide](documentation/test-database-safety.md)
 
+**Bugfixes:**
+
+* The database connection URL is now built with `sqlalchemy.engine.URL.create()` instead of string interpolation. Passphrases containing reserved URL characters (`@ : / ? #`) previously corrupted the connection string silently.
+
 
 ## Version 2.1.1 (2022-04-27)
 

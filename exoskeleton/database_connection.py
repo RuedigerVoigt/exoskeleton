@@ -12,7 +12,7 @@ from typing import cast, Iterator
 
 # external dependencies:
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError, DatabaseError
 import userprovided
@@ -87,12 +87,17 @@ class DatabaseConnection:
         try:
             logger.debug('Trying to connect to database.')
 
-            # Build connection URL
+            # Build connection URL from components so credentials with
+            # reserved characters (@ : / ? #) are escaped correctly.
             # Using pymysql as the driver for MariaDB
-            connection_url = (
-                f"mysql+pymysql://{self.db_username}:{self.db_passphrase}@"
-                f"{self.db_host}:{self.db_port}/{self.db_name}"
-                "?charset=utf8mb4"
+            connection_url = URL.create(
+                "mysql+pymysql",
+                username=self.db_username,
+                password=self.db_passphrase,
+                host=self.db_host,
+                port=self.db_port,
+                database=self.db_name,
+                query={"charset": "utf8mb4"},
             )
 
             # Create engine with connection pooling
