@@ -45,8 +45,15 @@ class ExoUrl:
     def __repr__(self) -> str:
         return str(self.url)
 
-    def __eq__(self, other):  # type: ignore[no-untyped-def]
-        return self.url == other
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ExoUrl):
+            return self.url == other.url
+        if isinstance(other, str):
+            return self.url == other
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.url)
 
     @staticmethod
     def generate_sha256_hash(url_string: str) -> str:

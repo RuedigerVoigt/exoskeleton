@@ -81,6 +81,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 **Bugfixes:**
 
 * The database connection URL is now built with `sqlalchemy.engine.URL.create()` instead of string interpolation. Passphrases containing reserved URL characters (`@ : / ? #`) previously corrupted the connection string silently.
+* `ExoUrl` now defines `__hash__` (previously, defining only `__eq__` made instances unusable in sets or as dict keys) and its `__eq__` guards against unrelated types.
 
 
 ## Version 2.1.1 (2022-04-27)
