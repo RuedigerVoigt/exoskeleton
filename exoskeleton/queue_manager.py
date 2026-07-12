@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 import logging
 import time
-from typing import Literal
 import uuid
 
 
@@ -21,6 +20,7 @@ from sqlalchemy.exc import OperationalError
 import userprovided
 
 from exoskeleton import actions
+from exoskeleton.action_types import ActionType
 from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
 from exoskeleton import err
@@ -81,7 +81,7 @@ class QueueManager:
 
     def add_to_queue(self,
                      url: exo_url.ExoUrl,
-                     action: Literal[1, 2, 3, 4],
+                     action: ActionType | int,
                      labels_master: set | None = None,
                      labels_version: set | None = None,
                      prettify_html: bool = False,
@@ -90,8 +90,10 @@ class QueueManager:
             add_file_download, add_save_page_code and add_page_to_pdf."""
         if not isinstance(url, exo_url.ExoUrl):
             raise ValueError('url must be of class ExoUrl.')
-        if action not in (1, 2, 3, 4):
-            raise ValueError('Invalid value for action!')
+        try:
+            action = ActionType(action)
+        except ValueError:
+            raise ValueError('Invalid value for action!') from None
 
         # Check if the FQDN of the URL is on the blocklist
         if url.hostname and self.blocklist.check_blocklist(url.hostname):
@@ -155,20 +157,12 @@ class QueueManager:
             else:
                 file_master_id = existing_master.id
 
-            # Determine storage type based on action
-            # action 1 (download file) -> storageTypeID 2 (disk)
-            # action 2 (save page code) -> storageTypeID 1 (database)
-            # action 3 (page to PDF) -> storageTypeID 3 (pdf)
-            # action 4 (save page text) -> storageTypeID 1 (database)
-            storage_type_map = {1: 2, 2: 1, 3: 3, 4: 1}
-            storage_type_id = storage_type_map[action]
-
             # Create stub FileVersion record (will be updated when processed)
             new_version = models.FileVersion(
                 id=uuid_value,
                 fileMasterID=file_master_id,
-                storageTypeID=storage_type_id,
-                actionAppliedID=action
+                storageTypeID=int(action.storage_type),
+                actionAppliedID=int(action)
             )
             session.add(new_version)
             # Flush FileVersion first to satisfy FK constraint for label assignments
@@ -186,7 +180,7 @@ class QueueManager:
 
             new_queue_item = models.Queue(
                 id=uuid_value,
-                action=action,
+                action=int(action),
                 url=str(url),
                 urlHash=url.hash,
                 fqdnHash=fqdn_hash,
@@ -283,7 +277,7 @@ class QueueManager:
                         models.Queue.lockedUntil.is_(None),
                         models.Queue.lockedUntil < func.now()
                     ),
-                    models.Queue.action.in_([1, 2, 3, 4])
+                    models.Queue.action.in_([int(a) for a in ActionType])
                 )
             ).order_by(
                 models.Queue.addedToQueue.asc()
@@ -393,16 +387,14 @@ class QueueManager:
                 self.delete_from_queue(queue_id)
                 logger.info('Removed item from queue: FQDN on blocklist.')
             else:
-                if action == 1:  # download file to disk
-                    self.actions.get_object(queue_id, 'file', url)
-                elif action == 2:  # save page code into database
-                    self.actions.get_object(queue_id, 'content', url, prettify_html)
-                elif action == 3:  # headless Chrome to create PDF
-                    self.actions.get_object(queue_id, 'page_to_pdf', url)
-                elif action == 4:  # save page text into database
-                    self.actions.get_object(queue_id, 'text', url)
+                try:
+                    action_type = ActionType(action)
+                except ValueError:
+                    logger.error('Unknown action id %s for queue item %s!',
+                                 action, queue_id)
                 else:
-                    logger.error('Unknown action id!')
+                    self.actions.get_object(
+                        queue_id, action_type, url, prettify_html)
 
                 self.notify.send_msg_milestone()
 

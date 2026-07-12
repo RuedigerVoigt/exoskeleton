@@ -14,6 +14,7 @@ import importlib.metadata
 from exoskeleton import database_connection
 from exoskeleton import err
 from exoskeleton import models
+from exoskeleton.action_types import ActionType, StorageTypeId
 from exoskeleton.error_codes import ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -190,9 +191,9 @@ class DatabaseSchemaCheck:
         overwriting existing data or user customizations.
 
         Required data:
-        - actions: IDs 1-4 (download file, save page code, page to PDF, save page text)
-        - errorType: HTTP error codes and special error types
-        - storageTypes: IDs 1-3 (disk, database, PDF)
+        - actions: seeded from action_types.ActionType
+        - errorType: seeded from error_codes.ErrorCode
+        - storageTypes: seeded from action_types.StorageTypeId
         """
         logger.debug('Checking reference data...')
 
@@ -203,28 +204,21 @@ class DatabaseSchemaCheck:
     @staticmethod
     def __add_missing_reference_data(session) -> None:  # type: ignore[no-untyped-def]
         "Insert missing reference rows within the given session."
-        # Define required actions
-        required_actions = [
-            {'id': 1, 'description': 'Download file'},
-            {'id': 2, 'description': 'Save page code (HTML source)'},
-            {'id': 3, 'description': 'Save page as PDF'},
-            {'id': 4, 'description': 'Get text from page'}
-        ]
-
-        # Check and add missing actions
-        for action_data in required_actions:
+        # Actions are defined once in action_types.ActionType and seeded
+        # from there, so the ids the code writes always have a matching row.
+        for action_type in ActionType:
             existing = session.query(models.Action).filter(
-                models.Action.id == action_data['id']
+                models.Action.id == int(action_type)
             ).first()
 
             if not existing:
                 new_action = models.Action(
-                    id=action_data['id'],
-                    description=action_data['description']
+                    id=int(action_type),
+                    description=action_type.description
                 )
                 session.add(new_action)
                 logger.info('Added missing action: %s (id=%d)',
-                            action_data['description'], action_data['id'])
+                            action_type.description, int(action_type))
 
         # Error types are defined once in error_codes.ErrorCode and seeded
         # from there, so the ids the code writes always have a matching row.
@@ -244,28 +238,31 @@ class DatabaseSchemaCheck:
                 logger.info('Added missing error type: %s (id=%d)',
                             code.description, int(code))
 
-        # Define required storage types
-        required_storage_types = [
-            {'id': 1, 'shortName': 'disk', 'fullName': 'Stored as file on disk'},
-            {'id': 2, 'shortName': 'database', 'fullName': 'Stored in database'},
-            {'id': 3, 'shortName': 'pdf', 'fullName': 'Stored as PDF file'}
-        ]
-
-        # Check and add missing storage types
-        for storage_data in required_storage_types:
+        # Storage types are defined once in action_types.StorageTypeId.
+        # Mismatching names on these framework-owned ids are corrected:
+        # some 3.0 development builds seeded them inverted
+        # (1 = disk, 2 = database) relative to the ids the code writes
+        # and to the reference data of all released versions.
+        for storage_type in StorageTypeId:
             existing_storage = session.query(models.StorageType).filter(
-                models.StorageType.id == storage_data['id']
+                models.StorageType.id == int(storage_type)
             ).first()
 
             if not existing_storage:
                 new_storage = models.StorageType(
-                    id=storage_data['id'],
-                    shortName=storage_data['shortName'],
-                    fullName=storage_data['fullName']
+                    id=int(storage_type),
+                    shortName=storage_type.short_name,
+                    fullName=storage_type.full_name
                 )
                 session.add(new_storage)
                 logger.info('Added missing storage type: %s (id=%d)',
-                            storage_data['shortName'], storage_data['id'])
+                            storage_type.short_name, int(storage_type))
+            elif (existing_storage.shortName != storage_type.short_name or
+                    existing_storage.fullName != storage_type.full_name):
+                existing_storage.shortName = storage_type.short_name
+                existing_storage.fullName = storage_type.full_name
+                logger.info('Corrected storage type name (id=%d) to: %s',
+                            int(storage_type), storage_type.short_name)
 
     def __check_schema_version(self) -> None:
         "Check if the database schema is a compatible version."

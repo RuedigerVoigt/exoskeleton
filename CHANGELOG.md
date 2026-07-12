@@ -38,6 +38,19 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 **Other Changes:**
 
+* **Action types as enum (`exoskeleton.ActionType`)**:
+  * New module `action_types.py` is the single source of truth for action ids
+    and their storage types; the `actions` and `storageTypes` reference tables
+    are seeded from it. Replaces action-id literals that were previously
+    scattered over `core.py`, `queue_manager.py` and `actions.py`.
+  * Queue processing now dispatches through a handler registry
+    (`ExoActions.ACTION_HANDLERS`) instead of an if/elif chain.
+  * Storage type reference data uses the ids of released versions again
+    (1 = Database, 2 = Filesystem); some 3.0 development builds seeded the
+    names inverted. Wrong names on these ids are corrected automatically.
+    PDF versions are recorded as stored on the filesystem (id 2), as in 2.x,
+    instead of the id 3 used briefly during development.
+
 * **Database Schema Checking**:
   * `database_schema_check.py` now uses SQLAlchemy introspection for table validation
   * Table list automatically synced with `models.py` (single source of truth)

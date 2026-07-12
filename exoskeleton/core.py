@@ -27,6 +27,7 @@ from pydantic import ValidationError
 import importlib.metadata
 from datetime import date
 from exoskeleton import actions
+from exoskeleton.action_types import ActionType
 from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
 from exoskeleton import database_schema_check
@@ -237,8 +238,8 @@ class Exoskeleton:
         "Add a file download URL to the queue"
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        uuid = self.queue.add_to_queue(url, 1, labels_master,
-                                       labels_version, False,
+        uuid = self.queue.add_to_queue(url, ActionType.DOWNLOAD_FILE,
+                                       labels_master, labels_version, False,
                                        force_new_version)
         return uuid
 
@@ -251,7 +252,8 @@ class Exoskeleton:
         "Add an URL to the queue to save its HTML code into the database."
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        uuid = self.queue.add_to_queue(url, 2, labels_master, labels_version,
+        uuid = self.queue.add_to_queue(url, ActionType.SAVE_PAGE_CODE,
+                                       labels_master, labels_version,
                                        prettify_html, force_new_version)
         return uuid
 
@@ -268,7 +270,8 @@ class Exoskeleton:
                 'Will add this task to the queue, but without Chrome or '
                 'Chromium it cannot run! Provide the path to the '
                 'executable when you initialize exoskeleton.')
-        uuid = self.queue.add_to_queue(url, 3, labels_master, labels_version,
+        uuid = self.queue.add_to_queue(url, ActionType.PAGE_TO_PDF,
+                                       labels_master, labels_version,
                                        False, force_new_version)
         return uuid
 
@@ -284,7 +287,8 @@ class Exoskeleton:
            specific part using a CSS selector."""
         if not isinstance(url, exo_url.ExoUrl):
             url = exo_url.ExoUrl(url)
-        uuid = self.queue.add_to_queue(url, 4, labels_master, labels_version,
+        uuid = self.queue.add_to_queue(url, ActionType.SAVE_PAGE_TEXT,
+                                       labels_master, labels_version,
                                        True, force_new_version)
         return uuid
 

@@ -8,13 +8,14 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
-from typing import Final, Literal
+from typing import Callable, Final
 
 import requests
 import urllib3
 import userprovided
 from sqlalchemy.exc import DatabaseError, SQLAlchemyError
 
+from exoskeleton.action_types import ActionType
 from exoskeleton import database_connection
 from exoskeleton import error_manager
 from exoskeleton.error_codes import ErrorCode
@@ -54,8 +55,7 @@ def insert_file_to_db(
         file_name: str,
         size: int,
         hash_method: str,
-        hash_value: str,
-        action_applied_id: int) -> None:
+        hash_value: str) -> None:
     """Update FileVersion with file metadata after download.
     FileVersion stub was created when added to queue, now update with actual data.
 
@@ -91,8 +91,7 @@ def insert_content_to_db(db_connection: database_connection.DatabaseConnection,
                          url_hash: str,
                          queue_id: str,
                          mime_type: str,
-                         page_content: str,
-                         action_applied_id: int) -> None:
+                         page_content: str) -> None:
     """Update FileVersion and insert page content into database using ORM.
     FileVersion stub was created when added to queue, now update with actual data.
 
@@ -310,8 +309,7 @@ class GetFile(GetObjectBaseClass):
                 new_filename,
                 self.file.get_file_size(file_path),
                 self.file.HASH_METHOD,
-                hash_value,
-                1)
+                hash_value)
         except DatabaseError:
             logger.error(
                 'Did not add already downloaded file %s to the database!',
@@ -347,8 +345,7 @@ class GetContent(GetObjectBaseClass):
                 self.url.hash,
                 self.queue_id,
                 self.mime_type,
-                page_content,
-                2)
+                page_content)
         except DatabaseError:
             logger.error(
                 'Transaction failed: Can not save page code of queue item %s!',
@@ -357,6 +354,14 @@ class GetContent(GetObjectBaseClass):
 
 class GetText(GetContent):
     "Get the text on a page without the code."
+    def __init__(self,
+                 objects: dict,
+                 queue_id: str,
+                 url: exo_url.ExoUrl,
+                 prettify_html: bool = False):
+        # Prettifying is pointless as the code is stripped away anyway.
+        super().__init__(objects, queue_id, url, False)
+
     def store_result(self,
                      response: requests.Response,
                      strip_code: bool = True) -> None:
@@ -374,7 +379,10 @@ class GetPDF():
     def __init__(self,
                  objects: dict,
                  queue_id: str,
-                 url: exo_url.ExoUrl) -> None:
+                 url: exo_url.ExoUrl,
+                 prettify_html: bool = False) -> None:
+        # prettify_html is accepted only for the uniform handler signature
+        # (see ExoActions.ACTION_HANDLERS); a PDF is never prettified.
         self.db_connection = objects['db_connection']
         self.file = objects['file_manager_object']
         self.controlled_browser = objects['controlled_browser']
@@ -403,8 +411,7 @@ class GetPDF():
                 self.filename,
                 self.file.get_file_size(self.path),
                 self.file.HASH_METHOD,
-                self.file.get_file_hash(self.path),
-                3)
+                self.file.get_file_hash(self.path))
         except DatabaseError:
             logger.error(
                 'Transaction failed: Could not add file %s to the database!',
@@ -443,23 +450,27 @@ class ExoActions:
             'controlled_browser': remote_control_chrome_object
         }
 
+    # Handler class for each action type. All handlers share the same
+    # constructor signature: (objects, queue_id, url, prettify_html).
+    ACTION_HANDLERS: Final[dict[ActionType, Callable[..., object]]] = {
+        ActionType.DOWNLOAD_FILE: GetFile,
+        ActionType.SAVE_PAGE_CODE: GetContent,
+        ActionType.PAGE_TO_PDF: GetPDF,
+        ActionType.SAVE_PAGE_TEXT: GetText,
+    }
+
     def get_object(self,
                    queue_id: str,
-                   action_type: Literal['file', 'content', 'text', 'page_to_pdf'],
+                   action_type: ActionType | int,
                    url: exo_url.ExoUrl,
                    prettify_html: bool = False) -> None:
-        "Generic function to either download a file or store a page's content."
-
-        if action_type == 'file':
-            GetFile(self.objects, queue_id, url, False)
-        elif action_type == 'content':
-            GetContent(self.objects, queue_id, url, prettify_html)
-        elif action_type == 'text':
-            GetText(self.objects, queue_id, url, prettify_html)
-        elif action_type == 'page_to_pdf':
-            GetPDF(self.objects, queue_id, url)
-        else:
-            raise ValueError('Invalid action_type!')
+        "Run the handler registered for the action type on the queue item."
+        try:
+            action_type = ActionType(action_type)
+        except ValueError as exc:
+            raise ValueError('Invalid action_type!') from exc
+        self.ACTION_HANDLERS[action_type](
+            self.objects, queue_id, url, prettify_html)
 
     def return_page_code(self,
                          url: exo_url.ExoUrl) -> str:
