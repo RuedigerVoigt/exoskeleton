@@ -23,3 +23,8 @@ class HostOnBlocklistError(ExoskeletonException):
          * You want to add a task, but the host is on the blocklist.
          * you want to execute a task, but the task has meanwhile been blocked.
     """
+
+
+class FileSizeLimitError(ExoskeletonException):
+    """Raised while streaming a download to disk once the accumulated size
+       exceeds the configured max_file_size. The partial file is removed."""

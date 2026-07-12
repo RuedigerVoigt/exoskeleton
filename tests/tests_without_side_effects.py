@@ -43,6 +43,7 @@ import pytest
 from exoskeleton import actions
 from exoskeleton import database_connection
 from exoskeleton import database_schema_check
+from exoskeleton import err
 from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
@@ -514,6 +515,27 @@ def test_FileManager_write_response_to_file(fs):
     result = fm.write_response_to_file(mock_response, 'out.txt')
     assert result.name == 'out.txt'
     assert result.exists()
+    assert result.read_bytes() == b'hello world'
+
+
+def test_FileManager_write_response_to_file_size_limit(fs):
+    fs.create_dir('/fake/dl/')
+    fm = file_manager.FileManager(None, '/fake/dl/', '', max_file_size=8)
+    mock_response = MagicMock()
+    # 11 bytes total, over the 8-byte cap
+    mock_response.iter_content.return_value = [b'hello ', b'world']
+    with pytest.raises(err.FileSizeLimitError):
+        fm.write_response_to_file(mock_response, 'toobig.txt')
+    # partial file must be removed
+    assert not pathlib.Path('/fake/dl/toobig.txt').exists()
+
+
+def test_FileManager_write_response_to_file_within_limit(fs):
+    fs.create_dir('/fake/dl/')
+    fm = file_manager.FileManager(None, '/fake/dl/', '', max_file_size=1024)
+    mock_response = MagicMock()
+    mock_response.iter_content.return_value = [b'hello ', b'world']
+    result = fm.write_response_to_file(mock_response, 'ok.txt')
     assert result.read_bytes() == b'hello world'
 
 

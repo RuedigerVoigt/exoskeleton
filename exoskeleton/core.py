@@ -111,6 +111,7 @@ class Exoskeleton:
             userprovided.parameters.validate_dict_keys(
                 dict_to_check=bot_behavior,
                 allowed_keys={'connection_timeout',
+                              'max_file_size',
                               'queue_max_retries',
                               'queue_revisit',
                               'rate_limit_wait',
@@ -167,7 +168,8 @@ class Exoskeleton:
         self.file = file_manager.FileManager(
             self.db,
             target_directory,
-            filename_prefix)
+            filename_prefix,
+            bot_behavior.get('max_file_size'))
 
         self.errorhandling = error_manager.CrawlingErrorManager(
             self.db,

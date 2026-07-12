@@ -46,6 +46,12 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
     now released once a task is processed; retry timing is governed by
     `delayUntil` as intended. This fixes the hanging network integration tests.
 
+* **Optional download size limit**:
+  * New `bot_behavior` key `max_file_size` (bytes) caps file downloads. When a
+    streamed download exceeds it, writing stops, the partial file is removed,
+    and the queue item is marked as a permanent error so it is not retried in a
+    loop. Defaults to `None` (unlimited), preserving previous behavior.
+
 * **Action types as enum (`exoskeleton.ActionType`)**:
   * New module `action_types.py` is the single source of truth for action ids
     and their storage types; the `actions` and `storageTypes` reference tables

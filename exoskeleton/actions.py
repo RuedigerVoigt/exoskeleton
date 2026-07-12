@@ -19,6 +19,7 @@ from exoskeleton.action_types import ActionType
 from exoskeleton import database_connection
 from exoskeleton import error_manager
 from exoskeleton.error_codes import ErrorCode
+from exoskeleton import err
 from exoskeleton import exo_url
 from exoskeleton import file_manager
 from exoskeleton import helpers
@@ -244,6 +245,15 @@ class GetObjectBaseClass:
             else:
                 logger.error('Unhandled return code %s', status_code)
                 self.stats.log_permanent_error(self.url)
+        except err.FileSizeLimitError:
+            # Oversized download: mark permanent so it is not retried in a
+            # loop. Clear with forget_permanent_errors() to retry.
+            logger.error('Download exceeded max file size for queue id %s.',
+                         self.queue_id, exc_info=True)
+            self.errorhandling.mark_permanent_error(
+                self.queue_id, int(ErrorCode.STORAGE_FAILED))
+            self.stats.log_permanent_error(self.url)
+
         except requests.exceptions.Timeout:
             logger.error('Reached timeout.', exc_info=True)
             self.errorhandling.add_crawl_delay(self.queue_id, ErrorCode.TIMEOUT)

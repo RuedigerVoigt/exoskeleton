@@ -22,6 +22,7 @@ class BotBehavior(BaseModel):
     """Structured defaults and cross-field validation for bot_behavior."""
 
     connection_timeout: int = 60
+    max_file_size: int | None = None
     queue_max_retries: int = 3
     queue_revisit: int = 20
     rate_limit_wait: int = 1860
@@ -35,6 +36,14 @@ class BotBehavior(BaseModel):
             raise ValueError(
                 f'wait_min ({self.wait_min}) must not exceed '
                 f'wait_max ({self.wait_max}).')
+        return self
+
+    @model_validator(mode='after')
+    def max_file_size_must_be_positive(self) -> 'BotBehavior':
+        if self.max_file_size is not None and self.max_file_size < 1:
+            raise ValueError(
+                f'max_file_size ({self.max_file_size}) must be a positive '
+                f'number of bytes or None (unlimited).')
         return self
 
 

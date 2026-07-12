@@ -15,6 +15,7 @@ import requests
 import userprovided
 
 from exoskeleton import database_connection
+from exoskeleton import err
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,18 @@ class FileManager:
     def __init__(self,
                  db_connection: database_connection.DatabaseConnection,
                  target_directory: str,
-                 filename_prefix: str
+                 filename_prefix: str,
+                 max_file_size: int | None = None
                  ) -> None:
         self.db_connection = db_connection
         self.target_dir = self.__check_target_directory(target_directory)
         logger.info("Saving files in this directory: %s", self.target_dir)
         self.file_prefix = self.__clean_prefix(filename_prefix)
+        # None (the default) means downloads are not size-limited.
+        self.max_file_size = max_file_size
+        if self.max_file_size:
+            logger.info("Downloads are capped at %s bytes.",
+                        self.max_file_size)
 
     @staticmethod
     def __check_target_directory(target_directory: str) -> pathlib.Path:
@@ -85,13 +92,29 @@ class FileManager:
     def write_response_to_file(self,
                                response: requests.Response,
                                file_name: str) -> pathlib.Path:
-        "Write the server's response into a file."
+        """Write the server's response into a file.
+
+        Streams the response to disk in blocks. If max_file_size is set and
+        the accumulated size exceeds it, writing stops, the partial file is
+        removed, and err.FileSizeLimitError is raised."""
         target_path = self.target_dir.joinpath(file_name)
+        bytes_written = 0
+        size_exceeded = False
         with open(target_path, 'wb') as file_handle:
             for block in response.iter_content(1024):
                 file_handle.write(block)
-            logger.debug('file written to disk')
+                bytes_written += len(block)
+                if self.max_file_size and bytes_written > self.max_file_size:
+                    size_exceeded = True
+                    break
 
+        if size_exceeded:
+            target_path.unlink(missing_ok=True)
+            raise err.FileSizeLimitError(
+                f'Download exceeded the maximum file size of '
+                f'{self.max_file_size} bytes; partial file removed.')
+
+        logger.debug('file written to disk')
         return target_path
 
     def get_file_hash(self,
