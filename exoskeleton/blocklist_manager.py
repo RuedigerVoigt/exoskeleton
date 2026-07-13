@@ -8,7 +8,6 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
-from hashlib import sha256
 
 # external dependencies:
 from sqlalchemy.exc import IntegrityError
@@ -45,7 +44,7 @@ class BlocklistManager:
         "Check if a specific FQDN is on the blocklist."
         fqdn = self.__check_fqdn(fqdn)
         # Calculate FQDN hash the same way the database does (SHA256)
-        fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
+        fqdn_hash = userprovided.hashing.calculate_string_hash(fqdn)
 
         with self.db_connection.session_scope() as session:
             count = session.query(models.BlockList).filter(
@@ -75,7 +74,7 @@ class BlocklistManager:
         """Add a specific fully qualified domain name (fqdn)
            - like www.example.com - to the blocklist. Does not handle URLs."""
         fqdn = self.__check_fqdn(fqdn)
-        fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
+        fqdn_hash = userprovided.hashing.calculate_string_hash(fqdn)
 
         try:
             with self.db_connection.session_scope() as session:
@@ -93,7 +92,7 @@ class BlocklistManager:
                      fqdn: str) -> None:
         "Remove a specific FQDN from the blocklist."
         fqdn = self.__check_fqdn(fqdn)
-        fqdn_hash = sha256(fqdn.encode('utf-8')).hexdigest()
+        fqdn_hash = userprovided.hashing.calculate_string_hash(fqdn)
 
         with self.db_connection.session_scope() as session:
             session.query(models.BlockList).filter(
