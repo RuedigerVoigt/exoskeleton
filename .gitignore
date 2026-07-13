@@ -115,3 +115,7 @@ nul
 
 # Poetry lock file - not committed for a library
 poetry.lock
+
+# AI-assistant working files - not committed
+CLAUDE.md
+TODO.md
