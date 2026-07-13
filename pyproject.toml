@@ -10,7 +10,6 @@ repository = "https://github.com/RuedigerVoigt/exoskeleton"
 keywords = ["crawler", "scraper", "spider", "bot", "web-scraping"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -33,7 +32,7 @@ include = ["exoskeleton/py.typed"]
 "Changelog" = "https://github.com/RuedigerVoigt/exoskeleton/blob/master/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 beautifulsoup4 = ">=4.15.0"
 bote = ">=1.2.2"
 compatibility = ">=2.2.0"
@@ -64,11 +63,10 @@ description = "A library to create a bot / spider / crawler."
 authors = [{name = "Rüdiger Voigt", email = "projects@ruediger-voigt.eu"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = ["crawler", "scraper", "spider", "bot", "web-scraping"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -133,7 +131,7 @@ source = ["exoskeleton"]
 title = "Coverage Report for the Exoskeleton Python Package"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

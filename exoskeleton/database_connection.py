@@ -8,7 +8,8 @@ Released under the Apache License 2.0
 # standard library:
 from contextlib import contextmanager
 import logging
-from typing import cast, Iterator
+from typing import cast
+from collections.abc import Iterator
 
 # external dependencies:
 from sqlalchemy import create_engine, text

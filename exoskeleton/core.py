@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Exoskeleton Crawler Framework
@@ -73,7 +72,7 @@ class Exoskeleton:
             package_version=importlib.metadata.version('exoskeleton'),
             release_date=date(2025, 11, 9),
             python_version_support={
-                'min_version': '3.10',
+                'min_version': '3.12',
                 'incompatible_versions': [],
                 'max_tested_version': '3.14'},
             nag_over_update={

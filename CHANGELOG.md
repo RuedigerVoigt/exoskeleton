@@ -16,8 +16,8 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
   * Stored procedures now called through SQLAlchemy's `execute()` interface
 
 * **Python Version Support Changes**:
-  * **Dropped support for Python 3.8, 3.9, and 3.10** (End of Life)
-  * **Minimum Python version:** 3.11
+  * **Dropped support for Python 3.8, 3.9, 3.10, and 3.11** (End of Life / dependency requirements)
+  * **Minimum Python version:** 3.12 (required by the Rust-based `lingua-language-detector`)
   * **Added support for:** Python 3.13 and 3.14
   * **CI now also tests against the Python 3.15 beta** on Ubuntu as an allowed-to-fail job
 

@@ -8,7 +8,8 @@ Released under the Apache License 2.0
 """
 # standard library:
 import logging
-from typing import Callable, Final
+from typing import Final
+from collections.abc import Callable
 
 import requests
 import urllib3
@@ -378,7 +379,7 @@ class GetText(GetContent):
         return super().store_result(response, strip_code)
 
 
-class GetPDF():
+class GetPDF:
     """Use the Google Chrome or Chromium browser in headless mode to print the
        page to PDF and store it.
        BEWARE: Some cookie-popups blank out the page and all what is stored,
