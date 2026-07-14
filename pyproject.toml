@@ -49,7 +49,7 @@ SQLAlchemy = ">=2.0.51"
 pytest = "^9.1.1"
 pytest-timeout = "^2.4.0"
 coverage = "^7.15.0"
-flake8 = "^7.3.0"
+ruff = "^0.15.20"
 mypy = "^2.1.0"
 bandit = "^1.9.4"
 types-requests = "^2.33.0.20260518"
@@ -97,7 +97,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-timeout>=2.4.0",
     "coverage>=7.15.0",
-    "flake8>=7.3.0",
+    "ruff>=0.15.20",
     "mypy>=2.1.0",
     "bandit>=1.9.4",
     "types-requests>=2.33.0.20260518",
@@ -135,3 +135,11 @@ python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 127
+
+[tool.ruff.lint]
+# E/F: pyflakes + pycodestyle (flake8 parity); UP: pyupgrade.
+select = ["E", "F", "UP"]

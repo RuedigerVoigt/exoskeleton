@@ -1,0 +1,44 @@
+# This workflow runs ruff linting on the codebase
+
+name: Ruff Linting
+
+on: [push, pull_request]
+
+# Least privilege: read-only token, no write access, and no secrets are
+# referenced.
+permissions:
+  contents: read
+
+jobs:
+  lint:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.14']
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[dev]
+
+    - name: Lint with ruff
+      # This job is check-only: it must never modify files in the repo.
+      # Do NOT add `--fix` or `ruff format` here; auto-fixing is a local
+      # developer step, never CI.
+      run: |
+        # Lint the library only; tests/ is exercised by the test workflows.
+        # stop the build if there are Python syntax errors or undefined names
+        ruff check exoskeleton/ --select=E9,F63,F7,F82 --statistics
+        # exit-zero treats all errors as warnings (rules from pyproject.toml)
+        ruff check exoskeleton/ --exit-zero --statistics

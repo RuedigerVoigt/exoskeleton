@@ -38,6 +38,11 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 **Other Changes:**
 
+* **Switched linting from flake8 to ruff**:
+  * `ruff` replaces `flake8` in CI and dev dependencies; configured in
+    `pyproject.toml` (`[tool.ruff]`, rules `E`, `F`, `UP`). Applied the
+    resulting pyupgrade fixes. Dev-only change with no runtime impact.
+
 * **Fixed: temporary-error tasks were never retried**:
   * The task lease (`queue.lockedUntil`) introduced for multi-worker safety was
     set when a task was claimed but never released after processing. Items left
