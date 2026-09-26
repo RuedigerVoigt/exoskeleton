@@ -27,7 +27,7 @@ python --version
 python3 --version
 ```
 
-Python 3.12 through 3.14 are tested and fully supported.
+Python 3.12 through 3.15 are tested and fully supported.
 
 ### Installing with Pip
 

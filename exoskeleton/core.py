@@ -74,7 +74,7 @@ class Exoskeleton:
             python_version_support={
                 'min_version': '3.12',
                 'incompatible_versions': [],
-                'max_tested_version': '3.14'},
+                'max_tested_version': '3.15'},
             nag_over_update={
                 'nag_days_after_release': 120,
                 'nag_in_hundred': 100},

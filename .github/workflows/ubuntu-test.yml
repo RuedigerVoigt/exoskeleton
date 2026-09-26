@@ -9,15 +9,10 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.12', '3.13', '3.14']
-        experimental: [false]
-        include:
-          - python-version: '3.15'
-            experimental: true
+        python-version: ['3.12', '3.13', '3.14', '3.15']
 
     services:
       mariadb:

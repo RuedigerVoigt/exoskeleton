@@ -18,8 +18,8 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 * **Python Version Support Changes**:
   * **Dropped support for Python 3.8, 3.9, 3.10, and 3.11** (End of Life / dependency requirements)
   * **Minimum Python version:** 3.12 (required by the Rust-based `lingua-language-detector`)
-  * **Added support for:** Python 3.13 and 3.14
-  * **CI now also tests against the Python 3.15 beta** on Ubuntu as an allowed-to-fail job
+  * **Added support for:** Python 3.13, 3.14, and 3.15
+  * **CI tests Python 3.15** as a regular job on Ubuntu, macOS, and Windows
 
 **Logging Improvements:**
 
