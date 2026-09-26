@@ -1,59 +1,29 @@
 [tool.poetry]
-name = "exoskeleton"
-version = "3.0.0"
-description = "A library to create a bot / spider / crawler."
-authors = ["Rüdiger Voigt <projects@ruediger-voigt.eu>"]
-license = "Apache-2.0"
-readme = "README.md"
-homepage = "https://github.com/RuedigerVoigt/exoskeleton"
-repository = "https://github.com/RuedigerVoigt/exoskeleton"
-keywords = ["crawler", "scraper", "spider", "bot", "web-scraping"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Programming Language :: Python :: 3.15",
-    "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Science/Research",
-    "Intended Audience :: Developers",
-    "Topic :: Text Processing :: Markup :: HTML",
-    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
-]
 packages = [{include = "exoskeleton"}]
 include = ["exoskeleton/py.typed"]
-
-[tool.poetry.urls]
-"Homepage" = "https://github.com/RuedigerVoigt/exoskeleton"
-"Repository" = "https://github.com/RuedigerVoigt/exoskeleton"
-"Bug Tracker" = "https://github.com/RuedigerVoigt/exoskeleton/issues"
-"Documentation" = "https://github.com/RuedigerVoigt/exoskeleton/tree/master/documentation"
-"Changelog" = "https://github.com/RuedigerVoigt/exoskeleton/blob/master/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
 beautifulsoup4 = ">=4.15.0"
-bote = ">=1.2.2"
-compatibility = ">=2.2.0"
-lxml = ">=6.1.1"
-pymysql = ">=1.2.0"
-python-dotenv = ">=1.2.2"
-pydantic = ">=2.13.4"
+bote = ">=2.0.0"
+compatibility = ">=2.3.0"
+lxml = ">=6.1.3"
+pymysql = ">=1.2.3"
+python-dotenv = ">=1.2.3"
+pydantic = ">=2.13.5"
 requests = ">=2.34.2"
-urllib3 = ">=2.7.0"
-userprovided = ">=2.5.0"
-SQLAlchemy = ">=2.0.51"
+urllib3 = ">=2.8.0"
+userprovided = ">=3.0.0,<4"
+SQLAlchemy = ">=2.0.51,<2.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 pytest-timeout = "^2.4.0"
-coverage = "^7.15.0"
-ruff = "^0.15.20"
-mypy = "^2.1.0"
+coverage = "^7.16.1"
+ruff = "^0.16.9"
+mypy = "^2.3.1"
 bandit = "^1.9.4"
-types-requests = "^2.33.0.20260518"
+types-requests = "^2.33.0.20260906"
 pyfakefs = "^6.2.0"
 pytest-mock = "^3.15.1"
 
@@ -62,7 +32,8 @@ name = "exoskeleton"
 version = "3.0.0"
 description = "A library to create a bot / spider / crawler."
 authors = [{name = "Rüdiger Voigt", email = "projects@ruediger-voigt.eu"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["crawler", "scraper", "spider", "bot", "web-scraping"]
@@ -72,7 +43,6 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
@@ -82,27 +52,27 @@ classifiers = [
 ]
 dependencies = [
     "beautifulsoup4>=4.15.0",
-    "bote>=1.2.2",
-    "compatibility>=2.2.0",
-    "lxml>=6.1.1",
-    "pymysql>=1.2.0",
-    "python-dotenv>=1.2.2",
-    "pydantic>=2.13.4",
+    "bote>=2.0.0",
+    "compatibility>=2.3.0",
+    "lxml>=6.1.3",
+    "pymysql>=1.2.3",
+    "python-dotenv>=1.2.3",
+    "pydantic>=2.13.5",
     "requests>=2.34.2",
-    "urllib3>=2.7.0",
-    "userprovided>=2.5.0",
-    "SQLAlchemy>=2.0.51",
+    "urllib3>=2.8.0",
+    "userprovided>=3.0.0,<4",
+    "SQLAlchemy>=2.0.51,<2.1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1",
     "pytest-timeout>=2.4.0",
-    "coverage>=7.15.0",
-    "ruff>=0.15.20",
-    "mypy>=2.1.0",
+    "coverage>=7.16.1",
+    "ruff>=0.16.9",
+    "mypy>=2.3.1",
     "bandit>=1.9.4",
-    "types-requests>=2.33.0.20260518",
+    "types-requests>=2.33.0.20260906",
     "pyfakefs>=6.2.0",
     "pytest-mock>=3.15.1",
 ]
@@ -115,7 +85,7 @@ Documentation = "https://github.com/RuedigerVoigt/exoskeleton/tree/master/docume
 Changelog = "https://github.com/RuedigerVoigt/exoskeleton/blob/master/CHANGELOG.md"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.2.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
