@@ -58,12 +58,8 @@ class DatabaseConnection:
             logger.warning('No hostname provided. Will try localhost.')
             self.db_host = 'localhost'
 
-        self.db_port: int = cast(int, database_settings.get('port', None))
-        if not self.db_port:
-            logger.info('No port number supplied: will try port 3306.')
-            self.db_port = 3306
-        elif not userprovided.parameters.is_port(self.db_port):
-            raise ValueError('Database port outside valid range!')
+        self.db_port: int = self.__check_port(
+            database_settings.get('port', None))
 
         self.db_passphrase: str = database_settings.get('passphrase', '')
         if self.db_passphrase == '':
@@ -74,6 +70,28 @@ class DatabaseConnection:
         self.engine: Engine | None = None
         self.Session: sessionmaker | None = None
         self.establish_db_connection()
+
+    @staticmethod
+    def __check_port(port: object) -> int:
+        """Return the port as integer, or 3306 if no port is supplied.
+           Also accepts a string of digits, as read from an environment
+           variable. Raises ValueError for anything else."""
+        # bool is a subclass of int, but True is no port number:
+        if isinstance(port, bool):
+            raise ValueError('Database port must be an integer.')
+        if isinstance(port, str):
+            port = port.strip()
+            if port and not (port.isascii() and port.isdigit()):
+                raise ValueError('Database port must be an integer.')
+            port = int(port) if port else None
+        if not port:
+            logger.info('No port number supplied: will try port 3306.')
+            return 3306
+        if not isinstance(port, int):
+            raise ValueError('Database port must be an integer.')
+        if not userprovided.parameters.is_port(port):
+            raise ValueError('Database port outside valid range!')
+        return port
 
     def __del__(self) -> None:
         """Cleanup: dispose the engine and its connection pool."""

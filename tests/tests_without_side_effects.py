@@ -170,21 +170,47 @@ def test_DatabaseConnection():
     with pytest.raises(ValueError) as excinfo:
         database_connection.DatabaseConnection(
             database_settings={'database': 'foo'})
-        assert "Necessary key username missing" in str(excinfo.value)
+    assert "Necessary key 'username' missing" in str(excinfo.value)
     # necessary key present, but set to None
     with pytest.raises(ValueError) as excinfo:
         database_connection.DatabaseConnection(
             database_settings={'database': None, 'username': 'foo'})
-        assert "You must provide the name of the database" in str(excinfo.value)
+    assert "You must provide the name of the database" in str(excinfo.value)
     with pytest.raises(ValueError) as excinfo:
         database_connection.DatabaseConnection(
             database_settings={'database': 'foo', 'username': None})
-        assert "You must provide a database user" in str(excinfo.value)
+    assert "You must provide a database user" in str(excinfo.value)
     # Port out of range
     with pytest.raises(ValueError) as excinfo:
         database_connection.DatabaseConnection(
             database_settings={'database': 'foo', 'username': 'foo', 'port': 999999999})
-        assert "port outside valid range" in str(excinfo.value)
+    assert "port outside valid range" in str(excinfo.value)
+    # Wrong type: fails before any connection attempt
+    with pytest.raises(ValueError) as excinfo:
+        database_connection.DatabaseConnection(
+            database_settings={'database': 'foo', 'username': 'foo', 'port': True})
+    assert "must be an integer" in str(excinfo.value)
+
+
+def test_DatabaseConnection_check_port():
+    check_port = database_connection.DatabaseConnection._DatabaseConnection__check_port
+    # No port supplied: fall back to the MariaDB default
+    for no_port in (None, 0, '', '   '):
+        assert check_port(no_port) == 3306
+    assert check_port(3307) == 3307
+    # Strings of digits, e.g. read from an environment variable
+    assert check_port('3307') == 3307
+    assert check_port(' 3307\n') == 3307
+    # Wrong types raise ValueError, not TypeError
+    for wrong_type in (True, False, 3306.0, '33o6', '-1', '３３０６', [3306]):
+        with pytest.raises(ValueError) as excinfo:
+            check_port(wrong_type)
+        assert "must be an integer" in str(excinfo.value)
+    # Out of range
+    for out_of_range in (65536, '99999', -1):
+        with pytest.raises(ValueError) as excinfo:
+            check_port(out_of_range)
+        assert "outside valid range" in str(excinfo.value)
 
 # #############################################################################
 # ExoActions Class

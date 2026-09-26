@@ -86,6 +86,7 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
   * Raised minimum versions of all dependencies to their latest releases
   * Now requires `userprovided>=3.0.0` and `bote>=2.0.0`, both tested with Python 3.15
     * `userprovided` 3.0 changes `normalize_url` to collapse any run of slashes in the path (`///a` becomes `/a`). Stored URLs with such paths get a different URL hash, so re-adding one is no longer detected as a duplicate and creates a second `fileMaster` row.
+    * The database port is now checked by exoskeleton itself, so the exception type does not depend on the `userprovided` version: a string of digits like `'3306'` (e.g. read from an environment variable) is accepted, any other type (including `True`, which used to be accepted as port 1) raises `ValueError`.
   * SQLAlchemy is capped at `<2.1` until the type-hint changes in 2.1 are handled
   * Added `[project.optional-dependencies]` for PEP 517/518 compatibility
 
