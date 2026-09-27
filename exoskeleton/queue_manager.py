@@ -24,6 +24,7 @@ from exoskeleton.action_types import ActionType
 from exoskeleton import blocklist_manager
 from exoskeleton import database_connection
 from exoskeleton import err
+from exoskeleton.error_codes import ErrorCode
 from exoskeleton import exo_url
 from exoskeleton import label_manager
 from exoskeleton import models
@@ -310,6 +311,19 @@ class QueueManager:
                 {models.Queue.lockedUntil: None},
                 synchronize_session=False)
 
+    def _mark_invalid_url(self,
+                          queue_id: str) -> None:
+        """Mark a queue item whose URL fails validation as a permanent error
+        and release its lease. Like other permanent errors, the item stays in
+        the queue so it can be inspected."""
+        with self.db_connection.session_scope() as session:
+            session.query(models.Queue).filter(
+                models.Queue.id == queue_id
+            ).update(
+                {models.Queue.causesError: int(ErrorCode.INVALID_URL),
+                 models.Queue.lockedUntil: None},
+                synchronize_session=False)
+
     def delete_from_queue(self,
                           queue_id: str) -> None:
         """Remove all label links from item, delete FileVersion stub, and delete from queue.
@@ -390,7 +404,16 @@ class QueueManager:
             # Got a task from the queue!
             queue_id = next_in_queue[0]
             action = next_in_queue[1]
-            url = exo_url.ExoUrl(next_in_queue[2])
+            try:
+                url = exo_url.ExoUrl(next_in_queue[2])
+            except ValueError:
+                # Validation can become stricter between releases. Raising
+                # here would stop the bot, and the leased item would stop it
+                # again after every restart.
+                logger.error('Queue item %s has an invalid URL: '
+                             'marked as permanent error.', queue_id)
+                self._mark_invalid_url(queue_id)
+                continue
             prettify_html = (next_in_queue[4] == 1)
 
             # The FQDN might have been added to the blocklist *after*

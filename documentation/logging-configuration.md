@@ -147,6 +147,12 @@ Exoskeleton provides these logger namespaces:
 - `exoskeleton.remote_control_chrome` - PDF generation with Chrome
 - `exoskeleton.exo_url` - URL normalization and validation
 
+Input validation is done by the [userprovided](https://github.com/RuedigerVoigt/userprovided) library, which logs to its own `userprovided.*` loggers (e.g. `userprovided.url`, `userprovided.parameters`). Control them the same way:
+
+```python
+logging.getLogger('userprovided').setLevel(logging.WARNING)
+```
+
 ## Understanding Exoskeleton's Log Output
 
 ### Database Connection Messages

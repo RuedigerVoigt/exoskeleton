@@ -49,6 +49,7 @@ from exoskeleton import file_manager
 from exoskeleton import helpers
 from exoskeleton import models
 from exoskeleton import notification_manager
+from exoskeleton import queue_manager
 from exoskeleton import remote_control_chrome
 from exoskeleton import statistics_manager as stat_mgr
 from exoskeleton import time_manager
@@ -743,3 +744,24 @@ def test_DataIntegrityChecker_check_uses_session_scope():
     db.session_scope.assert_called_once()
     assert report.is_clean is True
     assert report.repaired == {}
+
+
+@pytest.mark.parametrize('stored_url', [
+    'ftp://www.example.com/file.txt',
+    # Accepted by userprovided 3.0.0, rejected since 3.0.1:
+    'http://exa mple.com/',
+])
+def test_process_queue_marks_invalid_stored_url(stored_url):
+    """A stored URL that fails validation is marked as a permanent error
+       instead of raising out of process_queue and stopping the bot."""
+    qm = queue_manager.QueueManager(
+        MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(),
+        MagicMock(), MagicMock(), {'stop_if_queue_empty': True})
+    qm.stats.num_tasks_w_temporary_errors.return_value = 0
+    qm.stats.num_tasks_w_permanent_errors.return_value = 1
+    invalid_task = ('queue-id-1', 2, stored_url, 'hash', 0)
+    with patch.object(qm, 'get_next_task',
+                      side_effect=[invalid_task, None]),          patch.object(qm, '_mark_invalid_url') as mock_mark:
+        qm.process_queue()
+    mock_mark.assert_called_once_with('queue-id-1')
+    qm.actions.get_object.assert_not_called()

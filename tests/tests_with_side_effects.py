@@ -802,6 +802,21 @@ def test_storage_failed_code_is_writable():
     exo.delete_from_queue(uuid_1)
 
 
+
+def test_mark_invalid_url():
+    """An item with an invalid stored URL is marked INVALID_URL (permanent),
+    its lease is cleared, and it stays in the queue."""
+    uuid_1 = exo.add_save_page_code('https://www.example.com/invalid-url.html')
+    exo.queue._mark_invalid_url(uuid_1)
+    with exo.db.session_scope() as session:
+        item = session.query(
+            models.Queue.causesError, models.Queue.lockedUntil
+        ).filter(models.Queue.id == uuid_1).first()
+    assert item is not None
+    assert item[0] == int(ErrorCode.INVALID_URL)
+    assert item[1] is None
+    exo.delete_from_queue(uuid_1)
+
 # #############################################################################
 # TEST RATE LIMIT
 # #############################################################################

@@ -90,8 +90,10 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
   * Added: `python-dotenv>=1.1.1`
   * Updated all dependencies to latest versions
   * Raised minimum versions of all dependencies to their latest releases
-  * Now requires `userprovided>=3.0.0` and `bote>=2.0.0`, both tested with Python 3.15
+  * Now requires `userprovided>=3.0.1` and `bote>=2.0.0`, both tested with Python 3.15
     * `userprovided` 3.0 changes `normalize_url` to collapse any run of slashes in the path (`///a` becomes `/a`). Stored URLs with such paths get a different URL hash, so re-adding one is no longer detected as a duplicate and creates a second `fileMaster` row.
+    * `userprovided` 3.0.1 rejects URLs whose host contains whitespace, control characters, `%` or one of `< > \ ^ |`, or with a backslash anywhere in the authority (browsers would resolve these to a different host, e.g. `http://%31%32%37.0.0.1/` to 127.0.0.1). Such URLs can no longer be added. A URL of this kind already in the queue is now marked with the new permanent error type `INVALID_URL` (id 8) instead of stopping `process_queue`.
+    * `userprovided` 3.0.1 logs to its own `userprovided.*` loggers instead of the root logger, so it can no longer override your logging setup.
     * The database port is now checked by exoskeleton itself, so the exception type does not depend on the `userprovided` version: a string of digits like `'3306'` (e.g. read from an environment variable) is accepted, any other type (including `True`, which used to be accepted as port 1) raises `ValueError`.
   * The ORM models in `models.py` now use typed `Mapped[...]` / `mapped_column()` declarations. SQLAlchemy 2.1 no longer gives plain `Column()` attributes a usable type, which broke type checking of every query. The generated schema is unchanged.
   * Added `[project.optional-dependencies]` for PEP 517/518 compatibility

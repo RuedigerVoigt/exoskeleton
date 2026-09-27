@@ -52,6 +52,9 @@ class ErrorCode(IntEnum):
     # forget_permanent_errors() to retry.
     STORAGE_FAILED = (7, 'storage_failed',
                       'Failed to store downloaded content', True)
+    # A queued URL that no longer passes validation, e.g. because a newer
+    # userprovided release rejects hosts an older one accepted.
+    INVALID_URL = (8, 'invalid_url', 'Queued URL is not valid', True)
 
     # ~~~ Permanent HTTP status codes ~~~
     BAD_REQUEST = (400, 'bad_request', 'Bad Request', True)
