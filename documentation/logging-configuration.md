@@ -133,6 +133,7 @@ Exoskeleton provides these logger namespaces:
 - `exoskeleton.core` - Main Exoskeleton class
 - `exoskeleton.database_connection` - Database connectivity and sessions
 - `exoskeleton.database_schema_check` - Schema validation
+- `exoskeleton.data_integrity` - Data integrity checks
 - `exoskeleton.queue_manager` - Queue processing logic
 - `exoskeleton.actions` - Download and retrieval operations
 - `exoskeleton.file_manager` - File I/O operations
@@ -161,9 +162,10 @@ INFO:exoskeleton.database_connection:Successfully established database connectio
 ### Schema Validation
 
 ```
-DEBUG:exoskeleton.database_schema_check:Checking if the database table structure is complete.
-INFO:exoskeleton.database_schema_check:Found all expected tables.
-INFO:exoskeleton.database_schema_check:Found all expected stored procedures.
+DEBUG:exoskeleton.database_schema_check:Database schema: found all expected tables.
+DEBUG:exoskeleton.database_schema_check:Checking reference data...
+DEBUG:exoskeleton.database_schema_check:Reference data check complete.
+INFO:exoskeleton.database_schema_check:Database schema matches version of exoskeleton.
 ```
 
 ### Queue Processing
@@ -179,8 +181,8 @@ DEBUG:exoskeleton.time_manager:5.3 seconds delay until next action
 ```
 ERROR:exoskeleton.actions:The bot hit a rate limit => increase min_wait.
 INFO:exoskeleton.error_manager:Adding crawl delay to task abc123
-WARNING:exoskeleton.database_connection:Lost database connection. Trying to reconnect...
-INFO:exoskeleton.database_connection:Restored database connection!
+ERROR:exoskeleton.queue_manager:Lost database connection. Trying to restore it in 10 seconds ...
+INFO:exoskeleton.queue_manager:Restored database connection!
 ```
 
 ## Best Practices
