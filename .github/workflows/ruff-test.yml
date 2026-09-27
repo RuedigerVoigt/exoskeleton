@@ -37,8 +37,5 @@ jobs:
       # Do NOT add `--fix` or `ruff format` here; auto-fixing is a local
       # developer step, never CI.
       run: |
-        # Lint the library only; tests/ is exercised by the test workflows.
-        # stop the build if there are Python syntax errors or undefined names
-        ruff check exoskeleton/ --select=E9,F63,F7,F82 --statistics
-        # exit-zero treats all errors as warnings (rules from pyproject.toml)
-        ruff check exoskeleton/ --exit-zero --statistics
+        # Fail the build on any violation of the rules in pyproject.toml.
+        ruff check exoskeleton/ tests/ --statistics
