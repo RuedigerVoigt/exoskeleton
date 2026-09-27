@@ -148,10 +148,11 @@ class CrawlingErrorManager:
                                       permanent: bool) -> None:
         "Reset all queue items whose error type matches the permanence flag."
         with self.db_connection.session_scope() as session:
-            error_ids = session.query(models.ErrorType.id).filter(
-                models.ErrorType.permanent.is_(permanent)
-            ).all()
-            error_ids = [id[0] for id in error_ids]
+            error_ids = [
+                row.id for row in session.query(models.ErrorType.id).filter(
+                    models.ErrorType.permanent.is_(permanent)
+                ).all()
+            ]
 
             if error_ids:
                 session.query(models.Queue).filter(
