@@ -41,6 +41,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from exoskeleton import actions
+from exoskeleton import data_integrity
 from exoskeleton import database_connection
 from exoskeleton import database_schema_check
 from exoskeleton import err
@@ -684,3 +685,62 @@ def test_DatabaseSchemaCheck_tables_from_models():
     assert 'fileVersions' in database_schema_check.DatabaseSchemaCheck.TABLES
     # Should have 15 tables (as of current schema)
     assert len(database_schema_check.DatabaseSchemaCheck.TABLES) == 15
+
+
+# #############################################################################
+# DataIntegrityChecker - IntegrityReport logic (no database)
+# #############################################################################
+
+
+def test_IntegrityReport_empty_is_clean():
+    "A fresh report has no findings and reports as clean."
+    report = data_integrity.IntegrityReport()
+    assert report.is_clean is True
+    assert "passed" in report.summary()
+
+
+def test_IntegrityReport_orphan_not_clean():
+    "Any orphaned label association makes the report not clean."
+    report = data_integrity.IntegrityReport(orphaned_label_associations=[1, 2])
+    assert report.is_clean is False
+    assert "2 orphaned" in report.summary()
+
+
+def test_IntegrityReport_missing_content_not_clean():
+    "A version missing database content makes the report not clean."
+    report = data_integrity.IntegrityReport(missing_database_content=['abc'])
+    assert report.is_clean is False
+
+
+def test_IntegrityReport_unexpected_content_not_clean():
+    "A non-database version with content makes the report not clean."
+    report = data_integrity.IntegrityReport(
+        unexpected_database_content=['def'])
+    assert report.is_clean is False
+
+
+def test_IntegrityReport_hash_mismatch_not_clean():
+    "A URL hash mismatch makes the report not clean."
+    report = data_integrity.IntegrityReport(url_hash_mismatches=[7])
+    assert report.is_clean is False
+
+
+def test_DataIntegrityChecker_check_uses_session_scope():
+    """check() opens exactly one session_scope and, without findings,
+       performs no repair even when fix=True."""
+    fake_session = MagicMock()
+    # Every query(...).<chain>...all()/yield_per() returns no rows:
+    fake_session.query.return_value.filter.return_value.all.return_value = []
+    fake_session.query.return_value.outerjoin.return_value.filter.return_value.all.return_value = []
+    fake_session.query.return_value.join.return_value.filter.return_value.all.return_value = []
+    fake_session.query.return_value.yield_per.return_value = []
+
+    db = MagicMock()
+    db.session_scope.return_value.__enter__.return_value = fake_session
+
+    checker = data_integrity.DataIntegrityChecker(db)
+    report = checker.check(fix=True)
+
+    db.session_scope.assert_called_once()
+    assert report.is_clean is True
+    assert report.repaired == {}

@@ -38,6 +38,12 @@ Replace the `requests` with `aiohttp` or `httpx` to parallelize tasks. This is n
 
 **Other Changes:**
 
+* **New `DataIntegrityChecker` (`exo.check_data_integrity()`)**:
+  * Finds inconsistencies that foreign keys and ORM cascades cannot catch:
+    orphaned `labelToMaster` rows, storage-type vs. `fileContent` mismatches,
+    and `urlHash` values that no longer match their URL. Read-only by default;
+    `fix=True` deletes orphaned label associations only.
+
 * **Switched linting from flake8 to ruff**:
   * `ruff` replaces `flake8` in CI and dev dependencies; configured in
     `pyproject.toml` (`[tool.ruff]`, rules `E`, `F`, `UP`). Applied the

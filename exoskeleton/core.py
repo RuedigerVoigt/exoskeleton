@@ -28,6 +28,7 @@ from datetime import date
 from exoskeleton import actions
 from exoskeleton.action_types import ActionType
 from exoskeleton import blocklist_manager
+from exoskeleton import data_integrity
 from exoskeleton import database_connection
 from exoskeleton import database_schema_check
 from exoskeleton import error_manager
@@ -205,6 +206,8 @@ class Exoskeleton:
 
         self.jobs = job_manager.JobManager(self.db)
 
+        self.integrity = data_integrity.DataIntegrityChecker(self.db)
+
         # Create other objects
         self.cnt: Counter = Counter()
 
@@ -219,6 +222,16 @@ class Exoskeleton:
     def process_queue(self) -> None:
         "Process the queue"
         self.queue.process_queue()
+
+    def check_data_integrity(
+            self,
+            fix: bool = False) -> data_integrity.IntegrityReport:
+        """Check the database for inconsistencies foreign keys and cascades
+           cannot catch (orphaned label associations, storage type vs.
+           content mismatches, and URL hash drift).
+           With fix=True, orphaned label associations are deleted; the other
+           findings are only reported."""
+        return self.integrity.check(fix)
 
     def return_page_code(self,
                          url: exo_url.ExoUrl | str) -> str:
