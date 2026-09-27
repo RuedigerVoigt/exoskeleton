@@ -1,0 +1,16 @@
+# Store all text files with LF line endings, whatever the contributor's
+# core.autocrlf setting or editor.
+* text=auto eol=lf
+
+# Windows batch files need CRLF line endings to run reliably.
+*.bat text eol=crlf
+
+# Never touch line endings or diff the contents of images.
+*.png binary
+*.gif binary
+
+# Show the enclosing function in `git diff` hunk headers.
+*.py diff=python
+
+# Show the enclosing heading in `git diff` hunk headers.
+*.md diff=markdown
